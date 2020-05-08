@@ -1,0 +1,137 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!-- saved from url=(0031)./ -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"> <title>libcurl - API</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" type="text/css" href="./curl.css">
+<link rel="shortcut icon" href="https://curl.haxx.se/favicon.ico">
+<link rel="icon" href="https://curl.haxx.se/logo/curl-symbol.svg" type="image/svg+xml">
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<div class="main">
+<div class="menu">
+<a href="./libcurl.html" class="menuitem" title="Overview">Overview</a>
+<a href="./libcurl-tutorial.html" class="menuitem" title="Tutorial">Tutorial</a>
+<a href="./libcurl-errors.html" class="menuitem" title="Error Codes">Errors</a>
+<a href="./libcurl-env.html" class="menuitem" title="Environment variables ">Environment</a>
+<a href="./example.html" class="menuitem" title="libcurl C source code examples ">Examples</a>
+<a href="./symbols-in-versions.html" class="menuitem" title="In which versions were which symbols introduced">Symbols</a>
+<a href="./allfuncs.html" class="menuitem" title="List of all libcurl functions">Index</a>
+<a href="./libcurl-easy.html" class="menuitem" title="Easy interface tutorial">Easy Interface</a>
+<a href="./libcurl-multi.html" class="menuitem" title="Multi Interface tutorial">Multi Interface</a>
+<a href="./libcurl-share.html" class="menuitem" title="Share Interface Tutorial">Share Interface</a>
+</div>
+<div class="contents">
+<div class="where"><a href="https://curl.haxx.se/">curl</a> / <a href="https://curl.haxx.se/libcurl/">libcurl</a> / <b>API</b></div>
+<h1> The libcurl API </h1>
+<p>
+ Read <a href="./libcurl-tutorial.html">the libcurl tutorial</a> to get a
+ general in-depth grip of what libcurl programming is all about.
+</p><p>
+ There are some <a href="./example.html">example C source codes</a> you can
+ check out.
+</p><p>
+ Dig into the <a href="./symbols-in-versions.html">Symbols In Versions</a>
+ document to learn in which libcurl releases symbols were added or removed.
+</p><p>
+ Windows developers using Microsoft Visual Studio, might enjoy:
+</p><ul>
+<li> Andrei Jakab's <a href="./Using-libcurl-with-SSH-support-in-Visual-Studio-2010.pdf">Using libcurl
+with SSH support in Visual Studio 2010</a> [PDF]
+</li><li> Rosso Salmanzadeh's <a href="./visual_studio.pdf">Using libcurl in Visual
+ Studio</a> [PDF] guide.
+</li></ul>
+<h1> Easy or Multi </h1>
+<p>
+ The easy interface is a synchronous, efficient, quickly used and... yes, easy
+ interface for file transfers. Numerous applications have been built using
+ this.
+</p><p>
+ The multi interface is the asynchronous brother in the family and it also
+ offers multiple transfers using a single thread and more. Get a grip of how
+ to work with it in <a href="./libcurl-multi.html">the multi interface
+ overview</a>.
+</p><h1> The Easy interface </h1>
+<p>
+ When using libcurl you <a href="./curl_easy_init.html">init</a> your
+ easy-session and get a handle, which you use as input to the following
+ interface functions you use.
+</p><p>
+ You continue by setting all the <a href="./curl_easy_setopt.html">options</a>
+ you want in the upcoming transfer, most important among them is the URL
+ itself. You might want to set some callbacks as well that will be called from
+ the library when data is available etc.
+</p><p>
+ When all is setup, you tell libcurl to <a href="./curl_easy_perform.html">perform</a> the transfer. It will then do the
+ entire operation and won't return until it is done or failed.
+</p><p>
+ After the performance is made, you may <a href="./curl_easy_getinfo.html">get
+ information</a> about the transfer and then you <a href="./curl_easy_cleanup.html">cleanup</a> the easy-session's handle and
+ libcurl is entire off the hook!
+</p><p>
+ See also the <a href="./libcurl-easy.html">easy interface overview</a>.
+</p><p>
+ <a href="./curl_easy_init.html">curl_easy_init()</a>
+<br>
+ <a href="./curl_easy_cleanup.html">curl_easy_cleanup()</a>
+<br>
+ <a href="./curl_easy_setopt.html">curl_easy_setopt()</a>
+<br>
+ <a href="./curl_easy_perform.html">curl_easy_perform()</a>
+<br>
+ <a href="./curl_easy_getinfo.html">curl_easy_getinfo()</a>
+</p><p>
+ While the above functions are the main functions to use in the easy
+ interface, there is a series of other helpful functions too including:
+</p><p>
+</p><table>
+  <tbody><tr><td>
+  <a href="./curl_version.html">curl_version()</a>
+  </td><td>
+  returns a pointer to the libcurl version string
+  </td></tr>
+  <tr><td>
+  <a href="./curl_getdate.html">curl_getdate()</a>
+  </td><td>
+  converts a date string to time_t
+  </td></tr>
+  <tr><td>
+  <a href="./curl_mime_init.html">curl_mime_init()</a>
+  </td><td>
+  ... and family, to build multipart form-data posts
+  </td></tr>
+  <tr><td>
+  <a href="./curl_formadd.html">curl_formadd()</a>
+  </td><td>
+  (old-style) build multipart form-data posts
+  </td></tr>
+  <tr><td>
+  <a href="./curl_slist_append.html">curl_slist_append()</a>
+  </td><td>
+  builds a linked list
+  </td></tr>
+  <tr><td>
+  <a href="./curl_slist_free_all.html">curl_slist_free_all()</a>
+  </td><td>
+  frees a whole curl_slist as made with curl_slist_append()
+  </td></tr>
+  <tr><td>
+  <a href="./curl_easy_escape.html">curl_easy_escape()</a>
+  </td><td>
+  URL encodes a string
+  </td></tr>
+  <tr><td>
+  <a href="./curl_easy_unescape.html">curl_easy_unescape()</a>
+  </td><td>
+  URL decodes a string
+  </td></tr>
+</tbody></table>
+<p>
+ All man pages are included in every release archive, in three different
+ formats: man page, HTML and pdf.
+</p></div>
+</div>
+<script defer="" src="./insights.js.下载" type="text/javascript"></script>
+
+
+</body></html>

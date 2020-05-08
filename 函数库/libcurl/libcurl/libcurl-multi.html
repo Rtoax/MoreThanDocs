@@ -1,0 +1,73 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!-- saved from url=(0049)./libcurl-multi.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"> <title>libcurl - multi interface overview</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" type="text/css" href="./curl.css">
+<link rel="shortcut icon" href="https://curl.haxx.se/favicon.ico">
+<link rel="icon" href="https://curl.haxx.se/logo/curl-symbol.svg" type="image/svg+xml">
+<link rel="STYLESHEET" type="text/css" href="./manpage.css">
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<div class="main">
+<div class="menu">
+<a href="./libcurl.html" class="menuitem" title="Overview">Overview</a>
+<a href="./libcurl-tutorial.html" class="menuitem" title="Tutorial">Tutorial</a>
+<a href="./libcurl-errors.html" class="menuitem" title="Error Codes">Errors</a>
+<a href="./libcurl-env.html" class="menuitem" title="Environment variables ">Environment</a>
+<a href="./example.html" class="menuitem" title="libcurl C source code examples ">Examples</a>
+<a href="./symbols-in-versions.html" class="menuitem" title="In which versions were which symbols introduced">Symbols</a>
+<a href="./allfuncs.html" class="menuitem" title="List of all libcurl functions">Index</a>
+<a href="./libcurl-easy.html" class="menuitem" title="Easy interface tutorial">Easy Interface</a>
+<a href="./libcurl-multi.html" class="itemselect">Multi Interface</a>
+<a href="./libcurl-share.html" class="menuitem" title="Share Interface Tutorial">Share Interface</a>
+</div>
+<div class="contents">
+<div class="where"><a href="https://curl.haxx.se/">curl</a> / <a href="https://curl.haxx.se/libcurl/">libcurl</a> / <a href="./">API</a> / <b>multi interface</b></div>
+<h1> multi interface overview </h1>
+<!-- generated with roffit -->
+<p class="level0"><a name="NAME"></a></p><h2 class="nroffsh">NAME</h2>
+<p class="level0">libcurl-multi - how to use the multi interface <a name="DESCRIPTION"></a></p><h2 class="nroffsh">DESCRIPTION</h2>
+<p class="level0">This is an overview on how to use the libcurl multi interface in your C programs. There are specific man pages for each function mentioned in here. There's also the <a class="emphasis" href="./libcurl-tutorial.html">libcurl-tutorial</a> man page for a complete tutorial to programming with libcurl and the <a class="emphasis" href="./libcurl-easy.html">libcurl-easy</a> man page for an overview of the libcurl easy interface.
+</p><p class="level0">All functions in the multi interface are prefixed with curl_multi. <a name="OBJECTIVES"></a></p><h2 class="nroffsh">OBJECTIVES</h2>
+<p class="level0">The multi interface offers several abilities that the easy interface doesn't. They are mainly:
+</p><p class="level0">1. Enable a "pull" interface. The application that uses libcurl decides where and when to ask libcurl to get/send data.
+</p><p class="level0">2. Enable multiple simultaneous transfers in the same thread without making it complicated for the application.
+</p><p class="level0">3. Enable the application to wait for action on its own file descriptors and curl's file descriptors simultaneously.
+</p><p class="level0">4. Enable event-based handling and scaling transfers up to and beyond thousands of parallel connections. <a name="ONE"></a></p><h2 class="nroffsh">ONE MULTI HANDLE MANY EASY HANDLES</h2>
+<p class="level0">To use the multi interface, you must first create a 'multi handle' with <a class="emphasis" href="./curl_multi_init.html">curl_multi_init</a>. This handle is then used as input to all further curl_multi_* functions.
+</p><p class="level0">With a multi handle and the multi interface you can do several simultaneous transfers in parallel. Each single transfer is built up around an easy handle. You create all the easy handles you need, and setup the appropriate options for each easy handle using <a class="emphasis" href="./curl_easy_setopt.html">curl_easy_setopt</a>.
+</p><p class="level0">There are two flavours of the multi interface, the select() oriented one and the event based one we call multi_socket. You will benefit from reading through the description of both versions to fully understand how they work and differentiate. We start out with the select() oriented version.
+</p><p class="level0">When an easy handle is setup and ready for transfer, then instead of using <a class="emphasis" href="./curl_easy_perform.html">curl_easy_perform</a> like when using the easy interface for transfers, you should add the easy handle to the multi handle with <a class="emphasis" href="./curl_multi_add_handle.html">curl_multi_add_handle</a>. You can add more easy handles to a multi handle at any point, even if other transfers are already running.
+</p><p class="level0">Should you change your mind, the easy handle is again removed from the multi stack using <a class="emphasis" href="./curl_multi_remove_handle.html">curl_multi_remove_handle</a>. Once removed from the multi handle, you can again use other easy interface functions like <a class="emphasis" href="./curl_easy_perform.html">curl_easy_perform</a> on the handle or whatever you think is necessary. You can remove handles at any point in time during transfers.
+</p><p class="level0">Adding the easy handle to the multi handle does not start the transfer. Remember that one of the main ideas with this interface is to let your application drive. You drive the transfers by invoking <a class="emphasis" href="./curl_multi_perform.html">curl_multi_perform</a>. libcurl will then transfer data if there is anything available to transfer. It'll use the callbacks and everything else you have setup in the individual easy handles. It'll transfer data on all current transfers in the multi stack that are ready to transfer anything. It may be all, it may be none. When there's nothing more to do for now, it returns back to the calling application.
+</p><p class="level0">Your application extracts info from libcurl about when it would like to get invoked to transfer data or do other work. The most convenient way is to use <a class="emphasis" href="./curl_multi_poll.html">curl_multi_poll</a> that will help you wait until the application should call libcurl again. The older API to accomplish the same thing is <a class="emphasis" href="./curl_multi_fdset.html">curl_multi_fdset</a> that extracts fd_sets from libcurl to use in select() or poll() calls in order to get to know when the transfers in the multi stack might need attention. Both these APIs allow for your program to wait for input on your own private file descriptors at the same time <a class="emphasis" href="./curl_multi_timeout.html">curl_multi_timeout</a> also helps you with providing a suitable timeout period for your select() calls.
+</p><p class="level0"><a class="emphasis" href="./curl_multi_perform.html">curl_multi_perform</a> stores the number of still running transfers in one of its input arguments, and by reading that you can figure out when all the transfers in the multi handles are done. 'done' does not mean successful. One or more of the transfers may have failed.
+</p><p class="level0">To get information about completed transfers, to figure out success or not and similar, <a class="emphasis" href="./curl_multi_info_read.html">curl_multi_info_read</a> should be called. It can return a message about a current or previous transfer. Repeated invokes of the function get more messages until the message queue is empty. The information you receive there includes an easy handle pointer which you may use to identify which easy handle the information regards.
+</p><p class="level0">When a single transfer is completed, the easy handle is still left added to the multi stack. You need to first remove the easy handle with <a class="emphasis" href="./curl_multi_remove_handle.html">curl_multi_remove_handle</a> and then close it with <a class="emphasis" href="./curl_easy_cleanup.html">curl_easy_cleanup</a>, or possibly set new options to it and add it again with <a class="emphasis" href="./curl_multi_add_handle.html">curl_multi_add_handle</a> to start another transfer.
+</p><p class="level0">When all transfers in the multi stack are done, close the multi handle with <a class="emphasis" href="./curl_multi_cleanup.html">curl_multi_cleanup</a>. Be careful and please note that you <span class="bold">MUST</span> invoke separate <a class="emphasis" href="./curl_easy_cleanup.html">curl_easy_cleanup</a> calls for every single easy handle to clean them up properly.
+</p><p class="level0">If you want to re-use an easy handle that was added to the multi handle for transfer, you must first remove it from the multi stack and then re-add it again (possibly after having altered some options at your own choice). <a name="MULTISOCKET"></a></p><h2 class="nroffsh">MULTI_SOCKET</h2>
+<p class="level0"><a class="emphasis" href="./curl_multi_socket_action.html">curl_multi_socket_action</a> function offers a way for applications to not only avoid being forced to use select(), but it also offers a much more high-performance API that will make a significant difference for applications using large numbers of simultaneous connections.
+</p><p class="level0"><a class="emphasis" href="./curl_multi_socket_action.html">curl_multi_socket_action</a> is then used instead of <a class="emphasis" href="./curl_multi_perform.html">curl_multi_perform</a>.
+</p><p class="level0">When using this API, you add easy handles to the multi handle just as with the normal multi interface. Then you also set two callbacks with the <a class="emphasis" href="./CURLMOPT_SOCKETFUNCTION.html">CURLMOPT_SOCKETFUNCTION</a> and <a class="emphasis" href="./CURLMOPT_TIMERFUNCTION.html">CURLMOPT_TIMERFUNCTION</a> options to <a class="emphasis" href="./curl_multi_setopt.html">curl_multi_setopt</a>. They are two callback functions that libcurl will call with information about what sockets to wait for, and for what activity, and what the current timeout time is - if that expires libcurl should be notified.
+</p><p class="level0">The multi_socket API is designed to inform your application about which sockets libcurl is currently using and for what activities (read and/or write) on those sockets your application is expected to wait for.
+</p><p class="level0">Your application must make sure to receive all sockets informed about in the <a class="emphasis" href="./CURLMOPT_SOCKETFUNCTION.html">CURLMOPT_SOCKETFUNCTION</a> callback and make sure it reacts on the given activity on them. When a socket has the given activity, you call <a class="emphasis" href="./curl_multi_socket_action.html">curl_multi_socket_action</a> specifying which socket and action there are.
+</p><p class="level0">The <a class="emphasis" href="./CURLMOPT_TIMERFUNCTION.html">CURLMOPT_TIMERFUNCTION</a> callback is called to set a timeout. When that timeout expires, your application should call the <a class="emphasis" href="./curl_multi_socket_action.html">curl_multi_socket_action</a> function saying it was due to a timeout.
+</p><p class="level0">This API is typically used with an event-driven underlying functionality (like libevent, libev, kqueue, epoll or similar) with which the application "subscribes" on socket changes. This allows applications and libcurl to much better scale upward and beyond thousands of simultaneous transfers without losing performance.
+</p><p class="level0">When you've added your initial set of handles, you call <a class="emphasis" href="./curl_multi_socket_action.html">curl_multi_socket_action</a> with CURL_SOCKET_TIMEOUT set in the sockfd argument, and you'll get callbacks call that sets you up and you then continue to call <a class="emphasis" href="./curl_multi_socket_action.html">curl_multi_socket_action</a> accordingly when you get activity on the sockets you've been asked to wait on, or if the timeout timer expires.
+</p><p class="level0">You can poll <a class="emphasis" href="./curl_multi_info_read.html">curl_multi_info_read</a> to see if any transfer has completed, as it then has a message saying so. <a name="BLOCKING"></a></p><h2 class="nroffsh">BLOCKING</h2>
+<p class="level0">A few areas in the code are still using blocking code, even when used from the multi interface. While we certainly want and intend for these to get fixed in the future, you should be aware of the following current restrictions:
+</p><p class="level0"></p><pre class="level0">&nbsp;- Name resolves unless the c-ares or threaded-resolver backends are used
+&nbsp;- SOCKS proxy handshakes
+&nbsp;- file:// transfers
+&nbsp;- TELNET transfers
+</pre>
+<p class="level0"><a name="SEE"></a></p><h2 class="nroffsh">SEE ALSO</h2>
+<p class="level0"><a class="bold" href="./libcurl-errors.html">libcurl-errors</a>(3), <a class="bold" href="./libcurl-easy.html">libcurl-easy</a>(3), <a class="bold" href="./libcurl.html">libcurl</a>(3)  </p><p class="roffit">
+ This HTML page was made with <a href="http://daniel.haxx.se/projects/roffit/">roffit</a>.
+</p></div>
+</div>
+<script defer="" src="./insights.js.下载" type="text/javascript"></script>
+
+
+</body></html>

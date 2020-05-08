@@ -1,0 +1,49 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!-- saved from url=(0049)./libcurl-share.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"> <title>libcurl - share interface overview</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" type="text/css" href="./curl.css">
+<link rel="shortcut icon" href="https://curl.haxx.se/favicon.ico">
+<link rel="icon" href="https://curl.haxx.se/logo/curl-symbol.svg" type="image/svg+xml">
+<link rel="STYLESHEET" type="text/css" href="./manpage.css">
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<div class="main">
+<div class="menu">
+<a href="./libcurl.html" class="menuitem" title="Overview">Overview</a>
+<a href="./libcurl-tutorial.html" class="menuitem" title="Tutorial">Tutorial</a>
+<a href="./libcurl-errors.html" class="menuitem" title="Error Codes">Errors</a>
+<a href="./libcurl-env.html" class="menuitem" title="Environment variables ">Environment</a>
+<a href="./example.html" class="menuitem" title="libcurl C source code examples ">Examples</a>
+<a href="./symbols-in-versions.html" class="menuitem" title="In which versions were which symbols introduced">Symbols</a>
+<a href="./allfuncs.html" class="menuitem" title="List of all libcurl functions">Index</a>
+<a href="./libcurl-easy.html" class="menuitem" title="Easy interface tutorial">Easy Interface</a>
+<a href="./libcurl-multi.html" class="menuitem" title="Multi Interface tutorial">Multi Interface</a>
+<a href="./libcurl-share.html" class="itemselect">Share Interface</a>
+</div>
+<div class="contents">
+<div class="where"><a href="https://curl.haxx.se/">curl</a> / <a href="https://curl.haxx.se/libcurl/">libcurl</a> / <a href="./">API</a> / <b>share interface</b></div>
+<h1> share interface overview </h1>
+<!-- generated with roffit -->
+<p class="level0"><a name="NAME"></a></p><h2 class="nroffsh">NAME</h2>
+<p class="level0">libcurl-share - how to use the share interface <a name="DESCRIPTION"></a></p><h2 class="nroffsh">DESCRIPTION</h2>
+<p class="level0">This is an overview on how to use the libcurl share interface in your C programs. There are specific man pages for each function mentioned in here.
+</p><p class="level0">All functions in the share interface are prefixed with curl_share.
+</p><p class="level0"><a name="OBJECTIVES"></a></p><h2 class="nroffsh">OBJECTIVES</h2>
+<p class="level0">The share interface was added to enable sharing of data between curl "handles". <a name="ONE"></a></p><h2 class="nroffsh">ONE SET OF DATA - MANY TRANSFERS</h2>
+<p class="level0">You can have multiple easy handles share data between them. Have them update and use the <span class="bold">same</span> cookie database, DNS cache, TLS session cache and/or connection cache! This way, each single transfer will take advantage from data updates made by the other transfer(s). <a name="SHARE"></a></p><h2 class="nroffsh">SHARE OBJECT</h2>
+<p class="level0">You create a shared object with <a class="emphasis" href="./curl_share_init.html">curl_share_init</a>. It returns a handle for a newly created one.
+</p><p class="level0">You tell the shared object what data you want it to share by using <a class="emphasis" href="./curl_share_setopt.html">curl_share_setopt</a>.
+</p><p class="level0">Since you can use this share from multiple threads, and libcurl has no internal thread synchronization, you must provide mutex callbacks if you're using this multi-threaded. You set lock and unlock functions with <a class="emphasis" href="./curl_share_setopt.html">curl_share_setopt</a> too.
+</p><p class="level0">Then, you make an easy handle to use this share, you set the <a class="emphasis" href="./CURLOPT_SHARE.html">CURLOPT_SHARE</a> option with <a class="emphasis" href="./curl_easy_setopt.html">curl_easy_setopt</a>, and pass in share handle. You can make any number of easy handles share the same share handle.
+</p><p class="level0">To make an easy handle stop using that particular share, you set <a class="emphasis" href="./CURLOPT_SHARE.html">CURLOPT_SHARE</a> to NULL for that easy handle. To make a handle stop sharing a particular data, you can <span class="emphasis">CURLSHOPT_UNSHARE</span> it.
+</p><p class="level0">When you're done using the share, make sure that no easy handle is still using it, and call <a class="emphasis" href="./curl_share_cleanup.html">curl_share_cleanup</a> on the handle. <a name="SEE"></a></p><h2 class="nroffsh">SEE ALSO</h2>
+<p class="level0"><a class="bold" href="./curl_share_init.html">curl_share_init</a>(3), <a class="bold" href="./curl_share_setopt.html">curl_share_setopt</a>(3), <a class="bold" href="./curl_share_cleanup.html">curl_share_cleanup</a>(3) <a class="bold" href="./libcurl-errors.html">libcurl-errors</a>(3), <a class="bold" href="./libcurl-easy.html">libcurl-easy</a>(3), <a class="bold" href="./libcurl-multi.html">libcurl-multi</a>(3)  </p><p class="roffit">
+ This HTML page was made with <a href="http://daniel.haxx.se/projects/roffit/">roffit</a>.
+</p></div>
+</div>
+<script defer="" src="./insights.js.下载" type="text/javascript"></script>
+
+
+</body></html>

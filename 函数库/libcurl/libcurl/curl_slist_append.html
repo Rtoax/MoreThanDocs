@@ -1,0 +1,74 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!-- saved from url=(0053)./curl_slist_append.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"> <title>libcurl - curl_slist_append()</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" type="text/css" href="./curl.css">
+<link rel="shortcut icon" href="https://curl.haxx.se/favicon.ico">
+<link rel="icon" href="https://curl.haxx.se/logo/curl-symbol.svg" type="image/svg+xml">
+<link rel="STYLESHEET" type="text/css" href="./manpage.css">
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<div class="main">
+<div class="menu">
+<a href="./libcurl.html" class="menuitem" title="Overview">Overview</a>
+<a href="./libcurl-tutorial.html" class="menuitem" title="Tutorial">Tutorial</a>
+<a href="./libcurl-errors.html" class="menuitem" title="Error Codes">Errors</a>
+<a href="./libcurl-env.html" class="menuitem" title="Environment variables ">Environment</a>
+<a href="./example.html" class="menuitem" title="libcurl C source code examples ">Examples</a>
+<a href="./symbols-in-versions.html" class="menuitem" title="In which versions were which symbols introduced">Symbols</a>
+<a href="./allfuncs.html" class="menuitem" title="List of all libcurl functions">Index</a>
+<a href="./libcurl-easy.html" class="menuitem" title="Easy interface tutorial">Easy Interface</a>
+<a href="./libcurl-multi.html" class="menuitem" title="Multi Interface tutorial">Multi Interface</a>
+<a href="./libcurl-share.html" class="menuitem" title="Share Interface Tutorial">Share Interface</a>
+</div>
+<div class="contents">
+<div class="where"><a href="https://curl.haxx.se/">curl</a> / <a href="https://curl.haxx.se/libcurl/">libcurl</a> / <a href="./">API</a> / <b>curl_slist_append</b></div>
+<h1> curl_slist_append - add a string to an slist </h1>
+<div class="relatedbox">
+<b>Related:</b>
+<br><a href="https://github.com/curl/curl/issues/new?title=curl_slist_append%20man%20page:&amp;labels=documentation" target="_new">File a bug about this page</a>
+<br><a href="https://github.com/curl/curl/blob/master/docs/libcurl/curl_slist_append.3" target="_new">View man page source</a>
+</div>
+<!-- generated with roffit -->
+<p class="level0"><a name="NAME"></a></p><h2 class="nroffsh">NAME</h2>
+<p class="level0">curl_slist_append - add a string to an slist <a name="SYNOPSIS"></a></p><h2 class="nroffsh">SYNOPSIS</h2>
+<p class="level0"><span class="bold">#include &lt;curl/curl.h&gt;</span>
+</p><p class="level0"><span class="bold">struct curl_slist *curl_slist_append(struct curl_slist *</span><span class="emphasis">list,</span> <span class="bold">const char * </span><span class="emphasis">string</span><span class="bold">);</span>
+</p><p class="level0"><a name="DESCRIPTION"></a></p><h2 class="nroffsh">DESCRIPTION</h2>
+<p class="level0"><a class="emphasis" href="./curl_slist_append.html">curl_slist_append</a> appends a string to a linked list of strings. The existing <span class="bold">list</span> should be passed as the first argument and the new list is returned from this function. Pass in NULL in the <span class="bold">list</span> argument to create a new list. The specified <span class="bold">string</span> has been appended when this function returns. <a class="emphasis" href="./curl_slist_append.html">curl_slist_append</a> copies the string.
+</p><p class="level0">The list should be freed again (after usage) with <a class="emphasis" href="./curl_slist_free_all.html">curl_slist_free_all</a>. <a name="RETURN"></a></p><h2 class="nroffsh">RETURN VALUE</h2>
+<p class="level0">A null pointer is returned if anything went wrong, otherwise the new list pointer is returned. To avoid overwriting an existing non-empty list on failure, the new list should be returned to a temporary variable which can be tested for NULL before updating the original list pointer. <a name="EXAMPLE"></a></p><h2 class="nroffsh">EXAMPLE</h2>
+<p class="level0"></p><pre class="level0">CURL *handle;
+struct curl_slist *slist=NULL;
+struct curl_slist *temp=NULL;
+&nbsp;
+slist = curl_slist_append(slist, "pragma:");
+&nbsp;
+if (slist == NULL)
+&nbsp; return -1;
+&nbsp;
+temp = curl_slist_append(slist, "Accept:")
+&nbsp;
+if (temp == NULL) {
+&nbsp; curl_slist_free_all(slist);
+&nbsp; return -1;
+}
+&nbsp;
+slist = temp;
+&nbsp;
+curl_easy_setopt(handle, CURLOPT_HTTPHEADER, slist);
+&nbsp;
+curl_easy_perform(handle);
+&nbsp;
+curl_slist_free_all(slist); /* free the list again */
+</pre>
+<p class="level0"><a name="SEE"></a></p><h2 class="nroffsh">SEE ALSO</h2>
+<p class="level0"><a class="bold" href="./curl_slist_free_all.html">curl_slist_free_all</a>(3),  </p><p class="roffit">
+ This HTML page was made with <a href="http://daniel.haxx.se/projects/roffit/">roffit</a>.
+</p></div>
+</div>
+<script defer="" src="./insights.js.下载" type="text/javascript"></script>
+
+
+</body></html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!-- saved from url=(0047)./libcurl-env.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"> <title>libcurl - environment variables</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" type="text/css" href="./curl.css">
+<link rel="shortcut icon" href="https://curl.haxx.se/favicon.ico">
+<link rel="icon" href="https://curl.haxx.se/logo/curl-symbol.svg" type="image/svg+xml">
+<link rel="STYLESHEET" type="text/css" href="./manpage.css">
+</head>
+<body bgcolor="#ffffff" text="#000000">
+<div class="main">
+<div class="menu">
+<a href="./libcurl.html" class="menuitem" title="Overview">Overview</a>
+<a href="./libcurl-tutorial.html" class="menuitem" title="Tutorial">Tutorial</a>
+<a href="./libcurl-errors.html" class="menuitem" title="Error Codes">Errors</a>
+<a href="./libcurl-env.html" class="itemselect">Environment</a>
+<a href="./example.html" class="menuitem" title="libcurl C source code examples ">Examples</a>
+<a href="./symbols-in-versions.html" class="menuitem" title="In which versions were which symbols introduced">Symbols</a>
+<a href="./allfuncs.html" class="menuitem" title="List of all libcurl functions">Index</a>
+<a href="./libcurl-easy.html" class="menuitem" title="Easy interface tutorial">Easy Interface</a>
+<a href="./libcurl-multi.html" class="menuitem" title="Multi Interface tutorial">Multi Interface</a>
+<a href="./libcurl-share.html" class="menuitem" title="Share Interface Tutorial">Share Interface</a>
+</div>
+<div class="contents">
+<div class="where"><a href="https://curl.haxx.se/">curl</a> / <a href="https://curl.haxx.se/libcurl/">libcurl</a> / <a href="./">API</a> / <b>Environment variables</b></div>
+<h1> Environment variables libcurl understands </h1>
+<!-- generated with roffit -->
+<p class="level0"><a name="NAME"></a></p><h2 class="nroffsh">NAME</h2>
+<p class="level0">libcurl-env - environment variables libcurl understands <a name="DESCRIPTION"></a></p><h2 class="nroffsh">DESCRIPTION</h2>
+<p class="level0">libcurl reads and understands a set of environment variables that if set will control and change behaviors. This is the full list of variables to set and description of what they do. Also note that curl, the command line tool, supports a set of additional environment variables independently of this.
+</p><p class="level0"><a name="schemeproxy"></a><span class="nroffip">[scheme]_proxy</span>
+</p><p class="level1">When libcurl is given a URL to use in a transfer, it first extracts the "scheme" part from the URL and checks if there is a given proxy set for that in its corresponding environment variable. A URL like "<a href="http://example.com%22/">http://example.com"</a> will hence use the "http_proxy" variable, while a URL like "<a href="ftp://example.com%22/">ftp://example.com"</a> will use the "ftp_proxy" variable.
+</p><p class="level1">These proxy variables are also checked for in their uppercase versions, except the "http_proxy" one which is only used lowercase. Note also that some systems actually have a case insensitive handling of environment variables and then of course "HTTP_PROXY" will still work...
+</p><p class="level0"><a name="ALLPROXY"></a><span class="nroffip">ALL_PROXY</span>
+</p><p class="level1">This is a setting to set proxy for all URLs, independently of what scheme is being used. Note that the scheme specific variables will override this one if set.
+</p><p class="level0"><a name="CURLSSLBACKEND"></a><span class="nroffip">CURL_SSL_BACKEND</span>
+</p><p class="level1">When libcurl is built to support multiple SSL backends, it will select a specific backend at first use. If no selection is done by the program using libcurl, this variable's selection will be used. It should be set to the full SSL backend name to use (case insensitive).
+</p><p class="level0"><a name="HOME"></a><span class="nroffip">HOME</span>
+</p><p class="level1">When the netrc feature is used (<a class="emphasis" href="./CURLOPT_NETRC.html">CURLOPT_NETRC</a>), this variable is checked as the primary way to find the "current" home directory in which the .netrc file is likely to exist.
+</p><p class="level0"><a name="LOGNAME"></a><span class="nroffip">LOGNAME</span>
+</p><p class="level1">User name to use when invoking the ntlm-wb tool, if NTLMUSER wasn't set.
+</p><p class="level0"><a name="NOPROXY"></a><span class="nroffip">NO_PROXY</span>
+</p><p class="level1">This has the same functionality as the <a class="emphasis" href="./CURLOPT_NOPROXY.html">CURLOPT_NOPROXY</a> option: it gives libcurl a comma-separated list of host name patterns for which libcurl should not use a proxy.
+</p><p class="level0"><a name="NTLMUSER"></a><span class="nroffip">NTLMUSER</span>
+</p><p class="level1">User name to use when invoking the ntlm-wb tool.
+</p><p class="level0"><a name="SSLKEYLOGFILE"></a><span class="nroffip">SSLKEYLOGFILE</span>
+</p><p class="level1">When set and libcurl runs with a SSL backend that supports this feature, libcurl will save SSL secrets into the given file name. Using those SSL secrets, other tools (such as Wireshark) can decrypt the SSL communication and analyze/view the traffic.
+</p><p class="level0"><a name="SSLDIR"></a><span class="nroffip">SSL_DIR</span>
+</p><p class="level1">When libcurl runs with the NSS backends for TLS features, this variable is used to find the directory for NSS PKI database instead of the built-in.
+</p><p class="level0"><a name="USER"></a><span class="nroffip">USER</span>
+</p><p class="level1">User name to use when invoking the ntlm-wb tool, if NTLMUSER and LOGNAME weren't set. <a name="Debug"></a></p><h2 class="nroffsh">Debug Variables</h2>
+<p class="level0">There's a set of variables only recognized and used if libcurl was built "debug enabled", which should never be true for a library used in production.
+</p><p class="level0"><a name="CURLGETHOSTNAME"></a><span class="nroffip">CURL_GETHOSTNAME</span>
+</p><p class="level1">Debug-only variable.
+</p><p class="level0"><a name="CURLFORCETIME"></a><span class="nroffip">CURL_FORCETIME</span>
+</p><p class="level1">Debug-only variable.
+</p><p class="level0"><a name="CURLENTROPY"></a><span class="nroffip">CURL_ENTROPY</span>
+</p><p class="level1">Debug-only variable. Used to set a fixed faked value to use instead of a proper random number so that functions in libcurl that are otherwise getting random outputs can be tested for what they generate.
+</p><p class="level0"><a name="CURLTRACE"></a><span class="nroffip">CURL_TRACE</span>
+</p><p class="level1">Debug-only variable. Used for debugging the lib/ldap implementation.
+</p><p class="level0"><a name="CURLNTLMWBFILE"></a><span class="nroffip">CURL_NTLM_WB_FILE</span>
+</p><p class="level1">Debug-only variable. Used to set to a debug-version of the ntlm-wb executable.
+</p><p class="level0"><a name="CURLOPENLDAPTRACE"></a><span class="nroffip">CURL_OPENLDAP_TRACE</span>
+</p><p class="level1">Debug-only variable. Used for debugging the lib/openldap.c implementation. </p><p class="roffit">
+ This HTML page was made with <a href="http://daniel.haxx.se/projects/roffit/">roffit</a>.
+</p></div>
+</div>
+<script defer="" src="./insights.js.下载" type="text/javascript"></script>
+
+
+</body></html>
