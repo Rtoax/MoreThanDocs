@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<!-- saved from url=(0065)https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages -->
+<html lang="en" dir="ltr" class="client-js"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><script async="" src="./VPP_Installing VPP binaries from packages - fd.io_files/load.php"></script>
+
+<title>VPP/Installing VPP binaries from packages - fd.io</title>
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE">
+<meta name="generator" content="MediaWiki 1.23.15">
+<meta http-equiv="last-modified" content="Fri, 17 May 2019 19:41:23 +0000">
+<meta name="last-modified-timestamp" content="1558122083">
+<meta name="last-modified-range" content="0">
+<link rel="apple-touch-icon" href="https://wiki.fd.io/images/apple-touch-icon.png">
+<link rel="shortcut icon" href="https://wiki.fd.io/favicon.ico">
+<link rel="search" type="application/opensearchdescription+xml" href="https://wiki.fd.io/opensearch_desc.php" title="fd.io (en)">
+<link rel="EditURI" type="application/rsd+xml" href="https://wiki.fd.io/api.php?action=rsd">
+<link rel="alternate" type="application/atom+xml" title="fd.io Atom feed" href="https://wiki.fd.io/index.php?title=Special:RecentChanges&amp;feed=atom">
+<link rel="stylesheet" href="./VPP_Installing VPP binaries from packages - fd.io_files/load(1).php">
+<style>
+.mw-collapsible-toggle{float:right;-moz-user-select:none;-webkit-user-select:none;-ms-user-select:none;user-select:none} caption .mw-collapsible-toggle{float:none} li .mw-collapsible-toggle{float:none} .mw-collapsible-toggle-li{list-style:none}
+/* cache key: mediawiki:resourceloader:filter:minify-css:7:6c1d24e90626cec584f0869483f983e7 */
+.suggestions{overflow:hidden;position:absolute;top:0;left:0;width:0;border:none;z-index:1099;padding:0;margin:-1px -1px 0 0} html > body .suggestions{margin:-1px 0 0 0}.suggestions-special{position:relative;background-color:white;cursor:pointer;border:solid 1px #aaaaaa;padding:0;margin:0;margin-top:-2px;display:none;padding:0.25em 0.25em;line-height:1.25em}.suggestions-results{background-color:white;cursor:pointer;border:solid 1px #aaaaaa;padding:0;margin:0}.suggestions-result{color:black;margin:0;line-height:1.5em;padding:0.01em 0.25em;text-align:left; overflow:hidden;-o-text-overflow:ellipsis; text-overflow:ellipsis;white-space:nowrap}.suggestions-result-current{background-color:#4C59A6;color:white}.suggestions-special .special-label{color:gray;text-align:left}.suggestions-special .special-query{color:black;font-style:italic;text-align:left}.suggestions-special .special-hover{background-color:silver}.suggestions-result-current .special-label,.suggestions-result-current .special-query{color:white}.highlight{font-weight:bold}
+/* cache key: mediawiki:resourceloader:filter:minify-css:7:9f9511aa4ef920d34591113e825e6a1e */
+.postedit-container{margin:0 auto;position:fixed;top:0;height:0;left:50%;z-index:1000;font-size:13px}.postedit-container:hover{cursor:pointer}.postedit{position:relative;top:0.6em;left:-50%;padding:.6em 3.6em .6em 1.1em;line-height:1.5625em;color:#626465;background-color:#f4f4f4;border:1px solid #dcd9d9;text-shadow:0 0.0625em 0 rgba(255,255,255,0.5);border-radius:5px;-webkit-box-shadow:0 2px 5px 0 #ccc;box-shadow:0 2px 5px 0 #ccc;-webkit-transition:all 0.25s ease-in-out;-moz-transition:all 0.25s ease-in-out;-ms-transition:all 0.25s ease-in-out;-o-transition:all 0.25s ease-in-out;transition:all 0.25s ease-in-out}.skin-monobook .postedit{top:6em !important}.postedit-faded{opacity:0}.postedit-icon{padding-left:41px;  line-height:25px;background-repeat:no-repeat;background-position:8px 50%}.postedit-icon-checkmark{background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAABblBMVEUAAAD///////9PfTf///80aRdTgjn///9Feij///////////9Rfzf///////////9PfjZRgDh1o1xOfTb///////+bwYqLtnj///////9PfTa82K////9WhT6YxIL///9QgDdTgzr////////j7uDl7eLq8efi693k7OH///////9UhjuBr2rp9uRUhjr///9YljVKgir///9WiTlYjT3////9/v57vFlbkT5PjC9dlD/5/fhuq09stUTs9uhxuElctCpfnT1huDFloEZloUZmpENmvDZpvDxpvTxqvjxrvT5rvT9rwTxsqktswD5uwkBvuUdxw0NztFBztU9ztVBzwkp0tlJ1xkd2t1R3uVR4w1F4xk54x014yE15uVZ5v1R5xVB6v1R7yFJ8wVh9xVl9yFR9yVd9ylN+xVh+yFd/x1l/yFeAylmEx1+Ny2uY0Hqe04Wj1Ymv3Ze33qLD47TJ5L3O6cPU7Mrq9eb2+/Q4j37OAAAAQHRSTlMAAQIEBAUFBQwPFB4fJCUoKiosQEhJS01RUlZZXmdydXaChYuSlJSWmJmoq6uur8LExcvM19fg5ejt8fX2+Pr7SljgewAAAKpJREFUGBkFwQNCAwAAAMDLtl3LtrG4rWXbtvX77gAgZ6grFwC0bhwNVgKgdPZx8b0dgLi+s7Wn0VoAqpfOI9+BNADZI7fLrz2pSEwGHZuH+78lSK8ZLkLezF3ooyUG3VPXq2USei9WngeyoG195yBYWDF3E/2pAhl1e9Gr8bGT+bfOFCC2fnvh4X7rcqIAQNNu+HT6sxkAjceTL/2ZAIhv+PorBwBJxfkA//dFHSCBy/UTAAAAAElFTkSuQmCC);background-image:url(/resources/src/mediawiki.action/images/green-checkmark.png?2020-03-08T20:25:00Z)!ie;background-position:left}.postedit-close{position:absolute;padding:0 .8em;right:0;top:0;font-size:1.25em;font-weight:bold;line-height:2.3em;color:black;text-shadow:0 0.0625em 0 white;text-decoration:none;opacity:0.2;filter:alpha(opacity=20)}.postedit-close:hover{color:black;text-decoration:none;opacity:0.4;filter:alpha(opacity=40)}
+/* cache key: mediawiki:resourceloader:filter:minify-css:7:c96ed6679d4ad99abc4cead26bc52fb3 */</style><style>
+.suggestions a.mw-searchSuggest-link,.suggestions a.mw-searchSuggest-link:hover,.suggestions a.mw-searchSuggest-link:active,.suggestions a.mw-searchSuggest-link:focus{color:black;text-decoration:none}.suggestions-result-current a.mw-searchSuggest-link,.suggestions-result-current a.mw-searchSuggest-link:hover,.suggestions-result-current a.mw-searchSuggest-link:active,.suggestions-result-current a.mw-searchSuggest-link:focus{color:white}.suggestions a.mw-searchSuggest-link .special-query{ overflow:hidden;-o-text-overflow:ellipsis; text-overflow:ellipsis;white-space:nowrap}
+/* cache key: mediawiki:resourceloader:filter:minify-css:7:ae3fa4570b5ac0c6cf7b3776c8ae4d6f */</style><meta name="ResourceLoaderDynamicStyles" content="">
+<style>a:lang(ar),a:lang(kk-arab),a:lang(mzn),a:lang(ps),a:lang(ur){text-decoration:none}
+/* cache key: mediawiki:resourceloader:filter:minify-css:7:736e492d6948a87573720bf8ec0f10a4 */</style>
+<script src="./VPP_Installing VPP binaries from packages - fd.io_files/load(2).php"></script><script src="./VPP_Installing VPP binaries from packages - fd.io_files/load(3).php"></script>
+<script>if(window.mw){
+mw.config.set({"wgCanonicalNamespace":"","wgCanonicalSpecialPageName":false,"wgNamespaceNumber":0,"wgPageName":"VPP/Installing_VPP_binaries_from_packages","wgTitle":"VPP/Installing VPP binaries from packages","wgCurRevisionId":9450,"wgRevisionId":9450,"wgArticleId":130,"wgIsArticle":true,"wgIsRedirect":false,"wgAction":"view","wgUserName":null,"wgUserGroups":["*"],"wgCategories":[],"wgBreakFrames":false,"wgPageContentLanguage":"en","wgPageContentModel":"wikitext","wgSeparatorTransformTable":["",""],"wgDigitTransformTable":["",""],"wgDefaultDateFormat":"dmy","wgMonthNames":["","January","February","March","April","May","June","July","August","September","October","November","December"],"wgMonthNamesShort":["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],"wgRelevantPageName":"VPP/Installing_VPP_binaries_from_packages","wgIsProbablyEditable":false,"wgRestrictionEdit":[],"wgRestrictionMove":[]});
+}</script><script>if(window.mw){
+mw.loader.implement("user.options",function($,jQuery){mw.user.options.set({"ccmeonemails":0,"cols":80,"date":"default","diffonly":0,"disablemail":0,"editfont":"default","editondblclick":0,"editsectiononrightclick":0,"enotifminoredits":0,"enotifrevealaddr":0,"enotifusertalkpages":1,"enotifwatchlistpages":1,"extendwatchlist":0,"fancysig":0,"forceeditsummary":0,"gender":"unknown","hideminor":0,"hidepatrolled":0,"imagesize":2,"math":1,"minordefault":0,"newpageshidepatrolled":0,"nickname":"","norollbackdiff":0,"numberheadings":0,"previewonfirst":0,"previewontop":1,"rcdays":7,"rclimit":50,"rows":25,"showhiddencats":0,"shownumberswatching":1,"showtoolbar":1,"skin":"vector","stubthreshold":0,"thumbsize":2,"underline":2,"uselivepreview":0,"usenewrc":0,"watchcreations":1,"watchdefault":1,"watchdeletion":0,"watchlistdays":3,"watchlisthideanons":0,"watchlisthidebots":0,"watchlisthideliu":0,"watchlisthideminor":0,"watchlisthideown":0,"watchlisthidepatrolled":0,"watchmoves":0,"wllimit":250,
+"useeditwarning":1,"prefershttps":1,"upwiz_deflicense":"default","upwiz_def3rdparty":"default","upwiz_deflicensetype":"default","upwiz_maxsimultaneous":"default","language":"en","variant-gan":"gan","variant-iu":"iu","variant-kk":"kk","variant-ku":"ku","variant-shi":"shi","variant-sr":"sr","variant-tg":"tg","variant-uz":"uz","variant-zh":"zh","searchNs0":true,"searchNs1":false,"searchNs2":false,"searchNs3":false,"searchNs4":false,"searchNs5":false,"searchNs6":false,"searchNs7":false,"searchNs8":false,"searchNs9":false,"searchNs10":false,"searchNs11":false,"searchNs12":false,"searchNs13":false,"searchNs14":false,"searchNs15":false,"searchNs460":false,"searchNs461":false,"variant":"en"});},{},{});mw.loader.implement("user.tokens",function($,jQuery){mw.user.tokens.set({"editToken":"+\\","patrolToken":false,"watchToken":false});},{},{});
+/* cache key: mediawiki:resourceloader:filter:minify-js:7:a007681b94693f90b78ba36b36ceb788 */
+}</script>
+<script>if(window.mw){
+mw.loader.load(["mediawiki.page.startup","mediawiki.legacy.wikibits","mediawiki.legacy.ajax","last.modified","skins.vector.js"]);
+}</script><script src="./VPP_Installing VPP binaries from packages - fd.io_files/load(4).php"></script>
+<!--[if lt IE 7]><style type="text/css">body{behavior:url("/skins/vector/csshover.min.htc")}</style><![endif]--></head>
+<body class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-VPP_Installing_VPP_binaries_from_packages skin-vector action-view vector-animateLayout">
+		<div id="mw-page-base" class="noprint"></div>
+		<div id="mw-head-base" class="noprint"></div>
+		<div id="content" class="mw-body" role="main">
+			<a id="top"></a>
+			<div id="mw-js-message" style="display:none;"></div>
+						<h1 id="firstHeading" class="firstHeading" lang="en"><span dir="auto">VPP/Installing VPP binaries from packages</span><div style="float:right; font-size: 0.5em;" id="mwe-lastmodified"><a href="https://wiki.fd.io/index.php?title=VPP%2FInstalling_VPP_binaries_from_packages&amp;action=history" title="View the revision history for this page.">Last updated 1 year ago</a></div></h1>
+						<div id="bodyContent">
+								<div id="siteSub">From fd.io</div>
+								<div id="contentSub"><span class="subpages">&lt; <a href="https://wiki.fd.io/view/VPP" title="VPP">VPP</a></span></div>
+												<div id="jump-to-nav" class="mw-jump">
+					Jump to:					<a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#mw-navigation">navigation</a>, 					<a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#p-search">search</a>
+				</div>
+				<div id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><div id="toc" class="toc"><div id="toctitle"><h2>Contents</h2><span class="toctoggle">&nbsp;[<a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#" class="internal" id="togglelink">hide</a>]&nbsp;</span></div>
+<ul>
+<li class="toclevel-1 tocsection-1"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#Intro"><span class="tocnumber">1</span> <span class="toctext">Intro</span></a></li>
+<li class="toclevel-1 tocsection-2"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#Package_Descriptions"><span class="tocnumber">2</span> <span class="toctext">Package Descriptions</span></a></li>
+<li class="toclevel-1 tocsection-3"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#Ubuntu.2FDebian.2FCentos"><span class="tocnumber">3</span> <span class="toctext">Ubuntu/Debian/Centos</span></a>
+<ul>
+<li class="toclevel-2 tocsection-4"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#Add_fd.io_repo"><span class="tocnumber">3.1</span> <span class="toctext">Add fd.io repo</span></a></li>
+<li class="toclevel-2 tocsection-5"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#Install_Packages"><span class="tocnumber">3.2</span> <span class="toctext">Install Packages</span></a>
+<ul>
+<li class="toclevel-3 tocsection-6"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#Debs"><span class="tocnumber">3.2.1</span> <span class="toctext">Debs</span></a></li>
+<li class="toclevel-3 tocsection-7"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#RPMs"><span class="tocnumber">3.2.2</span> <span class="toctext">RPMs</span></a></li>
+</ul>
+</li>
+<li class="toclevel-2 tocsection-8"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#Uninstalling_VPP_RPMs"><span class="tocnumber">3.3</span> <span class="toctext">Uninstalling VPP RPMs</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-9"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#openSUSE"><span class="tocnumber">4</span> <span class="toctext">openSUSE</span></a>
+<ul>
+<li class="toclevel-2 tocsection-10"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#Install_from_official_repositories"><span class="tocnumber">4.1</span> <span class="toctext">Install from official repositories</span></a>
+<ul>
+<li class="toclevel-3 tocsection-11"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#openSUSE_Tumbleweed_.28rolling_release.29"><span class="tocnumber">4.1.1</span> <span class="toctext">openSUSE Tumbleweed (rolling release)</span></a></li>
+<li class="toclevel-3 tocsection-12"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#openSUSE_Leap_42.3"><span class="tocnumber">4.1.2</span> <span class="toctext">openSUSE Leap 42.3</span></a></li>
+</ul>
+</li>
+<li class="toclevel-2 tocsection-13"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#Install_from_FD.io_repositories"><span class="tocnumber">4.2</span> <span class="toctext">Install from FD.io repositories</span></a>
+<ul>
+<li class="toclevel-3 tocsection-14"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#openSUSE_Leap_42.3_2"><span class="tocnumber">4.2.1</span> <span class="toctext">openSUSE Leap 42.3</span></a></li>
+<li class="toclevel-3 tocsection-15"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#openSUSE_Leap_15"><span class="tocnumber">4.2.2</span> <span class="toctext">openSUSE Leap 15</span></a></li>
+</ul>
+</li>
+<li class="toclevel-2 tocsection-16"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#Uninstall"><span class="tocnumber">4.3</span> <span class="toctext">Uninstall</span></a>
+<ul>
+<li class="toclevel-3 tocsection-17"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#openSUSE_Tumbleweed_.28rolling_release.29_2"><span class="tocnumber">4.3.1</span> <span class="toctext">openSUSE Tumbleweed (rolling release)</span></a></li>
+<li class="toclevel-3 tocsection-18"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#openSUSE_Leap_42.3_3"><span class="tocnumber">4.3.2</span> <span class="toctext">openSUSE Leap 42.3</span></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-19"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#Arch_Linux"><span class="tocnumber">5</span> <span class="toctext">Arch Linux</span></a></li>
+<li class="toclevel-1 tocsection-20"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#Getting_jvpp_jar"><span class="tocnumber">6</span> <span class="toctext">Getting jvpp jar</span></a>
+<ul>
+<li class="toclevel-2 tocsection-21"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#Directly_downloading_jvpp.jar"><span class="tocnumber">6.1</span> <span class="toctext">Directly downloading jvpp.jar</span></a></li>
+<li class="toclevel-2 tocsection-22"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#Getting_jvpp_via_maven"><span class="tocnumber">6.2</span> <span class="toctext">Getting jvpp via maven</span></a></li>
+<li class="toclevel-2 tocsection-23"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#Old_Nexus_Apt.2FYum_repo_instructions"><span class="tocnumber">6.3</span> <span class="toctext">Old Nexus Apt/Yum repo instructions</span></a></li>
+</ul>
+</li>
+</ul>
+</div>
+
+<h2><span class="mw-headline" id="Intro">Intro</span></h2>
+<p>If you are simply using vpp, it can be convenient to simply install the packages.  The instructions below
+will pull the latest freshest package build from the master branch (updated on every merge).
+</p>
+<h2><span class="mw-headline" id="Package_Descriptions">Package Descriptions</span></h2>
+<ul>
+<li> <b>vpp</b> - Description: Vector Packet Processing--executables. This package provides VPP executables: vpp, vpp_api_test, vpp_json_test
+<ul>
+<li> vpp - the vector packet engine
+</li>
+<li> vpp_api_test - vector packet engine API test tool
+</li>
+<li> vpp_json_test - vector packet engine JSON test tool
+</li>
+</ul>
+</li>
+<li> <b>vpp-lib</b> - Description: Vector Packet Processing--runtime libraries. This package contains the VPP shared libraries, including:
+<ul>
+<li> vppinfra - foundation library supporting vectors, hashes, bitmaps, pools, and string formatting.
+</li>
+<li> svm - vm library
+</li>
+<li> vlib - vector processing library
+</li>
+<li> vlib-api - binary API library
+</li>
+<li> vnet -  network stack library
+</li>
+</ul>
+</li>
+<li> <b>vpp-plugin-core &amp; vpp-plugin-dpdk</b> - Description: Vector Packet Processing--plugin modules
+</li>
+</ul>
+<pre>$ sudo vppctl show plugins        
+Plugin path is: /usr/lib/x86_64-linux-gnu/vpp_plugins:/usr/lib/vpp_plugins
+
+    Plugin                                   Version                          Description
+ 1. ioam_plugin.so                           19.08-rc0~170-g3e9b7a219         Inbound Operations, Administration, and Maintenance (OAM)
+ 2. memif_plugin.so                          19.08-rc0~170-g3e9b7a219         Packet Memory Interface (memif) -- Experimental
+ 3. perfmon_plugin.so                        19.08-rc0~170-g3e9b7a219         Performance Monitor
+ 4. crypto_ipsecmb_plugin.so                 19.08-rc0~170-g3e9b7a219         Intel IPSEC Multi-buffer Crypto Engine
+ 5. nsh_plugin.so                            19.08-rc0~170-g3e9b7a219         Network Service Header (NSH)
+ 6. avf_plugin.so                            19.08-rc0~170-g3e9b7a219         Intel Adaptive Virtual Function (AVF) Device Driver
+ 7. pppoe_plugin.so                          19.08-rc0~170-g3e9b7a219         PPP over Ethernet (PPPoE)
+ 8. abf_plugin.so                            19.08-rc0~170-g3e9b7a219         Access Control List (ACL) Based Forwarding
+ 9. srv6am_plugin.so                         19.08-rc0~170-g3e9b7a219         Masquerading Segment Routing for IPv6 (SRv6) Proxy
+10. ila_plugin.so                            19.08-rc0~170-g3e9b7a219         Identifier Locator Addressing (ILA) for IPv6
+11. l2e_plugin.so                            19.08-rc0~170-g3e9b7a219         Layer 2 (L2) Emulation
+12. tlsopenssl_plugin.so                     19.08-rc0~170-g3e9b7a219         Transport Layer Security (TLS) Engine, OpenSSL Based
+13. gtpu_plugin.so                           19.08-rc0~170-g3e9b7a219         GPRS Tunnelling Protocol, User Data (GTPv1-U)
+14. map_plugin.so                            19.08-rc0~170-g3e9b7a219         Mapping of Address and Port (MAP)
+15. dpdk_plugin.so                           19.08-rc0~170-g3e9b7a219         Data Plane Development Kit (DPDK)
+16. stn_plugin.so                            19.08-rc0~170-g3e9b7a219         VPP Steals the NIC (STN) for Container Integration
+17. http_static_plugin.so                    19.08-rc0~170-g3e9b7a219         HTTP Static Server
+18. acl_plugin.so                            19.08-rc0~170-g3e9b7a219         Access Control Lists (ACL)
+19. crypto_openssl_plugin.so                 19.08-rc0~170-g3e9b7a219         OpenSSL Crypto Engine
+20. tlsmbedtls_plugin.so                     19.08-rc0~170-g3e9b7a219         Transport Layer Security (TLS) Engine, Mbedtls Based
+21. ikev2_plugin.so                          19.08-rc0~170-g3e9b7a219         Internet Key Exchange (IKEv2) Protocol
+22. ct6_plugin.so                            19.08-rc0~170-g3e9b7a219         IPv6 Connection Tracker
+23. cdp_plugin.so                            19.08-rc0~170-g3e9b7a219         Cisco Discovery Protocol (CDP)
+24. lacp_plugin.so                           19.08-rc0~170-g3e9b7a219         Link Aggregation Control Protocol (LACP)
+25. flowprobe_plugin.so                      19.08-rc0~170-g3e9b7a219         Flow per Packet
+26. svs_plugin.so                            19.08-rc0~170-g3e9b7a219         Source Virtual Routing and Fowarding (VRF) Select
+27. nsim_plugin.so                           19.08-rc0~170-g3e9b7a219         Network Delay Simulator
+28. mactime_plugin.so                        19.08-rc0~170-g3e9b7a219         Time-based MAC Source Address Filter
+29. lb_plugin.so                             19.08-rc0~170-g3e9b7a219         Load Balancer (LB)
+30. quic_plugin.so                           19.08-rc0~170-g3e9b7a219         Quic transport protocol
+31. crypto_ia32_plugin.so                    19.08-rc0~170-g3e9b7a219         Intel IA32 Software Crypto Engine
+32. srv6as_plugin.so                         19.08-rc0~170-g3e9b7a219         Static Segment Routing for IPv6 (SRv6) Proxy
+33. srv6ad_plugin.so                         19.08-rc0~170-g3e9b7a219         Dynamic Segment Routing for IPv6 (SRv6) Proxy
+34. rdma_plugin.so                           19.08-rc0~170-g3e9b7a219         RDMA IBverbs Device Driver
+35. vmxnet3_plugin.so                        19.08-rc0~170-g3e9b7a219         VMWare Vmxnet3 Device Driver
+36. gbp_plugin.so                            19.08-rc0~170-g3e9b7a219         Group Based Policy (GBP)
+37. igmp_plugin.so                           19.08-rc0~170-g3e9b7a219         Internet Group Management Protocol (IGMP)
+38. nat_plugin.so                            19.08-rc0~170-g3e9b7a219         Network Address Translation (NAT)
+</pre>
+<ul>
+<li> <b>vpp-dbg</b> - Description: Vector Packet Processing--debug symbols
+</li>
+<li> <b>vpp-dev</b> - Description: Vector Packet Processing--development support. This package contains development support files for the VPP libraries
+</li>
+<li> <b>vpp-api-java</b> - Description: JAVA binding for the VPP Binary API.
+</li>
+<li> <b>vpp-api-python</b> - Description: Python binding for the VPP Binary API.
+</li>
+<li> <b>vpp-api-lua</b> - Description: Lua binding for the VPP Binary API.
+</li>
+</ul>
+<h2><span class="mw-headline" id="Ubuntu.2FDebian.2FCentos">Ubuntu/Debian/Centos</span></h2>
+<p>Packages are published for both the amd64 (Intel) and aarch64 (ARM) architectures. The packages are stored in the same repository so no special action is required to select your architecture.
+</p>
+<h3><span class="mw-headline" id="Add_fd.io_repo">Add fd.io repo</span></h3>
+<p>VPP release packages are available at: <a rel="nofollow" class="external free" href="https://packagecloud.io/fdio/release">https://packagecloud.io/fdio/release</a>
+</p><p>Note to VPP Release Managers:
+Pre-release packages are staged for final verification at: <a rel="nofollow" class="external free" href="https://packagecloud.io/fdio/staging">https://packagecloud.io/fdio/staging</a>
+</p><p>If you follow that link you should see a screen presenting buttons to click to get instructions for installing Debian/Rpm packages.  Click on the appropriate link for instructions, and those should work
+for Ubuntu 16.04, 18.04, or Centos7.   What to expect when following the link to <a rel="nofollow" class="external free" href="https://packagecloud.io/fdio/release">https://packagecloud.io/fdio/release</a> is in the image below:
+<a href="https://wiki.fd.io/view/File:Packagecloud_repo_install.png" class="image" title="Packagecloud repo install"><img alt="Packagecloud repo install" src="./VPP_Installing VPP binaries from packages - fd.io_files/500px-Packagecloud_repo_install.png" width="500" height="194" srcset="/images/thumb/f/f9/Packagecloud_repo_install.png/750px-Packagecloud_repo_install.png 1.5x, /images/thumb/f/f9/Packagecloud_repo_install.png/1000px-Packagecloud_repo_install.png 2x"></a>
+</p><p>If you wish to install the merge-by-merge packages for the vpp master branch or the vpp stable/YYMM branches, the instructions are the same but use instead:
+</p>
+<ul>
+<li> <a rel="nofollow" class="external free" href="https://packagecloud.io/fdio/master">https://packagecloud.io/fdio/master</a> - for the master branch
+</li>
+<li> <a rel="nofollow" class="external free" href="https://packagecloud.io/fdio/1904">https://packagecloud.io/fdio/1904</a> - for the stable/1904 branch.
+</li>
+<li> <a rel="nofollow" class="external free" href="https://packagecloud.io/fdio/1901">https://packagecloud.io/fdio/1901</a> - for the stable/1901 branch.
+</li>
+</ul>
+<h3><span class="mw-headline" id="Install_Packages">Install Packages</span></h3>
+<h4><span class="mw-headline" id="Debs">Debs</span></h4>
+<p>Once you have installed the repo:
+</p>
+<pre>sudo apt-get update
+sudo apt-get install vpp
+</pre>
+<ul>
+<li> Optional Debs
+</li>
+</ul>
+<pre>sudo apt-get install vpp vpp-plugin-core vpp-plugin-dpdk vpp-dbg vpp-dev vpp-ext-deps vpp-api-python vpp-api-java
+</pre>
+<p>Note to Release Managers:
+As of 19.04, vpp-api-java is produced by the JVPP project which has a delayed release cycle.  Do not include vpp-api-java when verifying release packages.
+</p><p>Prior to 19.04,
+</p>
+<pre>sudo apt-get install vpp vpp-plugins vpp-dbg vpp-dev vpp-api-java vpp-api-python vpp-api-lua
+</pre>
+<p>Note:
+Prior to 19.04, vpp-plugins contained the dpdk-plugin needed to use dpdk drivers for hardware interfaces. Starting with 19.04, the dpdk drivers are contained in vpp-plugin-dpdk
+</p>
+<ul>
+<li> Installing a specific package version
+</li>
+</ul>
+<pre>export VPP_VER=19.01.2-release
+sudo apt-get install vpp=$VPP_VER vpp-lib=$VPP_VER
+</pre>
+<ul>
+<li> Uninstalling Debs
+</li>
+</ul>
+<pre>sudo apt-get remove --purge vpp*
+sudo apt autoremove
+</pre>
+<h4><span class="mw-headline" id="RPMs">RPMs</span></h4>
+<p>Note:
+Circa 19.04-rc0 some dependencies were introduced for Centos7 packages are required to install VPP:
+</p>
+<pre>--&gt; Finished Dependency Resolution
+Error: Package: vpp-plugins-19.04-rc1~b4.x86_64 (fdio_1904)
+           Requires: libmbedtls.so.10()(64bit)
+Error: Package: vpp-devel-19.04-rc1~b4.x86_64 (fdio_1904)
+           Requires: /usr/bin/python3
+Error: Package: vpp-19.04-rc1~b4.x86_64 (fdio_1904)
+           Requires: /usr/bin/python3
+Error: Package: vpp-plugins-19.04-rc1~b4.x86_64 (fdio_1904)
+           Requires: libmbedx509.so.0()(64bit)
+Error: Package: vpp-plugins-19.04-rc1~b4.x86_64 (fdio_1904)
+           Requires: libmbedcrypto.so.2()(64bit)
+</pre>
+<p>Installing the following packages on Centos7 resolves these dependency issues:
+</p>
+<pre>sudo yum install epel-release mbedtls python36
+</pre>
+<p>Once you have installed the repo:
+</p>
+<pre>sudo yum install vpp
+</pre>
+<ul>
+<li> Optional RPMs
+</li>
+</ul>
+<pre>sudo yum install vpp vpp-plugins vpp-devel vpp-debuginfo vpp-ext-deps vpp-api-python vpp-api-lua vpp-api-java
+</pre>
+<p>Note: 
+vpp-plugins contains the dpdk-plugin needed to use dpdk drivers for hardware interfaces.
+</p><p>Note to VPP Release Managers:
+As of 19.04, vpp-api-java is produced by the JVPP project which has a delayed release cycle.  Do not include vpp-api-java when verifying VPP release packages.
+</p>
+<ul>
+<li> List all vpp packages
+</li>
+</ul>
+<pre>yum list vpp*
+</pre>
+<ul>
+<li> Start VPP
+</li>
+</ul>
+<pre>sudo systemctl restart vpp
+</pre>
+<h3><span class="mw-headline" id="Uninstalling_VPP_RPMs">Uninstalling VPP RPMs</span></h3>
+<pre>sudo yum autoremove vpp*
+</pre>
+<h2><span class="mw-headline" id="openSUSE">openSUSE</span></h2>
+<p>Blog-post: <a rel="nofollow" class="external free" href="https://www.suse.com/communities/blog/vector-packet-processing-vpp-opensuse/">https://www.suse.com/communities/blog/vector-packet-processing-vpp-opensuse/</a>
+</p>
+<h3><span class="mw-headline" id="Install_from_official_repositories">Install from official repositories</span></h3>
+<h4><span class="mw-headline" id="openSUSE_Tumbleweed_.28rolling_release.29">openSUSE Tumbleweed (rolling release)</span></h4>
+<pre>sudo zypper install vpp vpp-plugins
+</pre>
+<h4><span class="mw-headline" id="openSUSE_Leap_42.3">openSUSE Leap 42.3</span></h4>
+<pre>sudo zypper addrepo --name network https://download.opensuse.org/repositories/network/openSUSE_Leap_42.3/network.repo
+sudo zypper install vpp vpp-plugins
+</pre>
+<h3><span class="mw-headline" id="Install_from_FD.io_repositories">Install from FD.io repositories</span></h3>
+<p>If the version of VPP you require has not yet made it in to the official repository you can elect to use the FD.io release repository.
+</p>
+<h4><span class="mw-headline" id="openSUSE_Leap_42.3_2">openSUSE Leap 42.3</span></h4>
+<p>This repository is available since VPP 18.04.
+</p>
+<pre>sudo zypper addrepo --type rpm-md --name "FD.io release" https://nexus.fd.io/content/repositories/fd.io.osleap423/ fdio-leap423
+sudo zypper install vpp vpp-plugins
+</pre>
+<h4><span class="mw-headline" id="openSUSE_Leap_15">openSUSE Leap 15</span></h4>
+<p>This repository is available since VPP 18.10.
+</p><p>If you are interested in cutting-edge master branch then:
+</p>
+<pre>sudo curl -s https://packagecloud.io/install/repositories/fdio/master/script.rpm.sh | sudo bash
+sudo zypper install vpp vpp-plugins
+</pre>
+<p>If instead you are looking for a stable release, the latest and greatest available is 18.10
+</p>
+<pre>sudo curl -s https://packagecloud.io/install/repositories/fdio/1810/script.rpm.sh | sudo bash
+sudo zypper install vpp vpp-plugins
+</pre>
+<h3><span class="mw-headline" id="Uninstall">Uninstall</span></h3>
+<h4><span class="mw-headline" id="openSUSE_Tumbleweed_.28rolling_release.29_2">openSUSE Tumbleweed (rolling release)</span></h4>
+<pre>sudo zypper remove -u vpp vpp-plugins
+</pre>
+<h4><span class="mw-headline" id="openSUSE_Leap_42.3_3">openSUSE Leap 42.3</span></h4>
+<pre>sudo zypper remove -u vpp vpp-plugins
+</pre>
+<p>Optionally also remove the repository:
+</p>
+<pre>sudo zypper removerepo network
+</pre>
+<p>or
+</p>
+<pre>sudo zypper removerepo fdio-leap423
+</pre>
+<h2><span class="mw-headline" id="Arch_Linux">Arch Linux</span></h2>
+<p>Available in the Arch User Repository (AUR): <a rel="nofollow" class="external free" href="https://aur.archlinux.org/packages/vpp/">https://aur.archlinux.org/packages/vpp/</a>
+</p><p>(Currently the bin packages do not work).
+</p><p><br>
+</p>
+<h1><span class="mw-headline" id="Getting_jvpp_jar">Getting jvpp jar</span></h1>
+<p><b>NOTE:</b> As of VPP 19.04, <a href="https://wiki.fd.io/view/JVPP" title="JVPP">JVPP</a> is now an independent FD.io project.
+</p>
+<h2><span class="mw-headline" id="Directly_downloading_jvpp.jar">Directly downloading jvpp.jar</span></h2>
+<p>vpp provides java bindings which can be <a rel="nofollow" class="external text" href="https://nexus.fd.io/content/repositories/fd.io.release/io/fd/vpp/jvpp-core/18.01/jvpp-core-18.01.jar">downloaded</a>
+</p>
+<h2><span class="mw-headline" id="Getting_jvpp_via_maven">Getting jvpp via maven</span></h2>
+<p>Add the following to the repositories section in your ~/.m2/settings.xml to pick up the fd.io maven repo:
+</p>
+<pre>&lt;repository&gt;
+  &lt;id&gt;fd.io-release&lt;/id&gt;
+  &lt;name&gt;fd.io-release&lt;/name&gt;
+  &lt;url&gt;<a rel="nofollow" class="external free" href="https://nexus.fd.io/content/repositories/fd.io.release/">https://nexus.fd.io/content/repositories/fd.io.release/</a>&lt;/url&gt;
+  &lt;releases&gt;
+    &lt;enabled&gt;false&lt;/enabled&gt;
+  &lt;/releases&gt;
+  &lt;snapshots&gt;
+    &lt;enabled&gt;true&lt;/enabled&gt;
+  &lt;/snapshots&gt;
+&lt;/repository&gt;
+</pre>
+<p><a rel="nofollow" class="external text" href="https://maven.apache.org/guides/mini/guide-multiple-repositories.html">More information on setting up maven repositories in settings.xml</a>.
+</p><p>Then you can get jvpp by putting in the dependencies section of your pom.xml file:
+</p>
+<pre>&lt;dependency&gt;
+  &lt;groupId&gt;io.fd.vpp&lt;/groupId&gt;
+  &lt;artifactId&gt;jvpp-core&lt;/artifactId&gt;
+  &lt;version&gt;18.04&lt;/version&gt;
+&lt;/dependency&gt;
+</pre>
+<p><a rel="nofollow" class="external text" href="https://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html">More information on maven dependency managment</a>
+</p>
+<h2><span class="mw-headline" id="Old_Nexus_Apt.2FYum_repo_instructions">Old Nexus Apt/Yum repo instructions</span></h2>
+<p>If you wish to access the old Nexus Apt/Yum repo instructions there are available <a rel="nofollow" class="external text" href="https://wiki.fd.io/index.php?title=VPP/Installing_VPP_binaries_from_packages&amp;oldid=8167#Ubuntu.2FDebian">here</a>.
+</p>
+<!-- 
+NewPP limit report
+CPU time usage: 0.023 seconds
+Real time usage: 0.039 seconds
+Preprocessor visited node count: 171/1000000
+Preprocessor generated node count: 276/1000000
+Post‐expand include size: 0/2097152 bytes
+Template argument size: 0/2097152 bytes
+Highest expansion depth: 2/40
+Expensive parser function count: 0/100
+-->
+
+<!-- Saved in parser cache with key mediawiki:pcache:idhash:130-0!*!0!!en!2!* and timestamp 20200702091050 and revision id 9450
+ -->
+</div>								<div class="printfooter">
+				Retrieved from "<a href="https://wiki.fd.io/index.php?title=VPP/Installing_VPP_binaries_from_packages&amp;oldid=9450">https://wiki.fd.io/index.php?title=VPP/Installing_VPP_binaries_from_packages&amp;oldid=9450</a>"				</div>
+												<div id="catlinks" class="catlinks catlinks-allhidden"></div>												<div class="visualClear"></div>
+							</div>
+		</div>
+		<div id="mw-navigation">
+			<h2>Navigation menu</h2>
+			<div id="mw-head">
+				<div id="p-personal" role="navigation" class="" aria-labelledby="p-personal-label">
+	<h3 id="p-personal-label">Personal tools</h3>
+	<ul>
+<li id="pt-login"><a href="https://wiki.fd.io/index.php?title=Special:UserLogin&amp;returnto=VPP%2FInstalling+VPP+binaries+from+packages" title="You are encouraged to log in; however, it is not mandatory [alt-shift-o]" accesskey="o">Log in / Register with Linux Foundation ID</a></li>	</ul>
+</div>
+				<div id="left-navigation">
+					<div id="p-namespaces" role="navigation" class="vectorTabs" aria-labelledby="p-namespaces-label">
+	<h3 id="p-namespaces-label">Namespaces</h3>
+	<ul>
+					<li id="ca-nstab-main" class="selected"><span><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages" title="View the content page [alt-shift-c]" accesskey="c">Page</a></span></li>
+					<li id="ca-talk" class="new"><span><a href="https://wiki.fd.io/index.php?title=Talk:VPP/Installing_VPP_binaries_from_packages&amp;action=edit&amp;redlink=1" title="Discussion about the content page [alt-shift-t]" accesskey="t">Discussion</a></span></li>
+			</ul>
+</div>
+<div id="p-variants" role="navigation" class="vectorMenu emptyPortlet" aria-labelledby="p-variants-label">
+	<h3 id="mw-vector-current-variant">
+		</h3>
+	<h3 id="p-variants-label" tabindex="0"><span>Variants</span><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#" tabindex="-1"></a></h3>
+	<div class="menu">
+		<ul>
+					</ul>
+	</div>
+</div>
+				</div>
+				<div id="right-navigation">
+					<div id="p-views" role="navigation" class="vectorTabs" aria-labelledby="p-views-label">
+	<h3 id="p-views-label">Views</h3>
+	<ul>
+					<li id="ca-view" class="selected"><span><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages">Read</a></span></li>
+					<li id="ca-viewsource"><span><a href="https://wiki.fd.io/index.php?title=VPP/Installing_VPP_binaries_from_packages&amp;action=edit" title="This page is protected.
+You can view its source [alt-shift-e]" accesskey="e">View source</a></span></li>
+					<li id="ca-history" class="collapsible"><span><a href="https://wiki.fd.io/index.php?title=VPP/Installing_VPP_binaries_from_packages&amp;action=history" title="Past revisions of this page [alt-shift-h]" accesskey="h">View history</a></span></li>
+			</ul>
+</div>
+<div id="p-cactions" role="navigation" class="vectorMenu emptyPortlet" aria-labelledby="p-cactions-label">
+	<h3 id="p-cactions-label" tabindex="0"><span>Actions</span><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#" tabindex="-1"></a></h3>
+	<div class="menu">
+		<ul>
+					</ul>
+	</div>
+</div>
+<div id="p-search" role="search">
+	<h3><label for="searchInput">Search</label></h3>
+	<form action="https://wiki.fd.io/index.php" id="searchform">
+					<div id="simpleSearch">
+					<input type="search" name="search" placeholder="Search" title="Search fd.io [alt-shift-f]" accesskey="f" id="searchInput" tabindex="1" autocomplete="off"><input type="hidden" value="Special:Search" name="title"><input type="submit" name="go" value="Go" title="Go to a page with this exact name if exists" id="searchButton" class="searchButton">		</div>
+	</form>
+</div>
+				</div>
+			</div>
+			<div id="mw-panel" class="collapsible-nav">
+					<div id="p-logo" role="banner"><a style="background-image: url(/images/0/0e/Fdio_logo_resized.png);" href="https://wiki.fd.io/view/Main_Page" title="Visit the main page"></a></div>
+				<div class="portal first persistent" role="navigation" id="p-navigation" aria-labelledby="p-navigation-label">
+	<h3 id="p-navigation-label">Navigation</h3>
+	<div class="body">
+		<ul>
+			<li id="n-mainpage-description"><a href="https://wiki.fd.io/view/Main_Page" title="Visit the main page [alt-shift-z]" accesskey="z">Main page</a></li>
+			<li id="n-recentchanges"><a href="https://wiki.fd.io/view/Special:RecentChanges" title="A list of recent changes in the wiki [alt-shift-r]" accesskey="r">Recent changes</a></li>
+			<li id="n-randompage"><a href="https://wiki.fd.io/view/Special:Random" title="Load a random page [alt-shift-x]" accesskey="x">Random page</a></li>
+			<li id="n-help"><a href="https://www.mediawiki.org/wiki/Special:MyLanguage/Help:Contents" title="The place to find out">Help</a></li>
+		</ul>
+	</div>
+</div>
+<div class="portal expanded" role="navigation" id="p-tb" aria-labelledby="p-tb-label">
+	<h3 id="p-tb-label" tabindex="2"><a href="https://wiki.fd.io/view/VPP/Installing_VPP_binaries_from_packages#" aria-haspopup="true" aria-controls="p-tb-list" role="button" aria-pressed="true" aria-expanded="true">Tools</a></h3>
+	<div class="body" style="display: block;">
+		<ul id="p-tb-list">
+			<li id="t-whatlinkshere"><a href="https://wiki.fd.io/view/Special:WhatLinksHere/VPP/Installing_VPP_binaries_from_packages" title="A list of all wiki pages that link here [alt-shift-j]" accesskey="j">What links here</a></li>
+			<li id="t-recentchangeslinked"><a href="https://wiki.fd.io/view/Special:RecentChangesLinked/VPP/Installing_VPP_binaries_from_packages" title="Recent changes in pages linked from this page [alt-shift-k]" accesskey="k">Related changes</a></li>
+			<li id="t-upload"><a href="https://wiki.fd.io/view/Special:UploadWizard" title="Upload files [alt-shift-u]" accesskey="u">Upload file</a></li>
+			<li id="t-specialpages"><a href="https://wiki.fd.io/view/Special:SpecialPages" title="A list of all special pages [alt-shift-q]" accesskey="q">Special pages</a></li>
+			<li id="t-print"><a href="https://wiki.fd.io/index.php?title=VPP/Installing_VPP_binaries_from_packages&amp;printable=yes" rel="alternate" title="Printable version of this page [alt-shift-p]" accesskey="p">Printable version</a></li>
+			<li id="t-permalink"><a href="https://wiki.fd.io/index.php?title=VPP/Installing_VPP_binaries_from_packages&amp;oldid=9450" title="Permanent link to this revision of the page">Permanent link</a></li>
+			<li id="t-info"><a href="https://wiki.fd.io/index.php?title=VPP/Installing_VPP_binaries_from_packages&amp;action=info">Page information</a></li>
+		</ul>
+	</div>
+</div>
+			</div>
+		</div>
+		<div id="footer" role="contentinfo">
+							<ul id="footer-info">
+											<li id="footer-info-lastmod"> This page was last modified on 17 May 2019, at 19:41.</li>
+											<li id="footer-info-viewcount">This page has been accessed 3,694 times.</li>
+									</ul>
+							<ul id="footer-places">
+											<li id="footer-places-privacy"><a href="https://wiki.fd.io/view/fd_io:Privacy_policy" title="fd io:Privacy policy">Privacy policy</a></li>
+											<li id="footer-places-about"><a href="https://wiki.fd.io/view/fd_io:About" title="fd io:About">About fd.io</a></li>
+											<li id="footer-places-disclaimer"><a href="https://wiki.fd.io/view/fd_io:General_disclaimer" title="fd io:General disclaimer">Disclaimers</a></li>
+									</ul>
+										<ul id="footer-icons" class="noprint">
+					<li id="footer-poweredbyico">
+						<a href="https://www.mediawiki.org/"><img src="./VPP_Installing VPP binaries from packages - fd.io_files/poweredby_mediawiki_88x31.png" alt="Powered by MediaWiki" width="88" height="31"></a>
+					</li>
+				</ul>
+						<div style="clear:both"></div>
+		</div>
+		<script>/*<![CDATA[*/window.jQuery && jQuery.ready();/*]]>*/</script><script>if(window.mw){
+mw.loader.state({"site":"ready","user":"ready","user.groups":"ready"});
+}</script>
+<script>if(window.mw){
+mw.loader.load(["mediawiki.action.view.postEdit","mediawiki.user","mediawiki.hidpi","mediawiki.page.ready","mediawiki.searchSuggest","skins.vector.collapsibleNav"],null,true);
+}</script>
+<script>if(window.mw){
+mw.config.set({"wgBackendResponseTime":54});
+}</script>
+	
+
+<div class="suggestions" style="display: none; font-size: 13px;"><div class="suggestions-results"></div><div class="suggestions-special"></div></div></body></html>

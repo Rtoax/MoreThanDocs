@@ -1,0 +1,1792 @@
+<!DOCTYPE html>
+<!-- saved from url=(0044)https://packagecloud.io/fdio/release/install -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><style type="text/css">@charset "UTF-8";[ng\:cloak],[ng-cloak],[data-ng-cloak],[x-ng-cloak],.ng-cloak,.x-ng-cloak,.ng-hide:not(.ng-hide-animate){display:none !important;}ng\:form{display:block;}.ng-animate-shim{visibility:hidden;}.ng-anchor{position:absolute;}</style>
+    
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description" content="Installation instructions for the fdio/release package repository."><meta property="og:site_name" content="Packagecloud"><meta property="og:type" content="website"><meta property="og:title" content="fdio/release - Installation · packagecloud"><meta property="og:description" content="Installation instructions for the fdio/release package repository.">
+<script async="" src="./fdio_release - Installation · packagecloud- Bash Scripts_files/analytics.js.下载"></script><script type="application/ld+json">{"@context":"http://schema.org","@type":"WebSite","description":"Installation instructions for the fdio/release package repository."}</script>
+
+<title>fdio/release - Installation · packagecloud- Bash Scripts </title>
+
+
+      <meta name="google-site-verification" content="Zkz-4-7DH8kEHMP8bYMX6aCY-8p_f-rI_poBzSWKrFc">
+
+    <meta name="csrf-param" content="authenticity_token">
+<meta name="csrf-token" content="7Wv8yJ8ykzSMEfK2BWBztVzGMRAdCzJOnZ0UbQ1Fcr5fw0Td8grko7VGuL9e+j73lwpM6XSw3sDM1S+oYQ2GXA==">
+
+    <link rel="shortcut icon" type="image/x-icon" href="https://assets-production.packagecloud.io/assets/packs/_/assets/images/favicon-50091bcb5eaba1f5ea2ece7b30e0b074.ico">
+
+    <link rel="stylesheet" media="all" href="./fdio_release - Installation · packagecloud- Bash Scripts_files/application-5865497724e9948e710cdbd7dfdec90f.css">
+
+    
+
+    <style type="text/css" media="screen">
+      /* We need this to block out the FOUC from loading the angular app at the */
+      /* bottom the document. More here https://docs.angularjs.org/api/ng/directive/ngCloak */
+      [ng\:cloak], [ng-cloak], [data-ng-cloak], [x-ng-cloak], .ng-cloak, .x-ng-cloak {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body id="" class="logged-out ng-scope" ng-app="packagecloud">
+
+    <nav class="navigation fixed sidenav">
+  <div class="navigation-wrapper">
+    <a class="logo" href="https://packagecloud.io/" title="Home">
+      <span class="glyphicon glyphicon-cloud"></span>
+      <span class="glyphicon glyphicon-cloud small"></span>
+    </a>
+    <ul class="icons">
+    <li class="more "><a href="javascript:;"><span class="glyphicon glyphicon-list-alt"></span><div class="sub-text">Docs</div></a>
+      <ul class="submenu">
+        <li><a href="https://packagecloud.io/docs">General Docs</a></li>
+        <li><a href="https://packagecloud.io/docs/api">API Docs</a></li>
+        <li><a target="parent" href="http://www.rubydoc.info/gems/package_cloud/">CLI Docs</a></li>
+        <li><a href="https://packagecloud.io/docs/security">Security Information</a></li>
+      </ul>
+    </li>
+    <li><a href="mailto:support@packagecloud.io"><span class="glyphicon glyphicon-bullhorn"></span><div class="sub-text">Help</div></a></li>
+      <li>
+        <a href="https://packagecloud.io/l/cli">
+          <span class="glyphicon glyphicon-terminal"></span>
+          <div class="sub-text">
+            CLI
+          </div>
+</a>      </li>
+    </ul>
+  </div>
+</nav>
+
+      <div id="contextual-sidebar" class="sidebar-container" contextual-sidebar="">
+    <div class="sidebar-button-container">
+      <button class="btn primary" ng-click="toggleMenu(model.opened)">
+        <span class="glyphicon glyphicon-list" ng-class="{&#39;glyphicon-remove-circle&#39;: model.opened, &#39;glyphicon-list&#39;: !model.opened}"></span>
+      </button>
+    </div>
+    <div class="avatar-container">
+    <a href="https://packagecloud.io/fdio">
+      <img class="avatar" width="136px" height="136px" src="./fdio_release - Installation · packagecloud- Bash Scripts_files/af5ee44264ee03e29125d00adcdb35a5.png">
+</a>  <div class="user-name">
+    <a href="https://packagecloud.io/fdio">fdio</a>
+  </div>
+</div>
+
+    <a class="btn primary" href="https://packagecloud.io/fdio/release">
+<div class="repo-name-with-icon">
+  <span class="glyphicon glyphicon-globe" title="Public"></span>
+  <span class="repo-name">
+    release
+  </span>
+</div>
+</a><nav class="repo-page-sidebar">
+  <ul class="sidenav">
+    <li><a href="https://packagecloud.io/fdio/release"><span class="glyphicon glyphicon-file"></span>Packages</a></li>
+    <li class="active"><a href="https://packagecloud.io/fdio/release/install"><span class="glyphicon glyphicon-download"></span>Installation</a></li>
+    <li class=""><a href="https://packagecloud.io/app/fdio/release/search"><span class="glyphicon glyphicon-search"></span>Search</a></li>
+    <li><a href="https://packagecloud.io/fdio/release/mirror"><span class="glyphicon glyphicon-duplicate"></span>Mirroring</a></li>
+    <li><a href="https://packagecloud.io/app/fdio/release/gpg"><span class="glyphicon glyphicon-lock"></span>GPG</a></li>
+    <li class=""><a href="https://packagecloud.io/app/fdio/release/stats"><span class="glyphicon glyphicon-stats"></span>Stats</a></li>
+  </ul>
+</nav>
+
+  </div>
+
+
+    <main class="main-content fixed-header">
+      <div class="top-nav">
+  <ul class="logged-out-links">
+    <li><a class="btn primary" href="https://packagecloud.io/users/new">Sign up</a></li>
+    <li><a class="btn primary outline" href="https://packagecloud.io/session/new">Login</a></li>
+  </ul>
+</div>
+
+      
+        <article class="show-repo ng-scope" ng-controller="PackageListCtrl" ng-init="init(&#39;fdio/release&#39;)">
+  <section class="repo-page">
+    <div class="page-content">
+      <div id="install-tab" class="install-tab ng-scope" ng-controller="InstructionsTabCtrl" ng-init="init(&#39;#bash&#39;, &#39;fdio/release&#39;, &#39;ae1f2c118db7afc7f213eab7c7cace984182a372df8e1393&#39;, &#39;[{&quot;id&quot;:24765,&quot;repository_id&quot;:4757,&quot;name&quot;:&quot;default&quot;,&quot;value&quot;:&quot;ae1f2c118db7afc7f213eab7c7cace984182a372df8e1393&quot;,&quot;created_at&quot;:&quot;2017-04-18T16:20:38.000Z&quot;,&quot;updated_at&quot;:&quot;2017-04-18T16:20:38.000Z&quot;}]&#39;)">
+  <header class="repo-page-header fixed">
+    <h1>Installation instructions</h1>
+    <div class="select-installation-types">
+      <label for="current-instruction">Choose an install method:</label>
+      <div class="select-options">
+        <select id="current-instruction" ng-model="insType" ng-change="updateInstruction()" class="minimal ng-pristine ng-untouched ng-valid ng-not-empty">
+          <option value="bash" selected="selected">Bash Scripts</option>
+          <option value="manual">Manual Installation</option>
+          <option value="chef">Chef</option>
+          <option value="puppet">Puppet</option>
+          <option value="bundler">Bundler</option>
+          <option value="virtualenv">Virtualenv</option>
+          <option value="maven">Maven</option>
+          <option value="lein">Leiningen</option>
+          <option value="sbt">SBT</option>
+          <option value="gradle">Gradle</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+      <div class="callout-container" signup-callout="">
+    <div class="text-container">
+      <div class="dismiss-container">
+        <button class="btn info outline dismiss">dismiss</button>
+      </div>
+      <div class="callout-text">
+        <h3>Start using packagecloud in minutes</h3>
+        <p>Join thousands of developers using packagecloud to distribute software securely, consistently, and affordably.</p>
+      </div>
+      <div class="button-container">
+        <div class="callout-button">
+          <a class="btn primary" href="https://packagecloud.io/users/new">Sign up</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="bash-tab" class="tab-content is-open" style="">
+    <h3>Bash Scripts</h3>
+    <div class="vertical-tabs-container">
+      <div class="vertical-tabs">
+        <a href="https://packagecloud.io/fdio/release/install#bash-deb" class="js-vertical-tab vertical-tab is-active" rel="tab1">deb</a>
+        <a href="https://packagecloud.io/fdio/release/install#bash-rpm" class="js-vertical-tab vertical-tab" rel="tab2">rpm</a>
+        <a href="https://packagecloud.io/fdio/release/install#bash-node" class="js-vertical-tab vertical-tab" rel="tab3">node</a>
+        <a href="https://packagecloud.io/fdio/release/install#bash-python" class="js-vertical-tab vertical-tab" rel="tab4">python</a>
+        <a href="https://packagecloud.io/fdio/release/install#bash-gem" class="js-vertical-tab vertical-tab" rel="tab5">gem</a>
+      </div>
+
+      <div class="vertical-tab-content-container">
+        <a href="https://packagecloud.io/fdio/release/install" class="js-vertical-tab-accordion-heading vertical-tab-accordion-heading is-active" rel="tab1">deb</a>
+        <div id="tab1" class="js-vertical-tab-content vertical-tab-content" style="display: block;">
+          <div class="type">
+  <h3>
+    deb
+  </h3>
+  <div class="quick">
+    <div class="links">
+      <div class="heading">quick install</div>
+      <div class="copy-button-container">
+        <a class="btn primary outline js-clipboard" data-script-type="sudo-bash" ng-click="flashScriptContainer($event)" data-clipboard-text="curl -s https://packagecloud.io/install/repositories/fdio/release/script.deb.sh | sudo bash" href="https://packagecloud.io/fdio/release/install">copy</a>
+      </div>
+    </div>
+    <!--googleoff: all--><pre class="sudo-bash-script">curl -s https://packagecloud.io/install/repositories/fdio/release/script.deb.sh | sudo bash</pre><!--googleon: all-->
+  </div>
+  <div class="script">
+    <div class="links">
+      <div class="heading">full script.deb.sh</div>
+    </div>
+
+    <!--googleoff: all--><pre class="install-script hljs bash"><span class="hljs-meta">#!/bin/bash
+</span>
+<span class="hljs-function"><span class="hljs-title">unknown_os</span></span> ()
+{
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Unfortunately, your operating system distribution and version are not supported by this script."</span>
+  <span class="hljs-built_in">echo</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"You can override the OS detection by setting os= and dist= prior to running this script."</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"You can find a list of supported OSes and distributions on our website: https://packagecloud.io/docs#os_distro_version"</span>
+  <span class="hljs-built_in">echo</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"For example, to force Ubuntu Trusty: os=ubuntu dist=trusty ./script.sh"</span>
+  <span class="hljs-built_in">echo</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Please email support@packagecloud.io and let us know if you run into any issues."</span>
+  <span class="hljs-built_in">exit</span> 1
+}
+
+<span class="hljs-function"><span class="hljs-title">gpg_check</span></span> ()
+{
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Checking for gpg..."</span>
+  <span class="hljs-keyword">if</span> <span class="hljs-built_in">command</span> -v gpg &gt; /dev/null; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Detected gpg..."</span>
+  <span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Installing gnupg for GPG verification..."</span>
+    apt-get install -y gnupg
+    <span class="hljs-keyword">if</span> [ <span class="hljs-string">"$?"</span> <span class="hljs-_">-ne</span> <span class="hljs-string">"0"</span> ]; <span class="hljs-keyword">then</span>
+      <span class="hljs-built_in">echo</span> <span class="hljs-string">"Unable to install GPG! Your base system has a problem; please check your default OS's package repositories because GPG should work."</span>
+      <span class="hljs-built_in">echo</span> <span class="hljs-string">"Repository installation aborted."</span>
+      <span class="hljs-built_in">exit</span> 1
+    <span class="hljs-keyword">fi</span>
+  <span class="hljs-keyword">fi</span>
+}
+
+<span class="hljs-function"><span class="hljs-title">curl_check</span></span> ()
+{
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Checking for curl..."</span>
+  <span class="hljs-keyword">if</span> <span class="hljs-built_in">command</span> -v curl &gt; /dev/null; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Detected curl..."</span>
+  <span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Installing curl..."</span>
+    apt-get install -q -y curl
+    <span class="hljs-keyword">if</span> [ <span class="hljs-string">"$?"</span> <span class="hljs-_">-ne</span> <span class="hljs-string">"0"</span> ]; <span class="hljs-keyword">then</span>
+      <span class="hljs-built_in">echo</span> <span class="hljs-string">"Unable to install curl! Your base system has a problem; please check your default OS's package repositories because curl should work."</span>
+      <span class="hljs-built_in">echo</span> <span class="hljs-string">"Repository installation aborted."</span>
+      <span class="hljs-built_in">exit</span> 1
+    <span class="hljs-keyword">fi</span>
+  <span class="hljs-keyword">fi</span>
+}
+
+<span class="hljs-function"><span class="hljs-title">install_debian_keyring</span></span> ()
+{
+  <span class="hljs-keyword">if</span> [ <span class="hljs-string">"<span class="hljs-variable">${os}</span>"</span> = <span class="hljs-string">"debian"</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Installing debian-archive-keyring which is needed for installing "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"apt-transport-https on many Debian systems."</span>
+    apt-get install -y debian-archive-keyring &amp;&gt; /dev/null
+  <span class="hljs-keyword">fi</span>
+}
+
+
+<span class="hljs-function"><span class="hljs-title">detect_os</span></span> ()
+{
+  <span class="hljs-keyword">if</span> [[ ( -z <span class="hljs-string">"<span class="hljs-variable">${os}</span>"</span> ) &amp;&amp; ( -z <span class="hljs-string">"<span class="hljs-variable">${dist}</span>"</span> ) ]]; <span class="hljs-keyword">then</span>
+    <span class="hljs-comment"># some systems dont have lsb-release yet have the lsb_release binary and</span>
+    <span class="hljs-comment"># vice-versa</span>
+    <span class="hljs-keyword">if</span> [ <span class="hljs-_">-e</span> /etc/lsb-release ]; <span class="hljs-keyword">then</span>
+      . /etc/lsb-release
+
+      <span class="hljs-keyword">if</span> [ <span class="hljs-string">"<span class="hljs-variable">${ID}</span>"</span> = <span class="hljs-string">"raspbian"</span> ]; <span class="hljs-keyword">then</span>
+        os=<span class="hljs-variable">${ID}</span>
+        dist=`cut --delimiter=<span class="hljs-string">'.'</span> <span class="hljs-_">-f</span>1 /etc/debian_version`
+      <span class="hljs-keyword">else</span>
+        os=<span class="hljs-variable">${DISTRIB_ID}</span>
+        dist=<span class="hljs-variable">${DISTRIB_CODENAME}</span>
+
+        <span class="hljs-keyword">if</span> [ -z <span class="hljs-string">"<span class="hljs-variable">$dist</span>"</span> ]; <span class="hljs-keyword">then</span>
+          dist=<span class="hljs-variable">${DISTRIB_RELEASE}</span>
+        <span class="hljs-keyword">fi</span>
+      <span class="hljs-keyword">fi</span>
+
+    <span class="hljs-keyword">elif</span> [ `<span class="hljs-built_in">which</span> lsb_release 2&gt;/dev/null` ]; <span class="hljs-keyword">then</span>
+      dist=`lsb_release -c | cut <span class="hljs-_">-f</span>2`
+      os=`lsb_release -i | cut <span class="hljs-_">-f</span>2 | awk <span class="hljs-string">'{ print tolower($1) }'</span>`
+
+    <span class="hljs-keyword">elif</span> [ <span class="hljs-_">-e</span> /etc/debian_version ]; <span class="hljs-keyword">then</span>
+      <span class="hljs-comment"># some Debians have jessie/sid in their /etc/debian_version</span>
+      <span class="hljs-comment"># while others have '6.0.7'</span>
+      os=`cat /etc/issue | head -1 | awk <span class="hljs-string">'{ print tolower($1) }'</span>`
+      <span class="hljs-keyword">if</span> grep -q <span class="hljs-string">'/'</span> /etc/debian_version; <span class="hljs-keyword">then</span>
+        dist=`cut --delimiter=<span class="hljs-string">'/'</span> <span class="hljs-_">-f</span>1 /etc/debian_version`
+      <span class="hljs-keyword">else</span>
+        dist=`cut --delimiter=<span class="hljs-string">'.'</span> <span class="hljs-_">-f</span>1 /etc/debian_version`
+      <span class="hljs-keyword">fi</span>
+
+    <span class="hljs-keyword">else</span>
+      unknown_os
+    <span class="hljs-keyword">fi</span>
+  <span class="hljs-keyword">fi</span>
+
+  <span class="hljs-keyword">if</span> [ -z <span class="hljs-string">"<span class="hljs-variable">$dist</span>"</span> ]; <span class="hljs-keyword">then</span>
+    unknown_os
+  <span class="hljs-keyword">fi</span>
+
+  <span class="hljs-comment"># remove whitespace from OS and dist name</span>
+  os=<span class="hljs-string">"<span class="hljs-variable">${os// /}</span>"</span>
+  dist=<span class="hljs-string">"<span class="hljs-variable">${dist// /}</span>"</span>
+
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Detected operating system as <span class="hljs-variable">$os</span>/<span class="hljs-variable">$dist</span>."</span>
+}
+
+<span class="hljs-function"><span class="hljs-title">main</span></span> ()
+{
+  detect_os
+  curl_check
+  gpg_check
+
+  <span class="hljs-comment"># Need to first run apt-get update so that apt-transport-https can be</span>
+  <span class="hljs-comment"># installed</span>
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Running apt-get update... "</span>
+  apt-get update &amp;&gt; /dev/null
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+
+  <span class="hljs-comment"># Install the debian-archive-keyring package on debian systems so that</span>
+  <span class="hljs-comment"># apt-transport-https can be installed next</span>
+  install_debian_keyring
+
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Installing apt-transport-https... "</span>
+  apt-get install -y apt-transport-https &amp;&gt; /dev/null
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+
+
+  gpg_key_url=<span class="hljs-string">"https://packagecloud.io/fdio/release/gpgkey"</span>
+  apt_config_url=<span class="hljs-string">"https://packagecloud.io/install/repositories/fdio/release/config_file.list?os=<span class="hljs-variable">${os}</span>&amp;dist=<span class="hljs-variable">${dist}</span>&amp;source=script"</span>
+
+  apt_<span class="hljs-built_in">source</span>_path=<span class="hljs-string">"/etc/apt/sources.list.d/fdio_release.list"</span>
+
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Installing <span class="hljs-variable">$apt_source_path</span>..."</span>
+
+  <span class="hljs-comment"># create an apt config file for this repository</span>
+  curl <span class="hljs-_">-s</span>Sf <span class="hljs-string">"<span class="hljs-variable">${apt_config_url}</span>"</span> &gt; <span class="hljs-variable">$apt_source_path</span>
+  curl_<span class="hljs-built_in">exit</span>_code=$?
+
+  <span class="hljs-keyword">if</span> [ <span class="hljs-string">"<span class="hljs-variable">$curl_exit_code</span>"</span> = <span class="hljs-string">"22"</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Unable to download repo config from: "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"<span class="hljs-variable">${apt_config_url}</span>"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"This usually happens if your operating system is not supported by "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"packagecloud.io, or this script's OS detection failed."</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"You can override the OS detection by setting os= and dist= prior to running this script."</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"You can find a list of supported OSes and distributions on our website: https://packagecloud.io/docs#os_distro_version"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"For example, to force Ubuntu Trusty: os=ubuntu dist=trusty ./script.sh"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"If you are running a supported OS, please email support@packagecloud.io and report this."</span>
+    [ <span class="hljs-_">-e</span> <span class="hljs-variable">$apt_source_path</span> ] &amp;&amp; rm <span class="hljs-variable">$apt_source_path</span>
+    <span class="hljs-built_in">exit</span> 1
+  <span class="hljs-keyword">elif</span> [ <span class="hljs-string">"<span class="hljs-variable">$curl_exit_code</span>"</span> = <span class="hljs-string">"35"</span> -o <span class="hljs-string">"<span class="hljs-variable">$curl_exit_code</span>"</span> = <span class="hljs-string">"60"</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"curl is unable to connect to packagecloud.io over TLS when running: "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"    curl <span class="hljs-variable">${apt_config_url}</span>"</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"This is usually due to one of two things:"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">" 1.) Missing CA root certificates (make sure the ca-certificates package is installed)"</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">" 2.) An old version of libssl. Try upgrading libssl on your system to a more recent version"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Contact support@packagecloud.io with information about your system for help."</span>
+    [ <span class="hljs-_">-e</span> <span class="hljs-variable">$apt_source_path</span> ] &amp;&amp; rm <span class="hljs-variable">$apt_source_path</span>
+    <span class="hljs-built_in">exit</span> 1
+  <span class="hljs-keyword">elif</span> [ <span class="hljs-string">"<span class="hljs-variable">$curl_exit_code</span>"</span> <span class="hljs-_">-gt</span> <span class="hljs-string">"0"</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Unable to run: "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"    curl <span class="hljs-variable">${apt_config_url}</span>"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Double check your curl installation and try again."</span>
+    [ <span class="hljs-_">-e</span> <span class="hljs-variable">$apt_source_path</span> ] &amp;&amp; rm <span class="hljs-variable">$apt_source_path</span>
+    <span class="hljs-built_in">exit</span> 1
+  <span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+  <span class="hljs-keyword">fi</span>
+
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Importing packagecloud gpg key... "</span>
+  <span class="hljs-comment"># import the gpg key</span>
+  curl -L <span class="hljs-string">"<span class="hljs-variable">${gpg_key_url}</span>"</span> 2&gt; /dev/null | apt-key add - &amp;&gt;/dev/null
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Running apt-get update... "</span>
+  <span class="hljs-comment"># update apt on this system</span>
+  apt-get update &amp;&gt; /dev/null
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+
+  <span class="hljs-built_in">echo</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"The repository is setup! You can now install packages."</span>
+}
+
+main
+
+</pre><!--googleon: all-->
+  </div>
+</div>
+
+        </div>
+
+        <a href="https://packagecloud.io/fdio/release/install" class="js-vertical-tab-accordion-heading vertical-tab-accordion-heading" rel="tab2">rpm</a>
+        <div id="tab2" class="js-vertical-tab-content vertical-tab-content" style="display: none;">
+          <div class="type">
+  <h3>
+    rpm
+  </h3>
+  <div class="quick">
+    <div class="links">
+      <div class="heading">quick install</div>
+      <div class="copy-button-container">
+        <a class="btn primary outline js-clipboard" data-script-type="sudo-bash" ng-click="flashScriptContainer($event)" data-clipboard-text="curl -s https://packagecloud.io/install/repositories/fdio/release/script.rpm.sh | sudo bash" href="https://packagecloud.io/fdio/release/install">copy</a>
+      </div>
+    </div>
+    <!--googleoff: all--><pre class="sudo-bash-script">curl -s https://packagecloud.io/install/repositories/fdio/release/script.rpm.sh | sudo bash</pre><!--googleon: all-->
+  </div>
+  <div class="script">
+    <div class="links">
+      <div class="heading">full script.rpm.sh</div>
+    </div>
+
+    <!--googleoff: all--><pre class="install-script hljs bash"><span class="hljs-meta">#!/bin/bash
+</span>
+<span class="hljs-function"><span class="hljs-title">unknown_os</span></span> ()
+{
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Unfortunately, your operating system distribution and version are not supported by this script."</span>
+  <span class="hljs-built_in">echo</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"You can override the OS detection by setting os= and dist= prior to running this script."</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"You can find a list of supported OSes and distributions on our website: https://packagecloud.io/docs#os_distro_version"</span>
+  <span class="hljs-built_in">echo</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"For example, to force Ubuntu Trusty: os=ubuntu dist=trusty ./script.sh"</span>
+  <span class="hljs-built_in">echo</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Please email support@packagecloud.io and let us know if you run into any issues."</span>
+  <span class="hljs-built_in">exit</span> 1
+}
+
+<span class="hljs-function"><span class="hljs-title">gpg_check</span></span> ()
+{
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Checking for gpg..."</span>
+  <span class="hljs-keyword">if</span> <span class="hljs-built_in">command</span> -v gpg &gt; /dev/null; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Detected gpg..."</span>
+  <span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Installing gnupg for GPG verification..."</span>
+    apt-get install -y gnupg
+    <span class="hljs-keyword">if</span> [ <span class="hljs-string">"$?"</span> <span class="hljs-_">-ne</span> <span class="hljs-string">"0"</span> ]; <span class="hljs-keyword">then</span>
+      <span class="hljs-built_in">echo</span> <span class="hljs-string">"Unable to install GPG! Your base system has a problem; please check your default OS's package repositories because GPG should work."</span>
+      <span class="hljs-built_in">echo</span> <span class="hljs-string">"Repository installation aborted."</span>
+      <span class="hljs-built_in">exit</span> 1
+    <span class="hljs-keyword">fi</span>
+  <span class="hljs-keyword">fi</span>
+}
+
+<span class="hljs-function"><span class="hljs-title">curl_check</span></span> ()
+{
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Checking for curl..."</span>
+  <span class="hljs-keyword">if</span> <span class="hljs-built_in">command</span> -v curl &gt; /dev/null; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Detected curl..."</span>
+  <span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Installing curl..."</span>
+    apt-get install -q -y curl
+    <span class="hljs-keyword">if</span> [ <span class="hljs-string">"$?"</span> <span class="hljs-_">-ne</span> <span class="hljs-string">"0"</span> ]; <span class="hljs-keyword">then</span>
+      <span class="hljs-built_in">echo</span> <span class="hljs-string">"Unable to install curl! Your base system has a problem; please check your default OS's package repositories because curl should work."</span>
+      <span class="hljs-built_in">echo</span> <span class="hljs-string">"Repository installation aborted."</span>
+      <span class="hljs-built_in">exit</span> 1
+    <span class="hljs-keyword">fi</span>
+  <span class="hljs-keyword">fi</span>
+}
+
+<span class="hljs-function"><span class="hljs-title">install_debian_keyring</span></span> ()
+{
+  <span class="hljs-keyword">if</span> [ <span class="hljs-string">"<span class="hljs-variable">${os}</span>"</span> = <span class="hljs-string">"debian"</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Installing debian-archive-keyring which is needed for installing "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"apt-transport-https on many Debian systems."</span>
+    apt-get install -y debian-archive-keyring &amp;&gt; /dev/null
+  <span class="hljs-keyword">fi</span>
+}
+
+
+<span class="hljs-function"><span class="hljs-title">detect_os</span></span> ()
+{
+  <span class="hljs-keyword">if</span> [[ ( -z <span class="hljs-string">"<span class="hljs-variable">${os}</span>"</span> ) &amp;&amp; ( -z <span class="hljs-string">"<span class="hljs-variable">${dist}</span>"</span> ) ]]; <span class="hljs-keyword">then</span>
+    <span class="hljs-comment"># some systems dont have lsb-release yet have the lsb_release binary and</span>
+    <span class="hljs-comment"># vice-versa</span>
+    <span class="hljs-keyword">if</span> [ <span class="hljs-_">-e</span> /etc/lsb-release ]; <span class="hljs-keyword">then</span>
+      . /etc/lsb-release
+
+      <span class="hljs-keyword">if</span> [ <span class="hljs-string">"<span class="hljs-variable">${ID}</span>"</span> = <span class="hljs-string">"raspbian"</span> ]; <span class="hljs-keyword">then</span>
+        os=<span class="hljs-variable">${ID}</span>
+        dist=`cut --delimiter=<span class="hljs-string">'.'</span> <span class="hljs-_">-f</span>1 /etc/debian_version`
+      <span class="hljs-keyword">else</span>
+        os=<span class="hljs-variable">${DISTRIB_ID}</span>
+        dist=<span class="hljs-variable">${DISTRIB_CODENAME}</span>
+
+        <span class="hljs-keyword">if</span> [ -z <span class="hljs-string">"<span class="hljs-variable">$dist</span>"</span> ]; <span class="hljs-keyword">then</span>
+          dist=<span class="hljs-variable">${DISTRIB_RELEASE}</span>
+        <span class="hljs-keyword">fi</span>
+      <span class="hljs-keyword">fi</span>
+
+    <span class="hljs-keyword">elif</span> [ `<span class="hljs-built_in">which</span> lsb_release 2&gt;/dev/null` ]; <span class="hljs-keyword">then</span>
+      dist=`lsb_release -c | cut <span class="hljs-_">-f</span>2`
+      os=`lsb_release -i | cut <span class="hljs-_">-f</span>2 | awk <span class="hljs-string">'{ print tolower($1) }'</span>`
+
+    <span class="hljs-keyword">elif</span> [ <span class="hljs-_">-e</span> /etc/debian_version ]; <span class="hljs-keyword">then</span>
+      <span class="hljs-comment"># some Debians have jessie/sid in their /etc/debian_version</span>
+      <span class="hljs-comment"># while others have '6.0.7'</span>
+      os=`cat /etc/issue | head -1 | awk <span class="hljs-string">'{ print tolower($1) }'</span>`
+      <span class="hljs-keyword">if</span> grep -q <span class="hljs-string">'/'</span> /etc/debian_version; <span class="hljs-keyword">then</span>
+        dist=`cut --delimiter=<span class="hljs-string">'/'</span> <span class="hljs-_">-f</span>1 /etc/debian_version`
+      <span class="hljs-keyword">else</span>
+        dist=`cut --delimiter=<span class="hljs-string">'.'</span> <span class="hljs-_">-f</span>1 /etc/debian_version`
+      <span class="hljs-keyword">fi</span>
+
+    <span class="hljs-keyword">else</span>
+      unknown_os
+    <span class="hljs-keyword">fi</span>
+  <span class="hljs-keyword">fi</span>
+
+  <span class="hljs-keyword">if</span> [ -z <span class="hljs-string">"<span class="hljs-variable">$dist</span>"</span> ]; <span class="hljs-keyword">then</span>
+    unknown_os
+  <span class="hljs-keyword">fi</span>
+
+  <span class="hljs-comment"># remove whitespace from OS and dist name</span>
+  os=<span class="hljs-string">"<span class="hljs-variable">${os// /}</span>"</span>
+  dist=<span class="hljs-string">"<span class="hljs-variable">${dist// /}</span>"</span>
+
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Detected operating system as <span class="hljs-variable">$os</span>/<span class="hljs-variable">$dist</span>."</span>
+}
+
+<span class="hljs-function"><span class="hljs-title">main</span></span> ()
+{
+  detect_os
+  curl_check
+  gpg_check
+
+  <span class="hljs-comment"># Need to first run apt-get update so that apt-transport-https can be</span>
+  <span class="hljs-comment"># installed</span>
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Running apt-get update... "</span>
+  apt-get update &amp;&gt; /dev/null
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+
+  <span class="hljs-comment"># Install the debian-archive-keyring package on debian systems so that</span>
+  <span class="hljs-comment"># apt-transport-https can be installed next</span>
+  install_debian_keyring
+
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Installing apt-transport-https... "</span>
+  apt-get install -y apt-transport-https &amp;&gt; /dev/null
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+
+
+  gpg_key_url=<span class="hljs-string">"https://packagecloud.io/fdio/release/gpgkey"</span>
+  apt_config_url=<span class="hljs-string">"https://packagecloud.io/install/repositories/fdio/release/config_file.list?os=<span class="hljs-variable">${os}</span>&amp;dist=<span class="hljs-variable">${dist}</span>&amp;source=script"</span>
+
+  apt_<span class="hljs-built_in">source</span>_path=<span class="hljs-string">"/etc/apt/sources.list.d/fdio_release.list"</span>
+
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Installing <span class="hljs-variable">$apt_source_path</span>..."</span>
+
+  <span class="hljs-comment"># create an apt config file for this repository</span>
+  curl <span class="hljs-_">-s</span>Sf <span class="hljs-string">"<span class="hljs-variable">${apt_config_url}</span>"</span> &gt; <span class="hljs-variable">$apt_source_path</span>
+  curl_<span class="hljs-built_in">exit</span>_code=$?
+
+  <span class="hljs-keyword">if</span> [ <span class="hljs-string">"<span class="hljs-variable">$curl_exit_code</span>"</span> = <span class="hljs-string">"22"</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Unable to download repo config from: "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"<span class="hljs-variable">${apt_config_url}</span>"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"This usually happens if your operating system is not supported by "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"packagecloud.io, or this script's OS detection failed."</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"You can override the OS detection by setting os= and dist= prior to running this script."</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"You can find a list of supported OSes and distributions on our website: https://packagecloud.io/docs#os_distro_version"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"For example, to force Ubuntu Trusty: os=ubuntu dist=trusty ./script.sh"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"If you are running a supported OS, please email support@packagecloud.io and report this."</span>
+    [ <span class="hljs-_">-e</span> <span class="hljs-variable">$apt_source_path</span> ] &amp;&amp; rm <span class="hljs-variable">$apt_source_path</span>
+    <span class="hljs-built_in">exit</span> 1
+  <span class="hljs-keyword">elif</span> [ <span class="hljs-string">"<span class="hljs-variable">$curl_exit_code</span>"</span> = <span class="hljs-string">"35"</span> -o <span class="hljs-string">"<span class="hljs-variable">$curl_exit_code</span>"</span> = <span class="hljs-string">"60"</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"curl is unable to connect to packagecloud.io over TLS when running: "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"    curl <span class="hljs-variable">${apt_config_url}</span>"</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"This is usually due to one of two things:"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">" 1.) Missing CA root certificates (make sure the ca-certificates package is installed)"</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">" 2.) An old version of libssl. Try upgrading libssl on your system to a more recent version"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Contact support@packagecloud.io with information about your system for help."</span>
+    [ <span class="hljs-_">-e</span> <span class="hljs-variable">$apt_source_path</span> ] &amp;&amp; rm <span class="hljs-variable">$apt_source_path</span>
+    <span class="hljs-built_in">exit</span> 1
+  <span class="hljs-keyword">elif</span> [ <span class="hljs-string">"<span class="hljs-variable">$curl_exit_code</span>"</span> <span class="hljs-_">-gt</span> <span class="hljs-string">"0"</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Unable to run: "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"    curl <span class="hljs-variable">${apt_config_url}</span>"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Double check your curl installation and try again."</span>
+    [ <span class="hljs-_">-e</span> <span class="hljs-variable">$apt_source_path</span> ] &amp;&amp; rm <span class="hljs-variable">$apt_source_path</span>
+    <span class="hljs-built_in">exit</span> 1
+  <span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+  <span class="hljs-keyword">fi</span>
+
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Importing packagecloud gpg key... "</span>
+  <span class="hljs-comment"># import the gpg key</span>
+  curl -L <span class="hljs-string">"<span class="hljs-variable">${gpg_key_url}</span>"</span> 2&gt; /dev/null | apt-key add - &amp;&gt;/dev/null
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Running apt-get update... "</span>
+  <span class="hljs-comment"># update apt on this system</span>
+  apt-get update &amp;&gt; /dev/null
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+
+  <span class="hljs-built_in">echo</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"The repository is setup! You can now install packages."</span>
+}
+
+main
+
+</pre><!--googleon: all-->
+  </div>
+</div>
+
+        </div>
+
+        <a href="https://packagecloud.io/fdio/release/install" class="js-vertical-tab-accordion-heading vertical-tab-accordion-heading" rel="tab3">node.JS</a>
+        <div id="tab3" class="js-vertical-tab-content vertical-tab-content" style="display: none;">
+          <div class="type">
+  <h3>
+    node
+  </h3>
+  <div class="quick">
+    <div class="links">
+      <div class="heading">quick install</div>
+      <div class="copy-button-container">
+        <a class="btn primary outline js-clipboard" data-script-type="sudo-bash" ng-click="flashScriptContainer($event)" data-clipboard-text="curl -s https://packagecloud.io/install/repositories/fdio/release/script.node.sh | bash" href="https://packagecloud.io/fdio/release/install">copy</a>
+      </div>
+    </div>
+    <!--googleoff: all--><pre class="sudo-bash-script">curl -s https://packagecloud.io/install/repositories/fdio/release/script.node.sh | bash</pre><!--googleon: all-->
+  </div>
+  <div class="script">
+    <div class="links">
+      <div class="heading">full script.node.sh</div>
+    </div>
+
+    <!--googleoff: all--><pre class="install-script hljs bash"><span class="hljs-meta">#!/bin/bash
+</span>
+<span class="hljs-function"><span class="hljs-title">unknown_os</span></span> ()
+{
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Unfortunately, your operating system distribution and version are not supported by this script."</span>
+  <span class="hljs-built_in">echo</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"You can override the OS detection by setting os= and dist= prior to running this script."</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"You can find a list of supported OSes and distributions on our website: https://packagecloud.io/docs#os_distro_version"</span>
+  <span class="hljs-built_in">echo</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"For example, to force Ubuntu Trusty: os=ubuntu dist=trusty ./script.sh"</span>
+  <span class="hljs-built_in">echo</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Please email support@packagecloud.io and let us know if you run into any issues."</span>
+  <span class="hljs-built_in">exit</span> 1
+}
+
+<span class="hljs-function"><span class="hljs-title">gpg_check</span></span> ()
+{
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Checking for gpg..."</span>
+  <span class="hljs-keyword">if</span> <span class="hljs-built_in">command</span> -v gpg &gt; /dev/null; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Detected gpg..."</span>
+  <span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Installing gnupg for GPG verification..."</span>
+    apt-get install -y gnupg
+    <span class="hljs-keyword">if</span> [ <span class="hljs-string">"$?"</span> <span class="hljs-_">-ne</span> <span class="hljs-string">"0"</span> ]; <span class="hljs-keyword">then</span>
+      <span class="hljs-built_in">echo</span> <span class="hljs-string">"Unable to install GPG! Your base system has a problem; please check your default OS's package repositories because GPG should work."</span>
+      <span class="hljs-built_in">echo</span> <span class="hljs-string">"Repository installation aborted."</span>
+      <span class="hljs-built_in">exit</span> 1
+    <span class="hljs-keyword">fi</span>
+  <span class="hljs-keyword">fi</span>
+}
+
+<span class="hljs-function"><span class="hljs-title">curl_check</span></span> ()
+{
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Checking for curl..."</span>
+  <span class="hljs-keyword">if</span> <span class="hljs-built_in">command</span> -v curl &gt; /dev/null; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Detected curl..."</span>
+  <span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Installing curl..."</span>
+    apt-get install -q -y curl
+    <span class="hljs-keyword">if</span> [ <span class="hljs-string">"$?"</span> <span class="hljs-_">-ne</span> <span class="hljs-string">"0"</span> ]; <span class="hljs-keyword">then</span>
+      <span class="hljs-built_in">echo</span> <span class="hljs-string">"Unable to install curl! Your base system has a problem; please check your default OS's package repositories because curl should work."</span>
+      <span class="hljs-built_in">echo</span> <span class="hljs-string">"Repository installation aborted."</span>
+      <span class="hljs-built_in">exit</span> 1
+    <span class="hljs-keyword">fi</span>
+  <span class="hljs-keyword">fi</span>
+}
+
+<span class="hljs-function"><span class="hljs-title">install_debian_keyring</span></span> ()
+{
+  <span class="hljs-keyword">if</span> [ <span class="hljs-string">"<span class="hljs-variable">${os}</span>"</span> = <span class="hljs-string">"debian"</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Installing debian-archive-keyring which is needed for installing "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"apt-transport-https on many Debian systems."</span>
+    apt-get install -y debian-archive-keyring &amp;&gt; /dev/null
+  <span class="hljs-keyword">fi</span>
+}
+
+
+<span class="hljs-function"><span class="hljs-title">detect_os</span></span> ()
+{
+  <span class="hljs-keyword">if</span> [[ ( -z <span class="hljs-string">"<span class="hljs-variable">${os}</span>"</span> ) &amp;&amp; ( -z <span class="hljs-string">"<span class="hljs-variable">${dist}</span>"</span> ) ]]; <span class="hljs-keyword">then</span>
+    <span class="hljs-comment"># some systems dont have lsb-release yet have the lsb_release binary and</span>
+    <span class="hljs-comment"># vice-versa</span>
+    <span class="hljs-keyword">if</span> [ <span class="hljs-_">-e</span> /etc/lsb-release ]; <span class="hljs-keyword">then</span>
+      . /etc/lsb-release
+
+      <span class="hljs-keyword">if</span> [ <span class="hljs-string">"<span class="hljs-variable">${ID}</span>"</span> = <span class="hljs-string">"raspbian"</span> ]; <span class="hljs-keyword">then</span>
+        os=<span class="hljs-variable">${ID}</span>
+        dist=`cut --delimiter=<span class="hljs-string">'.'</span> <span class="hljs-_">-f</span>1 /etc/debian_version`
+      <span class="hljs-keyword">else</span>
+        os=<span class="hljs-variable">${DISTRIB_ID}</span>
+        dist=<span class="hljs-variable">${DISTRIB_CODENAME}</span>
+
+        <span class="hljs-keyword">if</span> [ -z <span class="hljs-string">"<span class="hljs-variable">$dist</span>"</span> ]; <span class="hljs-keyword">then</span>
+          dist=<span class="hljs-variable">${DISTRIB_RELEASE}</span>
+        <span class="hljs-keyword">fi</span>
+      <span class="hljs-keyword">fi</span>
+
+    <span class="hljs-keyword">elif</span> [ `<span class="hljs-built_in">which</span> lsb_release 2&gt;/dev/null` ]; <span class="hljs-keyword">then</span>
+      dist=`lsb_release -c | cut <span class="hljs-_">-f</span>2`
+      os=`lsb_release -i | cut <span class="hljs-_">-f</span>2 | awk <span class="hljs-string">'{ print tolower($1) }'</span>`
+
+    <span class="hljs-keyword">elif</span> [ <span class="hljs-_">-e</span> /etc/debian_version ]; <span class="hljs-keyword">then</span>
+      <span class="hljs-comment"># some Debians have jessie/sid in their /etc/debian_version</span>
+      <span class="hljs-comment"># while others have '6.0.7'</span>
+      os=`cat /etc/issue | head -1 | awk <span class="hljs-string">'{ print tolower($1) }'</span>`
+      <span class="hljs-keyword">if</span> grep -q <span class="hljs-string">'/'</span> /etc/debian_version; <span class="hljs-keyword">then</span>
+        dist=`cut --delimiter=<span class="hljs-string">'/'</span> <span class="hljs-_">-f</span>1 /etc/debian_version`
+      <span class="hljs-keyword">else</span>
+        dist=`cut --delimiter=<span class="hljs-string">'.'</span> <span class="hljs-_">-f</span>1 /etc/debian_version`
+      <span class="hljs-keyword">fi</span>
+
+    <span class="hljs-keyword">else</span>
+      unknown_os
+    <span class="hljs-keyword">fi</span>
+  <span class="hljs-keyword">fi</span>
+
+  <span class="hljs-keyword">if</span> [ -z <span class="hljs-string">"<span class="hljs-variable">$dist</span>"</span> ]; <span class="hljs-keyword">then</span>
+    unknown_os
+  <span class="hljs-keyword">fi</span>
+
+  <span class="hljs-comment"># remove whitespace from OS and dist name</span>
+  os=<span class="hljs-string">"<span class="hljs-variable">${os// /}</span>"</span>
+  dist=<span class="hljs-string">"<span class="hljs-variable">${dist// /}</span>"</span>
+
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Detected operating system as <span class="hljs-variable">$os</span>/<span class="hljs-variable">$dist</span>."</span>
+}
+
+<span class="hljs-function"><span class="hljs-title">main</span></span> ()
+{
+  detect_os
+  curl_check
+  gpg_check
+
+  <span class="hljs-comment"># Need to first run apt-get update so that apt-transport-https can be</span>
+  <span class="hljs-comment"># installed</span>
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Running apt-get update... "</span>
+  apt-get update &amp;&gt; /dev/null
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+
+  <span class="hljs-comment"># Install the debian-archive-keyring package on debian systems so that</span>
+  <span class="hljs-comment"># apt-transport-https can be installed next</span>
+  install_debian_keyring
+
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Installing apt-transport-https... "</span>
+  apt-get install -y apt-transport-https &amp;&gt; /dev/null
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+
+
+  gpg_key_url=<span class="hljs-string">"https://packagecloud.io/fdio/release/gpgkey"</span>
+  apt_config_url=<span class="hljs-string">"https://packagecloud.io/install/repositories/fdio/release/config_file.list?os=<span class="hljs-variable">${os}</span>&amp;dist=<span class="hljs-variable">${dist}</span>&amp;source=script"</span>
+
+  apt_<span class="hljs-built_in">source</span>_path=<span class="hljs-string">"/etc/apt/sources.list.d/fdio_release.list"</span>
+
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Installing <span class="hljs-variable">$apt_source_path</span>..."</span>
+
+  <span class="hljs-comment"># create an apt config file for this repository</span>
+  curl <span class="hljs-_">-s</span>Sf <span class="hljs-string">"<span class="hljs-variable">${apt_config_url}</span>"</span> &gt; <span class="hljs-variable">$apt_source_path</span>
+  curl_<span class="hljs-built_in">exit</span>_code=$?
+
+  <span class="hljs-keyword">if</span> [ <span class="hljs-string">"<span class="hljs-variable">$curl_exit_code</span>"</span> = <span class="hljs-string">"22"</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Unable to download repo config from: "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"<span class="hljs-variable">${apt_config_url}</span>"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"This usually happens if your operating system is not supported by "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"packagecloud.io, or this script's OS detection failed."</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"You can override the OS detection by setting os= and dist= prior to running this script."</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"You can find a list of supported OSes and distributions on our website: https://packagecloud.io/docs#os_distro_version"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"For example, to force Ubuntu Trusty: os=ubuntu dist=trusty ./script.sh"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"If you are running a supported OS, please email support@packagecloud.io and report this."</span>
+    [ <span class="hljs-_">-e</span> <span class="hljs-variable">$apt_source_path</span> ] &amp;&amp; rm <span class="hljs-variable">$apt_source_path</span>
+    <span class="hljs-built_in">exit</span> 1
+  <span class="hljs-keyword">elif</span> [ <span class="hljs-string">"<span class="hljs-variable">$curl_exit_code</span>"</span> = <span class="hljs-string">"35"</span> -o <span class="hljs-string">"<span class="hljs-variable">$curl_exit_code</span>"</span> = <span class="hljs-string">"60"</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"curl is unable to connect to packagecloud.io over TLS when running: "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"    curl <span class="hljs-variable">${apt_config_url}</span>"</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"This is usually due to one of two things:"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">" 1.) Missing CA root certificates (make sure the ca-certificates package is installed)"</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">" 2.) An old version of libssl. Try upgrading libssl on your system to a more recent version"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Contact support@packagecloud.io with information about your system for help."</span>
+    [ <span class="hljs-_">-e</span> <span class="hljs-variable">$apt_source_path</span> ] &amp;&amp; rm <span class="hljs-variable">$apt_source_path</span>
+    <span class="hljs-built_in">exit</span> 1
+  <span class="hljs-keyword">elif</span> [ <span class="hljs-string">"<span class="hljs-variable">$curl_exit_code</span>"</span> <span class="hljs-_">-gt</span> <span class="hljs-string">"0"</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Unable to run: "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"    curl <span class="hljs-variable">${apt_config_url}</span>"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Double check your curl installation and try again."</span>
+    [ <span class="hljs-_">-e</span> <span class="hljs-variable">$apt_source_path</span> ] &amp;&amp; rm <span class="hljs-variable">$apt_source_path</span>
+    <span class="hljs-built_in">exit</span> 1
+  <span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+  <span class="hljs-keyword">fi</span>
+
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Importing packagecloud gpg key... "</span>
+  <span class="hljs-comment"># import the gpg key</span>
+  curl -L <span class="hljs-string">"<span class="hljs-variable">${gpg_key_url}</span>"</span> 2&gt; /dev/null | apt-key add - &amp;&gt;/dev/null
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Running apt-get update... "</span>
+  <span class="hljs-comment"># update apt on this system</span>
+  apt-get update &amp;&gt; /dev/null
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+
+  <span class="hljs-built_in">echo</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"The repository is setup! You can now install packages."</span>
+}
+
+main
+
+</pre><!--googleon: all-->
+  </div>
+</div>
+
+        </div>
+
+        <a href="https://packagecloud.io/fdio/release/install" class="js-vertical-tab-accordion-heading vertical-tab-accordion-heading" rel="tab4">pip</a>
+        <div id="tab4" class="js-vertical-tab-content vertical-tab-content" style="display: none;">
+          <div class="type">
+  <h3>
+    python
+  </h3>
+  <div class="callout-container tool-callout" signup-callout="">
+    <div class="text-container">
+      <div class="callout-text">
+        <h3>Are you using virtualenv?</h3>
+      </div>
+      <div class="button-container">
+        <div class="callout-button">
+          <a class="btn primary" ng_click="inlineUpdate(&#39;#virtualenv&#39;)" href="https://packagecloud.io/fdio/release/install#virtualenv">Read our virtualenv instructions</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="quick">
+    <div class="links">
+      <div class="heading">quick install</div>
+      <div class="copy-button-container">
+        <a class="btn primary outline js-clipboard" data-script-type="sudo-bash" ng-click="flashScriptContainer($event)" data-clipboard-text="curl -s https://packagecloud.io/install/repositories/fdio/release/script.python.sh | bash" href="https://packagecloud.io/fdio/release/install">copy</a>
+      </div>
+    </div>
+    <!--googleoff: all--><pre class="sudo-bash-script">curl -s https://packagecloud.io/install/repositories/fdio/release/script.python.sh | bash</pre><!--googleon: all-->
+  </div>
+  <div class="script">
+    <div class="links">
+      <div class="heading">full script.python.sh</div>
+    </div>
+
+    <!--googleoff: all--><pre class="install-script hljs bash"><span class="hljs-meta">#!/bin/bash
+</span>
+<span class="hljs-function"><span class="hljs-title">unknown_os</span></span> ()
+{
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Unfortunately, your operating system distribution and version are not supported by this script."</span>
+  <span class="hljs-built_in">echo</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"You can override the OS detection by setting os= and dist= prior to running this script."</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"You can find a list of supported OSes and distributions on our website: https://packagecloud.io/docs#os_distro_version"</span>
+  <span class="hljs-built_in">echo</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"For example, to force Ubuntu Trusty: os=ubuntu dist=trusty ./script.sh"</span>
+  <span class="hljs-built_in">echo</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Please email support@packagecloud.io and let us know if you run into any issues."</span>
+  <span class="hljs-built_in">exit</span> 1
+}
+
+<span class="hljs-function"><span class="hljs-title">gpg_check</span></span> ()
+{
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Checking for gpg..."</span>
+  <span class="hljs-keyword">if</span> <span class="hljs-built_in">command</span> -v gpg &gt; /dev/null; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Detected gpg..."</span>
+  <span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Installing gnupg for GPG verification..."</span>
+    apt-get install -y gnupg
+    <span class="hljs-keyword">if</span> [ <span class="hljs-string">"$?"</span> <span class="hljs-_">-ne</span> <span class="hljs-string">"0"</span> ]; <span class="hljs-keyword">then</span>
+      <span class="hljs-built_in">echo</span> <span class="hljs-string">"Unable to install GPG! Your base system has a problem; please check your default OS's package repositories because GPG should work."</span>
+      <span class="hljs-built_in">echo</span> <span class="hljs-string">"Repository installation aborted."</span>
+      <span class="hljs-built_in">exit</span> 1
+    <span class="hljs-keyword">fi</span>
+  <span class="hljs-keyword">fi</span>
+}
+
+<span class="hljs-function"><span class="hljs-title">curl_check</span></span> ()
+{
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Checking for curl..."</span>
+  <span class="hljs-keyword">if</span> <span class="hljs-built_in">command</span> -v curl &gt; /dev/null; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Detected curl..."</span>
+  <span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Installing curl..."</span>
+    apt-get install -q -y curl
+    <span class="hljs-keyword">if</span> [ <span class="hljs-string">"$?"</span> <span class="hljs-_">-ne</span> <span class="hljs-string">"0"</span> ]; <span class="hljs-keyword">then</span>
+      <span class="hljs-built_in">echo</span> <span class="hljs-string">"Unable to install curl! Your base system has a problem; please check your default OS's package repositories because curl should work."</span>
+      <span class="hljs-built_in">echo</span> <span class="hljs-string">"Repository installation aborted."</span>
+      <span class="hljs-built_in">exit</span> 1
+    <span class="hljs-keyword">fi</span>
+  <span class="hljs-keyword">fi</span>
+}
+
+<span class="hljs-function"><span class="hljs-title">install_debian_keyring</span></span> ()
+{
+  <span class="hljs-keyword">if</span> [ <span class="hljs-string">"<span class="hljs-variable">${os}</span>"</span> = <span class="hljs-string">"debian"</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Installing debian-archive-keyring which is needed for installing "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"apt-transport-https on many Debian systems."</span>
+    apt-get install -y debian-archive-keyring &amp;&gt; /dev/null
+  <span class="hljs-keyword">fi</span>
+}
+
+
+<span class="hljs-function"><span class="hljs-title">detect_os</span></span> ()
+{
+  <span class="hljs-keyword">if</span> [[ ( -z <span class="hljs-string">"<span class="hljs-variable">${os}</span>"</span> ) &amp;&amp; ( -z <span class="hljs-string">"<span class="hljs-variable">${dist}</span>"</span> ) ]]; <span class="hljs-keyword">then</span>
+    <span class="hljs-comment"># some systems dont have lsb-release yet have the lsb_release binary and</span>
+    <span class="hljs-comment"># vice-versa</span>
+    <span class="hljs-keyword">if</span> [ <span class="hljs-_">-e</span> /etc/lsb-release ]; <span class="hljs-keyword">then</span>
+      . /etc/lsb-release
+
+      <span class="hljs-keyword">if</span> [ <span class="hljs-string">"<span class="hljs-variable">${ID}</span>"</span> = <span class="hljs-string">"raspbian"</span> ]; <span class="hljs-keyword">then</span>
+        os=<span class="hljs-variable">${ID}</span>
+        dist=`cut --delimiter=<span class="hljs-string">'.'</span> <span class="hljs-_">-f</span>1 /etc/debian_version`
+      <span class="hljs-keyword">else</span>
+        os=<span class="hljs-variable">${DISTRIB_ID}</span>
+        dist=<span class="hljs-variable">${DISTRIB_CODENAME}</span>
+
+        <span class="hljs-keyword">if</span> [ -z <span class="hljs-string">"<span class="hljs-variable">$dist</span>"</span> ]; <span class="hljs-keyword">then</span>
+          dist=<span class="hljs-variable">${DISTRIB_RELEASE}</span>
+        <span class="hljs-keyword">fi</span>
+      <span class="hljs-keyword">fi</span>
+
+    <span class="hljs-keyword">elif</span> [ `<span class="hljs-built_in">which</span> lsb_release 2&gt;/dev/null` ]; <span class="hljs-keyword">then</span>
+      dist=`lsb_release -c | cut <span class="hljs-_">-f</span>2`
+      os=`lsb_release -i | cut <span class="hljs-_">-f</span>2 | awk <span class="hljs-string">'{ print tolower($1) }'</span>`
+
+    <span class="hljs-keyword">elif</span> [ <span class="hljs-_">-e</span> /etc/debian_version ]; <span class="hljs-keyword">then</span>
+      <span class="hljs-comment"># some Debians have jessie/sid in their /etc/debian_version</span>
+      <span class="hljs-comment"># while others have '6.0.7'</span>
+      os=`cat /etc/issue | head -1 | awk <span class="hljs-string">'{ print tolower($1) }'</span>`
+      <span class="hljs-keyword">if</span> grep -q <span class="hljs-string">'/'</span> /etc/debian_version; <span class="hljs-keyword">then</span>
+        dist=`cut --delimiter=<span class="hljs-string">'/'</span> <span class="hljs-_">-f</span>1 /etc/debian_version`
+      <span class="hljs-keyword">else</span>
+        dist=`cut --delimiter=<span class="hljs-string">'.'</span> <span class="hljs-_">-f</span>1 /etc/debian_version`
+      <span class="hljs-keyword">fi</span>
+
+    <span class="hljs-keyword">else</span>
+      unknown_os
+    <span class="hljs-keyword">fi</span>
+  <span class="hljs-keyword">fi</span>
+
+  <span class="hljs-keyword">if</span> [ -z <span class="hljs-string">"<span class="hljs-variable">$dist</span>"</span> ]; <span class="hljs-keyword">then</span>
+    unknown_os
+  <span class="hljs-keyword">fi</span>
+
+  <span class="hljs-comment"># remove whitespace from OS and dist name</span>
+  os=<span class="hljs-string">"<span class="hljs-variable">${os// /}</span>"</span>
+  dist=<span class="hljs-string">"<span class="hljs-variable">${dist// /}</span>"</span>
+
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Detected operating system as <span class="hljs-variable">$os</span>/<span class="hljs-variable">$dist</span>."</span>
+}
+
+<span class="hljs-function"><span class="hljs-title">main</span></span> ()
+{
+  detect_os
+  curl_check
+  gpg_check
+
+  <span class="hljs-comment"># Need to first run apt-get update so that apt-transport-https can be</span>
+  <span class="hljs-comment"># installed</span>
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Running apt-get update... "</span>
+  apt-get update &amp;&gt; /dev/null
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+
+  <span class="hljs-comment"># Install the debian-archive-keyring package on debian systems so that</span>
+  <span class="hljs-comment"># apt-transport-https can be installed next</span>
+  install_debian_keyring
+
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Installing apt-transport-https... "</span>
+  apt-get install -y apt-transport-https &amp;&gt; /dev/null
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+
+
+  gpg_key_url=<span class="hljs-string">"https://packagecloud.io/fdio/release/gpgkey"</span>
+  apt_config_url=<span class="hljs-string">"https://packagecloud.io/install/repositories/fdio/release/config_file.list?os=<span class="hljs-variable">${os}</span>&amp;dist=<span class="hljs-variable">${dist}</span>&amp;source=script"</span>
+
+  apt_<span class="hljs-built_in">source</span>_path=<span class="hljs-string">"/etc/apt/sources.list.d/fdio_release.list"</span>
+
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Installing <span class="hljs-variable">$apt_source_path</span>..."</span>
+
+  <span class="hljs-comment"># create an apt config file for this repository</span>
+  curl <span class="hljs-_">-s</span>Sf <span class="hljs-string">"<span class="hljs-variable">${apt_config_url}</span>"</span> &gt; <span class="hljs-variable">$apt_source_path</span>
+  curl_<span class="hljs-built_in">exit</span>_code=$?
+
+  <span class="hljs-keyword">if</span> [ <span class="hljs-string">"<span class="hljs-variable">$curl_exit_code</span>"</span> = <span class="hljs-string">"22"</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Unable to download repo config from: "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"<span class="hljs-variable">${apt_config_url}</span>"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"This usually happens if your operating system is not supported by "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"packagecloud.io, or this script's OS detection failed."</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"You can override the OS detection by setting os= and dist= prior to running this script."</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"You can find a list of supported OSes and distributions on our website: https://packagecloud.io/docs#os_distro_version"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"For example, to force Ubuntu Trusty: os=ubuntu dist=trusty ./script.sh"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"If you are running a supported OS, please email support@packagecloud.io and report this."</span>
+    [ <span class="hljs-_">-e</span> <span class="hljs-variable">$apt_source_path</span> ] &amp;&amp; rm <span class="hljs-variable">$apt_source_path</span>
+    <span class="hljs-built_in">exit</span> 1
+  <span class="hljs-keyword">elif</span> [ <span class="hljs-string">"<span class="hljs-variable">$curl_exit_code</span>"</span> = <span class="hljs-string">"35"</span> -o <span class="hljs-string">"<span class="hljs-variable">$curl_exit_code</span>"</span> = <span class="hljs-string">"60"</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"curl is unable to connect to packagecloud.io over TLS when running: "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"    curl <span class="hljs-variable">${apt_config_url}</span>"</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"This is usually due to one of two things:"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">" 1.) Missing CA root certificates (make sure the ca-certificates package is installed)"</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">" 2.) An old version of libssl. Try upgrading libssl on your system to a more recent version"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Contact support@packagecloud.io with information about your system for help."</span>
+    [ <span class="hljs-_">-e</span> <span class="hljs-variable">$apt_source_path</span> ] &amp;&amp; rm <span class="hljs-variable">$apt_source_path</span>
+    <span class="hljs-built_in">exit</span> 1
+  <span class="hljs-keyword">elif</span> [ <span class="hljs-string">"<span class="hljs-variable">$curl_exit_code</span>"</span> <span class="hljs-_">-gt</span> <span class="hljs-string">"0"</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Unable to run: "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"    curl <span class="hljs-variable">${apt_config_url}</span>"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Double check your curl installation and try again."</span>
+    [ <span class="hljs-_">-e</span> <span class="hljs-variable">$apt_source_path</span> ] &amp;&amp; rm <span class="hljs-variable">$apt_source_path</span>
+    <span class="hljs-built_in">exit</span> 1
+  <span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+  <span class="hljs-keyword">fi</span>
+
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Importing packagecloud gpg key... "</span>
+  <span class="hljs-comment"># import the gpg key</span>
+  curl -L <span class="hljs-string">"<span class="hljs-variable">${gpg_key_url}</span>"</span> 2&gt; /dev/null | apt-key add - &amp;&gt;/dev/null
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Running apt-get update... "</span>
+  <span class="hljs-comment"># update apt on this system</span>
+  apt-get update &amp;&gt; /dev/null
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+
+  <span class="hljs-built_in">echo</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"The repository is setup! You can now install packages."</span>
+}
+
+main
+
+</pre><!--googleon: all-->
+  </div>
+</div>
+
+        </div>
+
+        <a href="https://packagecloud.io/fdio/release/install" class="js-vertical-tab-accordion-heading vertical-tab-accordion-heading" rel="tab5">gem</a>
+        <div id="tab5" class="js-vertical-tab-content vertical-tab-content" style="display: none;">
+          <div class="type">
+  <h3>
+    gem
+  </h3>
+  <div class="callout-container tool-callout" signup-callout="">
+    <div class="text-container">
+      <div class="callout-text">
+        <h3>Are you using Bundler?</h3>
+      </div>
+      <div class="button-container">
+        <div class="callout-button">
+          <a class="btn primary" ng_click="inlineUpdate(&#39;#bundler&#39;)" href="https://packagecloud.io/fdio/release/install#bundler">Read our Bundler instructions</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="quick">
+    <div class="links">
+      <div class="heading">quick install</div>
+      <div class="copy-button-container">
+        <a class="btn primary outline js-clipboard" data-script-type="sudo-bash" ng-click="flashScriptContainer($event)" data-clipboard-text="curl -s https://packagecloud.io/install/repositories/fdio/release/script.gem.sh | bash" href="https://packagecloud.io/fdio/release/install">copy</a>
+      </div>
+    </div>
+    <!--googleoff: all--><pre class="sudo-bash-script">curl -s https://packagecloud.io/install/repositories/fdio/release/script.gem.sh | bash</pre><!--googleon: all-->
+  </div>
+  <div class="script">
+    <div class="links">
+      <div class="heading">full script.gem.sh</div>
+    </div>
+
+    <!--googleoff: all--><pre class="install-script hljs bash"><span class="hljs-meta">#!/bin/bash
+</span>
+<span class="hljs-function"><span class="hljs-title">unknown_os</span></span> ()
+{
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Unfortunately, your operating system distribution and version are not supported by this script."</span>
+  <span class="hljs-built_in">echo</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"You can override the OS detection by setting os= and dist= prior to running this script."</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"You can find a list of supported OSes and distributions on our website: https://packagecloud.io/docs#os_distro_version"</span>
+  <span class="hljs-built_in">echo</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"For example, to force Ubuntu Trusty: os=ubuntu dist=trusty ./script.sh"</span>
+  <span class="hljs-built_in">echo</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Please email support@packagecloud.io and let us know if you run into any issues."</span>
+  <span class="hljs-built_in">exit</span> 1
+}
+
+<span class="hljs-function"><span class="hljs-title">gpg_check</span></span> ()
+{
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Checking for gpg..."</span>
+  <span class="hljs-keyword">if</span> <span class="hljs-built_in">command</span> -v gpg &gt; /dev/null; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Detected gpg..."</span>
+  <span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Installing gnupg for GPG verification..."</span>
+    apt-get install -y gnupg
+    <span class="hljs-keyword">if</span> [ <span class="hljs-string">"$?"</span> <span class="hljs-_">-ne</span> <span class="hljs-string">"0"</span> ]; <span class="hljs-keyword">then</span>
+      <span class="hljs-built_in">echo</span> <span class="hljs-string">"Unable to install GPG! Your base system has a problem; please check your default OS's package repositories because GPG should work."</span>
+      <span class="hljs-built_in">echo</span> <span class="hljs-string">"Repository installation aborted."</span>
+      <span class="hljs-built_in">exit</span> 1
+    <span class="hljs-keyword">fi</span>
+  <span class="hljs-keyword">fi</span>
+}
+
+<span class="hljs-function"><span class="hljs-title">curl_check</span></span> ()
+{
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Checking for curl..."</span>
+  <span class="hljs-keyword">if</span> <span class="hljs-built_in">command</span> -v curl &gt; /dev/null; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Detected curl..."</span>
+  <span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Installing curl..."</span>
+    apt-get install -q -y curl
+    <span class="hljs-keyword">if</span> [ <span class="hljs-string">"$?"</span> <span class="hljs-_">-ne</span> <span class="hljs-string">"0"</span> ]; <span class="hljs-keyword">then</span>
+      <span class="hljs-built_in">echo</span> <span class="hljs-string">"Unable to install curl! Your base system has a problem; please check your default OS's package repositories because curl should work."</span>
+      <span class="hljs-built_in">echo</span> <span class="hljs-string">"Repository installation aborted."</span>
+      <span class="hljs-built_in">exit</span> 1
+    <span class="hljs-keyword">fi</span>
+  <span class="hljs-keyword">fi</span>
+}
+
+<span class="hljs-function"><span class="hljs-title">install_debian_keyring</span></span> ()
+{
+  <span class="hljs-keyword">if</span> [ <span class="hljs-string">"<span class="hljs-variable">${os}</span>"</span> = <span class="hljs-string">"debian"</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Installing debian-archive-keyring which is needed for installing "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"apt-transport-https on many Debian systems."</span>
+    apt-get install -y debian-archive-keyring &amp;&gt; /dev/null
+  <span class="hljs-keyword">fi</span>
+}
+
+
+<span class="hljs-function"><span class="hljs-title">detect_os</span></span> ()
+{
+  <span class="hljs-keyword">if</span> [[ ( -z <span class="hljs-string">"<span class="hljs-variable">${os}</span>"</span> ) &amp;&amp; ( -z <span class="hljs-string">"<span class="hljs-variable">${dist}</span>"</span> ) ]]; <span class="hljs-keyword">then</span>
+    <span class="hljs-comment"># some systems dont have lsb-release yet have the lsb_release binary and</span>
+    <span class="hljs-comment"># vice-versa</span>
+    <span class="hljs-keyword">if</span> [ <span class="hljs-_">-e</span> /etc/lsb-release ]; <span class="hljs-keyword">then</span>
+      . /etc/lsb-release
+
+      <span class="hljs-keyword">if</span> [ <span class="hljs-string">"<span class="hljs-variable">${ID}</span>"</span> = <span class="hljs-string">"raspbian"</span> ]; <span class="hljs-keyword">then</span>
+        os=<span class="hljs-variable">${ID}</span>
+        dist=`cut --delimiter=<span class="hljs-string">'.'</span> <span class="hljs-_">-f</span>1 /etc/debian_version`
+      <span class="hljs-keyword">else</span>
+        os=<span class="hljs-variable">${DISTRIB_ID}</span>
+        dist=<span class="hljs-variable">${DISTRIB_CODENAME}</span>
+
+        <span class="hljs-keyword">if</span> [ -z <span class="hljs-string">"<span class="hljs-variable">$dist</span>"</span> ]; <span class="hljs-keyword">then</span>
+          dist=<span class="hljs-variable">${DISTRIB_RELEASE}</span>
+        <span class="hljs-keyword">fi</span>
+      <span class="hljs-keyword">fi</span>
+
+    <span class="hljs-keyword">elif</span> [ `<span class="hljs-built_in">which</span> lsb_release 2&gt;/dev/null` ]; <span class="hljs-keyword">then</span>
+      dist=`lsb_release -c | cut <span class="hljs-_">-f</span>2`
+      os=`lsb_release -i | cut <span class="hljs-_">-f</span>2 | awk <span class="hljs-string">'{ print tolower($1) }'</span>`
+
+    <span class="hljs-keyword">elif</span> [ <span class="hljs-_">-e</span> /etc/debian_version ]; <span class="hljs-keyword">then</span>
+      <span class="hljs-comment"># some Debians have jessie/sid in their /etc/debian_version</span>
+      <span class="hljs-comment"># while others have '6.0.7'</span>
+      os=`cat /etc/issue | head -1 | awk <span class="hljs-string">'{ print tolower($1) }'</span>`
+      <span class="hljs-keyword">if</span> grep -q <span class="hljs-string">'/'</span> /etc/debian_version; <span class="hljs-keyword">then</span>
+        dist=`cut --delimiter=<span class="hljs-string">'/'</span> <span class="hljs-_">-f</span>1 /etc/debian_version`
+      <span class="hljs-keyword">else</span>
+        dist=`cut --delimiter=<span class="hljs-string">'.'</span> <span class="hljs-_">-f</span>1 /etc/debian_version`
+      <span class="hljs-keyword">fi</span>
+
+    <span class="hljs-keyword">else</span>
+      unknown_os
+    <span class="hljs-keyword">fi</span>
+  <span class="hljs-keyword">fi</span>
+
+  <span class="hljs-keyword">if</span> [ -z <span class="hljs-string">"<span class="hljs-variable">$dist</span>"</span> ]; <span class="hljs-keyword">then</span>
+    unknown_os
+  <span class="hljs-keyword">fi</span>
+
+  <span class="hljs-comment"># remove whitespace from OS and dist name</span>
+  os=<span class="hljs-string">"<span class="hljs-variable">${os// /}</span>"</span>
+  dist=<span class="hljs-string">"<span class="hljs-variable">${dist// /}</span>"</span>
+
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"Detected operating system as <span class="hljs-variable">$os</span>/<span class="hljs-variable">$dist</span>."</span>
+}
+
+<span class="hljs-function"><span class="hljs-title">main</span></span> ()
+{
+  detect_os
+  curl_check
+  gpg_check
+
+  <span class="hljs-comment"># Need to first run apt-get update so that apt-transport-https can be</span>
+  <span class="hljs-comment"># installed</span>
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Running apt-get update... "</span>
+  apt-get update &amp;&gt; /dev/null
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+
+  <span class="hljs-comment"># Install the debian-archive-keyring package on debian systems so that</span>
+  <span class="hljs-comment"># apt-transport-https can be installed next</span>
+  install_debian_keyring
+
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Installing apt-transport-https... "</span>
+  apt-get install -y apt-transport-https &amp;&gt; /dev/null
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+
+
+  gpg_key_url=<span class="hljs-string">"https://packagecloud.io/fdio/release/gpgkey"</span>
+  apt_config_url=<span class="hljs-string">"https://packagecloud.io/install/repositories/fdio/release/config_file.list?os=<span class="hljs-variable">${os}</span>&amp;dist=<span class="hljs-variable">${dist}</span>&amp;source=script"</span>
+
+  apt_<span class="hljs-built_in">source</span>_path=<span class="hljs-string">"/etc/apt/sources.list.d/fdio_release.list"</span>
+
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Installing <span class="hljs-variable">$apt_source_path</span>..."</span>
+
+  <span class="hljs-comment"># create an apt config file for this repository</span>
+  curl <span class="hljs-_">-s</span>Sf <span class="hljs-string">"<span class="hljs-variable">${apt_config_url}</span>"</span> &gt; <span class="hljs-variable">$apt_source_path</span>
+  curl_<span class="hljs-built_in">exit</span>_code=$?
+
+  <span class="hljs-keyword">if</span> [ <span class="hljs-string">"<span class="hljs-variable">$curl_exit_code</span>"</span> = <span class="hljs-string">"22"</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Unable to download repo config from: "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"<span class="hljs-variable">${apt_config_url}</span>"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"This usually happens if your operating system is not supported by "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"packagecloud.io, or this script's OS detection failed."</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"You can override the OS detection by setting os= and dist= prior to running this script."</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"You can find a list of supported OSes and distributions on our website: https://packagecloud.io/docs#os_distro_version"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"For example, to force Ubuntu Trusty: os=ubuntu dist=trusty ./script.sh"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"If you are running a supported OS, please email support@packagecloud.io and report this."</span>
+    [ <span class="hljs-_">-e</span> <span class="hljs-variable">$apt_source_path</span> ] &amp;&amp; rm <span class="hljs-variable">$apt_source_path</span>
+    <span class="hljs-built_in">exit</span> 1
+  <span class="hljs-keyword">elif</span> [ <span class="hljs-string">"<span class="hljs-variable">$curl_exit_code</span>"</span> = <span class="hljs-string">"35"</span> -o <span class="hljs-string">"<span class="hljs-variable">$curl_exit_code</span>"</span> = <span class="hljs-string">"60"</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"curl is unable to connect to packagecloud.io over TLS when running: "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"    curl <span class="hljs-variable">${apt_config_url}</span>"</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"This is usually due to one of two things:"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">" 1.) Missing CA root certificates (make sure the ca-certificates package is installed)"</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">" 2.) An old version of libssl. Try upgrading libssl on your system to a more recent version"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Contact support@packagecloud.io with information about your system for help."</span>
+    [ <span class="hljs-_">-e</span> <span class="hljs-variable">$apt_source_path</span> ] &amp;&amp; rm <span class="hljs-variable">$apt_source_path</span>
+    <span class="hljs-built_in">exit</span> 1
+  <span class="hljs-keyword">elif</span> [ <span class="hljs-string">"<span class="hljs-variable">$curl_exit_code</span>"</span> <span class="hljs-_">-gt</span> <span class="hljs-string">"0"</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Unable to run: "</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"    curl <span class="hljs-variable">${apt_config_url}</span>"</span>
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"Double check your curl installation and try again."</span>
+    [ <span class="hljs-_">-e</span> <span class="hljs-variable">$apt_source_path</span> ] &amp;&amp; rm <span class="hljs-variable">$apt_source_path</span>
+    <span class="hljs-built_in">exit</span> 1
+  <span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+  <span class="hljs-keyword">fi</span>
+
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Importing packagecloud gpg key... "</span>
+  <span class="hljs-comment"># import the gpg key</span>
+  curl -L <span class="hljs-string">"<span class="hljs-variable">${gpg_key_url}</span>"</span> 2&gt; /dev/null | apt-key add - &amp;&gt;/dev/null
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+
+  <span class="hljs-built_in">echo</span> -n <span class="hljs-string">"Running apt-get update... "</span>
+  <span class="hljs-comment"># update apt on this system</span>
+  apt-get update &amp;&gt; /dev/null
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"done."</span>
+
+  <span class="hljs-built_in">echo</span>
+  <span class="hljs-built_in">echo</span> <span class="hljs-string">"The repository is setup! You can now install packages."</span>
+}
+
+main
+
+</pre><!--googleon: all-->
+  </div>
+</div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="manual-tab" class="tab-content" style="display: none;">
+    <h3>Manual Installation</h3>
+    <p>
+      If you'd prefer to install your repo on your system manually, follow the instructions below. If you feel something is missing or just want more info, don't hesitate to <a href="mailto:support@packagecloud.io">get in touch</a>.
+    </p>
+    <div class="vertical-tabs-container">
+      <div class="vertical-tabs">
+        <a href="https://packagecloud.io/fdio/release/install#manual-deb" class="js-vertical-tab vertical-tab is-active" rel="tab6">deb</a>
+        <a href="https://packagecloud.io/fdio/release/install#manual-rpm" class="js-vertical-tab vertical-tab" rel="tab7">rpm</a>
+        <a href="https://packagecloud.io/fdio/release/install#manual-node" class="js-vertical-tab vertical-tab" rel="tab8">node</a>
+        <a href="https://packagecloud.io/fdio/release/install#manual-zypper" class="js-vertical-tab vertical-tab" rel="tab9">zypper</a>
+        <a href="https://packagecloud.io/fdio/release/install#manual-gem" class="js-vertical-tab vertical-tab" rel="tab10">rubygems</a>
+        <a href="https://packagecloud.io/fdio/release/install#manual-python" class="js-vertical-tab vertical-tab" rel="tab11">python</a>
+      </div>
+      <div class="vertical-tab-content-container">
+        <a href="https://packagecloud.io/fdio/release/install" class="js-vertical-tab-accordion-heading vertical-tab-accordion-heading is-active" rel="tab6">deb</a>
+        <div id="tab6" class="js-vertical-tab-content vertical-tab-content" style="display: none;">
+          <h2>deb<a name="deb"></a></h2>
+
+<p>Begin by refreshing your package cache by running</p>
+
+<!--googleoff: all--><pre>sudo apt-get update</pre><!--googleon: all-->
+
+<p>If you are running Debian, install <tt>debian-archive-keyring</tt> so that official
+Debian repositories will be verified (Ubuntu users can skip this)</p>
+
+<!--googleoff: all--><pre>sudo apt-get install debian-archive-keyring</pre><!--googleon: all-->
+
+<p>Ensure the required tools (curl, gpg, apt-transport-https) are installed before proceeding:</p>
+
+<!--googleoff: all--><pre>sudo apt-get install curl gnupg apt-transport-https</pre><!--googleon: all-->
+
+<p>In order to install a deb repo, first you need to install the GPG key that used to <a href="https://packagecloud.io/docs#gpg">sign repository metadata</a>. You do that using a utility called <a href="http://man.he.net/man8/apt-key"><tt>apt-key</tt></a>.</p>
+
+
+  <!--googleoff: all--><pre>curl -L https://packagecloud.io/fdio/release/gpgkey | sudo apt-key add -</pre><!--googleon: all-->
+
+
+
+  <p>Create a file named <code>/etc/apt/sources.list.d/fdio_release.list</code> that contains the repository configuration below.</p>
+
+  <p>Make sure to replace <span class="callout nowrap">ubuntu</span> and <span class="callout nowrap">trusty</span> in the config below with your <a href="https://packagecloud.io/docs#os_distro_version">Linux distribution and version</a>:</p>
+
+  <!--googleoff: all--><pre>deb https://packagecloud.io/fdio/release/<span class="callout nowrap">ubuntu</span>/ <span class="callout nowrap">trusty</span> main
+deb-src https://packagecloud.io/fdio/release/<span class="callout nowrap">ubuntu</span>/ <span class="callout nowrap">trusty</span> main</pre><!--googleon: all-->
+
+
+<p>Valid options for <tt>os</tt> and <tt>dist</tt> parameters can be found <a href="https://packagecloud.io/docs#os_distro_version">in our support OS list in the docs</a>.</p>
+
+<p>Run this command update your local APT cache:</p>
+
+<!--googleoff: all--><pre>sudo apt-get update</pre><!--googleon: all-->
+
+<p>You can now install packages from your repository.</p>
+
+        </div>
+        <a href="https://packagecloud.io/fdio/release/install" class="js-vertical-tab-accordion-heading vertical-tab-accordion-heading" rel="tab7">rpm</a>
+        <div id="tab7" class="js-vertical-tab-content vertical-tab-content" style="display: none;">
+          <h2>rpm<a name="rpm"></a></h2>
+
+<p>Install <tt>pygpgme</tt>, a package which allows <tt>yum</tt> to handle <a href="https://www.gnupg.org/">gpg</a> signatures, and a package called <tt>yum-utils</tt> which contains the tools you need for installing source RPMs.</p>
+
+<!--googleoff: all--><pre>sudo yum install pygpgme yum-utils</pre><!--googleon: all-->
+
+<p>You may need to install the <a href="https://fedoraproject.org/wiki/EPEL">EPEL repository</a> for your system to install these packages. If you do not install <tt>pygpgme</tt>, GPG verification will not work.</p>
+
+  <p>Create a file named <code>/etc/yum.repos.d/fdio_release.repo</code> that contains the repository configuration below.</p>
+  <p>Make sure to replace <span class="callout nowrap">el</span> and <span class="callout nowrap">6</span> in the config below with your <a href="https://packagecloud.io/docs#os_distro_version">Linux distribution and version</a>:</p>
+  <!--googleoff: all--><pre>[fdio_release]
+name=fdio_release
+baseurl=https://packagecloud.io/fdio/release/<span class="callout nowrap">el</span>/<span class="callout nowrap">6</span>/$basearch
+repo_gpgcheck=1
+gpgcheck=0
+enabled=1
+gpgkey=https://packagecloud.io/fdio/release/gpgkey
+sslverify=1
+sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+metadata_expire=300
+
+[fdio_release-source]
+name=fdio_release-source
+baseurl=https://packagecloud.io/fdio/release/<span class="callout nowrap">el</span>/<span class="callout nowrap">6</span>/SRPMS
+repo_gpgcheck=1
+gpgcheck=0
+enabled=1
+gpgkey=https://packagecloud.io/fdio/release/gpgkey
+sslverify=1
+sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+metadata_expire=300</pre><!--googleon: all-->
+
+<p>Valid options for <tt>os</tt> and <tt>dist</tt> parameters can be found <a href="https://packagecloud.io/docs#os_distro_version">in our supported OS list in the docs</a>.</p>
+
+<p>Update your local yum cache by running</p>
+
+<!--googleoff: all--><pre>sudo yum -q makecache -y --disablerepo='*' --enablerepo='fdio_release'</pre><!--googleon: all-->
+
+<p>You can now install packages from your repository.</p>
+
+        </div>
+        <a href="https://packagecloud.io/fdio/release/install" class="js-vertical-tab-accordion-heading vertical-tab-accordion-heading is-active" rel="tab8">node</a>
+        <div id="tab8" class="js-vertical-tab-content vertical-tab-content" style="display: none;">
+          <h2>Node.js<a name="node"></a></h2>
+
+<h3>Add the repository as an NPM registry</h3>
+
+<p>To install node packages from this repository, you'll need to configure it as a registry.</p>
+
+<!--googleoff: all--><pre>npm config set registry https://packagecloud.io/fdio/release/npm/</pre><!--googleon: all-->
+
+<h3>Using Yarn?</h3>
+<p>After a repository is configured as an NPM registry it can be used by yarn to resolve packages. Once configured, add packages to a project using <code>yarn add</code>.</p>
+<p>Verify a repository is configured correctly by running <code>yarn config list</code> and making sure the registry url is set correctly.</p>
+<i>example <code>yarn config list</code> output:</i>
+<!--googleoff: all--><pre>...
+info npm config
+{ registry: 'https://packagecloud.io/fdio/release/npm/' }
+</pre><!--googleon: all-->
+<h3>Transparent auto-proxying</h3>
+<p>When you install a package using <code>npm install</code>, the <code>npm</code> program will automatically
+attempt to install any dependencies required by the package. If those dependencies are not found in your
+packagecloud repository, packagecloud will automatically forward requests for those missing dependencies to the official
+NPM public registry.</p>
+
+<p>This is the default behavior and is recommended for most users.</p>
+
+<p>To learn more about this behavior and how to disable it,
+<a href="https://packagecloud.io/docs#npm_proxy">take a look at our documentation</a>.</p>
+
+        </div>
+        <a href="https://packagecloud.io/fdio/release/install" class="js-vertical-tab-accordion-heading vertical-tab-accordion-heading" rel="tab9">zypper</a>
+        <div id="tab9" class="js-vertical-tab-content vertical-tab-content" style="display: none;">
+          <h2>zypper<a name="zypper"></a></h2>
+
+
+  <p>Create a file named <code>/etc/zypp/repos.d/fdio_release.repo</code> that contains the repository configuration below.</p>
+
+  <p>Make sure to replace <span class="callout nowrap">el</span> and <span class="callout nowrap">6</span> in the config below with your <a href="https://packagecloud.io/docs#os_distro_version">Linux distribution and version</a>:</p>
+
+  <!--googleoff: all--><pre>[fdio_release]
+name=fdio_release
+baseurl=https://packagecloud.io/fdio/release/<span class="callout nowrap">opensuse</span>/<span class="callout nowrap">13.2</span>/$basearch
+enabled=1
+repo_gpgcheck=1
+pkg_gpgcheck=0
+gpgkey=https://packagecloud.io/fdio/release/gpgkey
+autorefresh=1
+type=rpm-md
+
+[fdio_release-source]
+name=fdio_release-source
+baseurl=https://packagecloud.io/fdio/release/<span class="callout nowrap">opensuse</span>/<span class="callout nowrap">13.2</span>/SRPMS
+enabled=1
+repo_gpgcheck=1
+pkg_gpgcheck=0
+gpgkey=https://packagecloud.io/fdio/release/gpgkey
+autorefresh=1
+type=rpm-md</pre><!--googleon: all-->
+
+
+<p>Valid options for <tt>os</tt> and <tt>dist</tt> parameters can be found <a href="https://packagecloud.io/docs#os_distro_version">in our supported OS list in the docs</a>.</p>
+
+<p>Update your local zypper cache by running</p>
+
+<!--googleoff: all--><pre>zypper --gpg-auto-import-keys refresh fdio_release
+zypper --gpg-auto-import-keys refresh fdio_release-source</pre><!--googleon: all-->
+
+<p>You can now install packages from your repository.</p>
+
+
+        </div>
+        <a href="https://packagecloud.io/fdio/release/install" class="js-vertical-tab-accordion-heading vertical-tab-accordion-heading" rel="tab10">rubygems</a>
+        <div id="tab10" class="js-vertical-tab-content vertical-tab-content" style="display: none;">
+          <h2>rubygems<a name="rubygems"></a></h2>
+
+  <h3>Add the repository as a source</h3>
+
+  <p>To install gems from this repository, you'll need to add the repository as a source.</p>
+
+  <!--googleoff: all--><pre>gem source --add https://packagecloud.io/fdio/release/</pre><!--googleon: all-->
+
+<h2>Using Bundler?</h2>
+
+<h3>Add the repository to your Gemfile</h3>
+
+
+  <p>To install gems from this repository, you'll need to add it as a source to your Gemfile.</p>
+
+
+<h4>Bundler 1.7.0 and above</h4>
+
+<p>In newer bundler versions, you can scope specific gems to a source, like so:</p>
+
+
+  <!--googleoff: all--><pre># Gemfile
+
+# Note: It's recommended you add the official https://rubygems.org source, unless your
+#       packagecloud repository can meet all of the dependency requirements in the Gemfile.
+
+source "https://rubygems.org"
+source "https://packagecloud.io/fdio/release" do
+  gem "my-gem"
+  gem "another-gem"
+end</pre><!--googleon: all-->
+
+
+<h4>Legacy versions of Bundler</h4>
+
+<p>Older versions of Bundler have several bugs around scoping gems to a single source using blocks, so you'll have to add the source globally at the top of the Gemfile.</p>
+
+
+  <!--googleoff: all--><pre class="pre-regular-source"># Gemfile
+
+source "https://rubygems.org"
+source "https://packagecloud.io/fdio/release"</pre><!--googleon: all-->
+
+
+        </div>
+        <a href="https://packagecloud.io/fdio/release/install" class="js-vertical-tab-accordion-heading vertical-tab-accordion-heading" rel="tab11">python</a>
+        <div id="tab11" class="js-vertical-tab-content vertical-tab-content" style="display: none;">
+          <h2>python<a name="python"></a></h2>
+
+<p>To install python packages from this repository, you'll need to add the repository as a source to pip.</p>
+
+
+  <h3>Add the repository to pip</h3>
+
+  <p>Add the repository to the <code>[global]</code> section in your <code>~/.pip/pip.conf</code></p>
+
+  <!--googleoff: all--><pre>[global]
+extra-index-url=https://packagecloud.io/fdio/release/pypi/simple</pre><!--googleon: all-->
+
+<p><i>Note: if you would like pip to use <b>only</b> this repository as a source, replace <code>extra-index-url</code> with <code>index-url</code></i></p>
+
+<h3>VirtualEnv / requirements.txt</h3>
+
+<h3>Add the repository to your VirtualEnv</h3>
+
+<p>Ensure you are running the latest version of pip inside your virtualenv:</p>
+<!--googleoff: all--><pre>my_virtualenv/bin/pip install --upgrade pip</pre><!--googleon: all-->
+
+  <p>Add this to the bottom of your <code>requirements.txt</code></p>
+  <!--googleoff: all--><pre>--extra-index-url=https://packagecloud.io/fdio/release/pypi/simple</pre><!--googleon: all-->
+<p>
+  <i>Note: if you would like pip to use <b>only</b> this repository as a source, replace <code>extra-index-url</code> with <code>index-url</code></i>
+</p>
+
+
+        </div>
+      </div>
+    </div>
+    <p>If you're looking for further clarification on anything, don't hesitate to <a href="mailto:support@packagecloud.io">get in touch</a>!</p>
+  </div>
+  <div id="chef-tab" class="tab-content" style="display: none;">
+    <h3>Chef Cookbook</h3>
+    <p>
+  If you use <a href="http://www.getchef.com/">chef</a> to manage your infrastructure, you're in luck! We maintain a cookbook that makes it really easy to get up and running.
+</p>
+
+<p>
+  Using <a href="http://berkshelf.com/">Berkshelf</a> to manage your cookbooks? Depend on our cookbook like this:
+</p>
+
+<!--googleoff: all--><pre>cookbook "packagecloud"</pre><!--googleon: all-->
+
+<p>If you're managing your cookbooks some other way, you can get our cookbook from <a href="https://supermarket.chef.io/cookbooks/packagecloud">supermarket.chef.io</a> or <a href="https://github.com/computology/packagecloud-cookbook">github</a>.</p>
+
+<p>Once you have our cookbook installed, all you have to do to install this repo is add the following block to one of your recipes:</p>
+
+<!--googleoff: all--><pre>packagecloud_repo "fdio/release" do
+  type "deb" # or "rpm" or "gem"
+end</pre><!--googleon: all-->
+
+<p>
+  The LWRP in our cookbook will determine what OS/Version you're on and setup the repository correctly for that particular node. It will also contact our installation API to issue a <a href="https://packagecloud.io/docs#read_tokens">read token</a>, and make sure our <a href="https://packagecloud.io/docs#gpg">gpg key</a> gets installed if necessary.
+</p>
+
+  </div>
+  <div id="puppet-tab" class="tab-content" style="display: none;">
+    <h3>Puppet Module</h3>
+    <p>
+  If you use <a href="http://puppetlabs.com/">puppet</a> to manage your infrastructure, you're in luck! We maintain a module that makes it really easy to get up and running.
+</p>
+
+<p>You can get our module on <a href="https://forge.puppetlabs.com/computology/packagecloud">Puppet Forge</a> or on <a href="https://github.com/computology/computology-packagecloud/">GitHub</a>.</p>
+
+<p>To get this repo installed, you just need to add the following to one of your manifests:</p>
+<!--googleoff: all--><pre>include packagecloud
+
+packagecloud::repo { "fdio/release":
+  type =&gt; 'rpm',  # or "deb" or "gem"
+}</pre><!--googleon: all-->
+<p>
+  The module will determine what OS/Version you're on and setup the repository correctly for that particular node. It will also contact our installation API to issue a <a href="https://packagecloud.io/docs#read_tokens">read token</a>, and make sure our <a href="https://packagecloud.io/docs#gpg">gpg key</a> gets installed if necessary.
+</p>
+
+  </div>
+  <div id="bundler-tab" class="tab-content" style="display: none;">
+    <h3>Using Bundler and packagecloud</h3>
+    <h3>Add the repository to your Gemfile</h3>
+
+
+  <p>To install gems from this repository, you'll need to add it as a source to your Gemfile.</p>
+
+
+<h4>Bundler 1.7.0 and above</h4>
+
+<p>In newer bundler versions, you can scope specific gems to a source, like so:</p>
+
+
+  <!--googleoff: all--><pre># Gemfile
+
+# Note: It's recommended you add the official https://rubygems.org source, unless your
+#       packagecloud repository can meet all of the dependency requirements in the Gemfile.
+
+source "https://rubygems.org"
+source "https://packagecloud.io/fdio/release" do
+  gem "my-gem"
+  gem "another-gem"
+end</pre><!--googleon: all-->
+
+
+<h4>Legacy versions of Bundler</h4>
+
+<p>Older versions of Bundler have several bugs around scoping gems to a single source using blocks, so you'll have to add the source globally at the top of the Gemfile.</p>
+
+
+  <!--googleoff: all--><pre class="pre-regular-source"># Gemfile
+
+source "https://rubygems.org"
+source "https://packagecloud.io/fdio/release"</pre><!--googleon: all-->
+
+  </div>
+  <div id="virtualenv-tab" class="tab-content" style="display: none;">
+    <h3>Using VirtualEnv and packagecloud</h3>
+    <h3>Add the repository to your VirtualEnv</h3>
+
+<p>Ensure you are running the latest version of pip inside your virtualenv:</p>
+<!--googleoff: all--><pre>my_virtualenv/bin/pip install --upgrade pip</pre><!--googleon: all-->
+
+  <p>Add this to the bottom of your <code>requirements.txt</code></p>
+  <!--googleoff: all--><pre>--extra-index-url=https://packagecloud.io/fdio/release/pypi/simple</pre><!--googleon: all-->
+<p>
+  <i>Note: if you would like pip to use <b>only</b> this repository as a source, replace <code>extra-index-url</code> with <code>index-url</code></i>
+</p>
+
+  </div>
+  <div id="maven-tab" class="tab-content" style="display: none;">
+    <h3>Using Maven with Packagecloud</h3>
+    <h3>Add the repository to Maven</h3>
+
+  <p>Add this to the top level of your <code>pom.xml</code></p>
+  <!--googleoff: all--><pre id="maven-instructions">&lt;repositories&gt;
+  &lt;repository&gt;
+    &lt;id&gt;fdio-release&lt;/id&gt;
+    &lt;url&gt;https://packagecloud.io/fdio/release/maven2&lt;/url&gt;
+    &lt;releases&gt;
+      &lt;enabled&gt;true&lt;/enabled&gt;
+    &lt;/releases&gt;
+    &lt;snapshots&gt;
+      &lt;enabled&gt;true&lt;/enabled&gt;
+    &lt;/snapshots&gt;
+  &lt;/repository&gt;
+&lt;/repositories&gt;
+</pre><!--googleon: all-->
+
+
+  </div>
+  <div id="lein-tab" class="tab-content" style="display: none;">
+    <h3>Using Leiningen with Packagecloud</h3>
+    <h3>Add the repository to Leiningen</h3>
+
+  <p>Add this entry to the top-level of your <code>project.clj</code> file</p>
+  <!--googleoff: all--><pre id="lein-instructions">:repositories [["snapshots" "https://packagecloud.io/fdio/release/maven2"]
+               ["releases" "https://packagecloud.io/fdio/release/maven2"]]
+</pre><!--googleon: all-->
+
+
+  </div>
+  <div id="sbt-tab" class="tab-content" style="display: none;">
+    <h3>Using SBT with Packagecloud</h3>
+    <h3>Add the repository to SBT</h3>
+
+<p>For SNAPSHOT support (needs SBT 0.13.8 or above), create or append the following to a <code>project/maven.sbt</code> file in your project:</p>
+<!--googleoff: all--><pre id="add-resolver">addMavenResolverPlugin</pre><!--googleon: all-->
+  <p>Then, add this entry anywhere in your <code>build.sbt</code> file:</p>
+  <!--googleoff: all--><pre id="sbt-instructions">resolvers += "fdio-release" at "https://packagecloud.io/fdio/release/maven2"
+</pre><!--googleon: all-->
+
+
+  </div>
+  <div id="gradle-tab" class="tab-content" style="display: none;">
+    <h3>Using Gradle with Packagecloud</h3>
+    <h3>Add the repository to Gradle</h3>
+
+  <p>Add this entry anywhere in your <code>build.gradle</code> file</p>
+  <!--googleoff: all--><pre id="gradle-instructions">repositories {
+    maven {
+        url "https://packagecloud.io/fdio/release/maven2"
+    }
+}
+</pre><!--googleon: all-->
+
+
+  </div>
+</div>
+
+    </div>
+  </section>
+</article>
+<div class="file-drop-overlay">
+  <span class="btn close-overlay">close</span>
+  <div class="circle-container">
+    <svg width="254px" height="254px" viewBox="0 0 254 254" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+      <!-- Generator: Sketch 51.1 (57501) - http://www.bohemiancoding.com/sketch -->
+      <desc>Created with Sketch.</desc>
+      <defs>
+        <path d="M42.250236,68.7241916 L66.4464864,56.6260767 C67.5509301,56.0772655 68.249582,54.9506107 68.250236,53.7190513 L68.2502364,23.9751615 L42.250236,36.9751618 L42.250236,68.7241916 Z M35.750236,68.740441 L35.750236,36.9751618 L9.75023284,23.9751602 L9.75015726,53.7091688 C9.74155884,54.9446787 10.4342699,56.0782059 11.5286801,56.6296629 L35.750236,68.740441 Z M64.216765,18.7246763 L40.4435022,6.83804491 C39.5331214,6.38682532 38.4640274,6.38731499 37.5611801,6.83593967 L13.7836967,18.7246712 L39.000236,31.3329408 L64.216765,18.7246763 Z M43.338986,1.01857695 L69.3389855,14.0185767 C72.6523167,15.6650105 74.7482722,19.0449748 74.750236,22.7465513 L74.7502355,53.7207759 C74.7482722,57.4206278 72.6523167,60.8005921 69.3461801,62.4434397 L43.347111,75.4429741 C40.6006923,76.817283 37.3672796,76.817283 34.6217918,75.4434397 L8.61281466,62.4389338 C5.30265264,60.7710449 3.2245194,57.3704632 3.25023596,53.6865513 L3.25023642,22.7448267 C3.2521997,19.0449748 5.34815524,15.6650105 8.65429178,14.0221629 L34.661486,1.01857695 C37.39457,-0.339525651 40.6059019,-0.339525651 43.338986,1.01857695 Z" id="path-1"></path>
+        <path d="M42.250236,68.7241916 L66.4464864,56.6260767 C67.5509301,56.0772655 68.249582,54.9506107 68.250236,53.7190513 L68.2502364,23.9751615 L42.250236,36.9751618 L42.250236,68.7241916 Z M35.750236,68.740441 L35.750236,36.9751618 L9.75023284,23.9751602 L9.75015726,53.7091688 C9.74155884,54.9446787 10.4342699,56.0782059 11.5286801,56.6296629 L35.750236,68.740441 Z M64.216765,18.7246763 L40.4435022,6.83804491 C39.5331214,6.38682532 38.4640274,6.38731499 37.5611801,6.83593967 L13.7836967,18.7246712 L39.000236,31.3329408 L64.216765,18.7246763 Z M43.338986,1.01857695 L69.3389855,14.0185767 C72.6523167,15.6650105 74.7482722,19.0449748 74.750236,22.7465513 L74.7502355,53.7207759 C74.7482722,57.4206278 72.6523167,60.8005921 69.3461801,62.4434397 L43.347111,75.4429741 C40.6006923,76.817283 37.3672796,76.817283 34.6217918,75.4434397 L8.61281466,62.4389338 C5.30265264,60.7710449 3.2245194,57.3704632 3.25023596,53.6865513 L3.25023642,22.7448267 C3.2521997,19.0449748 5.34815524,15.6650105 8.65429178,14.0221629 L34.661486,1.01857695 C37.39457,-0.339525651 40.6059019,-0.339525651 43.338986,1.01857695 Z" id="path-3"></path>
+        <path d="M41.1668966,66.9620329 L64.7427304,55.174126 C65.818855,54.6393869 66.4995927,53.5416207 66.5002299,52.3416397 L66.5002303,23.3604138 L41.1668966,36.0270807 L41.1668966,66.9620329 Z M34.8335632,66.9778656 L34.8335632,36.0270807 L9.50022687,23.3604125 L9.50015323,52.3320107 C9.49177528,53.5358407 10.1667245,54.6403032 11.233073,55.1776203 L34.8335632,66.9778656 Z M62.5701813,18.2445564 L39.4064894,6.66271042 C38.5194516,6.22306057 37.4777703,6.22353768 36.598073,6.66065917 L13.4302686,18.2445514 L38.0002299,30.5295321 L62.5701813,18.2445564 Z M42.2277299,0.992459595 L67.5610628,13.659126 C70.7894368,15.2633436 72.8316499,18.5566422 72.8335632,22.1633064 L72.8335628,52.3433201 C72.8316499,55.948304 70.7894368,59.2416025 67.568073,60.8423258 L42.2356466,73.5085388 C39.5596489,74.847609 36.4091443,74.847609 33.7340535,73.5089925 L8.39197326,60.8379355 C5.16668719,59.212813 3.14183941,55.8994257 3.16689658,52.3099731 L3.16689702,22.161626 C3.16880997,18.5566422 5.21102305,15.2633436 8.43238686,13.6626203 L33.7727299,0.992459595 C36.4357349,-0.330819865 39.564725,-0.330819865 42.2277299,0.992459595 Z" id="path-5"></path>
+      </defs>
+      <g id="Upload-overlay" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Artboard" transform="translate(-288.000000, -238.000000)">
+          <circle id="Oval" stroke="#EFEFEF" stroke-width="8" fill="#E3E3E3" fill-rule="nonzero" cx="415" cy="365" r="123"></circle>
+          <g id="box" opacity="0.305691964" transform="translate(346.000000, 326.000000)">
+            <mask id="mask-2" fill="white">
+              <use xlink:href="#path-1"></use>
+            </mask>
+            <use id="Combined-Shape" fill="#000000" fill-rule="nonzero" xlink:href="#path-1"></use>
+            <g id="COLOR/-black" mask="url(#mask-2)" fill="#933CE5" fill-rule="evenodd">
+              <rect id="Rectangle" x="0" y="0" width="78" height="78"></rect>
+            </g>
+          </g>
+          <g id="box" transform="translate(395.000000, 391.000000)">
+            <mask id="mask-4" fill="white">
+              <use xlink:href="#path-3"></use>
+            </mask>
+            <use id="Combined-Shape" fill="#000000" fill-rule="nonzero" xlink:href="#path-3"></use>
+            <g id="COLOR/-black" mask="url(#mask-4)" fill="#933CE5" fill-rule="evenodd">
+              <rect id="Rectangle" x="0" y="0" width="78" height="78"></rect>
+            </g>
+          </g>
+          <g id="box" opacity="0.122422" transform="translate(388.000000, 262.000000)">
+            <mask id="mask-6" fill="white">
+              <use xlink:href="#path-5"></use>
+            </mask>
+            <use id="Combined-Shape" fill="#000000" fill-rule="nonzero" xlink:href="#path-5"></use>
+            <g id="COLOR/-black" mask="url(#mask-6)" fill="#933CE5" fill-rule="evenodd">
+              <rect id="Rectangle" x="0" y="0" width="76" height="76"></rect>
+            </g>
+          </g>
+        </g>
+      </g>
+    </svg>
+  </div>
+  <h3 class="upload-text">Drop a package to begin uploading…</h3>
+</div>
+
+
+
+    </main>
+
+    <script type="text/javascript">
+var PackageCloud = {
+  publishable_stripe_key: 'pk_live_XFXh9vEw0BpmMZb13wMgNAXI',
+  google_maps_api_token: ''
+};
+</script>
+
+    <script type="text/javascript">
+window.AirbrakeConfig = {
+  project_id: '115046',
+  api_key: '11d8ef0c2920804eff345294fbf1667f',
+  environment: 'production'
+};
+</script>
+
+    <script type="application/javascript">
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-49973003-1', 'packagecloud.io');
+  ga('send', 'pageview');
+</script>
+
+    
+    <script src="./fdio_release - Installation · packagecloud- Bash Scripts_files/app-455f6289f87b56d40b21.js.下载"></script>
+    
+    <!-- Only load the billing history js on the billing
+         history page and only after jquery ($) has loaded -->
+    
+    <div id="cookie-popover" class="cookie-popover" style="display: flex;">
+  <p>We use cookies to enhance the user experience on packagecloud.<br>By using our site, you acknowledge that you have read, understand, and agree to our <br> <a href="https://packagecloud.io/legal/cookies">Cookie Policy</a>, <a href="https://packagecloud.io/legal/privacy">Privacy Policy</a>, and our <a href="https://packagecloud.io/legal/tos">Terms of Service</a>.<br> By continuing to browse this site you are agreeing to our use of cookies.</p>
+  <div class="button-container">
+    <a href="javascript:;" onclick="closeCookiePopover()" id="cookie-consent" class="btn close"><span class="glyphicon glyphicon-ok"></span></a>
+  </div>
+</div>
+
+  
+
+<div class="cfp-hotkeys-container fade ng-scope" ng-class="{in: helpVisible}" style="display: none;"><div class="cfp-hotkeys"><!-- ngIf: !header --><h4 class="cfp-hotkeys-title ng-binding ng-scope" ng-if="!header">Keyboard Shortcuts:</h4><!-- end ngIf: !header --><!-- ngIf: header --><table><tbody><!-- ngRepeat: hotkey in hotkeys | filter:{ description: '!$$undefined$$' } --><tr ng-repeat="hotkey in hotkeys | filter:{ description: &#39;!$$undefined$$&#39; }" class="ng-scope"><td class="cfp-hotkeys-keys"><!-- ngRepeat: key in hotkey.format() track by $index --><span ng-repeat="key in hotkey.format() track by $index" class="cfp-hotkeys-key ng-binding ng-scope">?</span><!-- end ngRepeat: key in hotkey.format() track by $index --></td><td class="cfp-hotkeys-text ng-binding">Show / hide this help menu</td></tr><!-- end ngRepeat: hotkey in hotkeys | filter:{ description: '!$$undefined$$' } --></tbody></table><!-- ngIf: footer --><div class="cfp-hotkeys-close" ng-click="toggleCheatSheet()">×</div></div></div><iframe name="stripeXDM_default635021_provider" id="stripeXDM_default635021_provider" aria-hidden="true" src="./fdio_release - Installation · packagecloud- Bash Scripts_files/channel.html" frameborder="0" style="position: absolute; top: -2000px; left: 0px;"></iframe><iframe src="./fdio_release - Installation · packagecloud- Bash Scripts_files/outer.html" frameborder="0" allowtransparency="true" scrolling="no" tabindex="-1" aria-hidden="true" style="width: 1px !important; height: 1px !important; position: fixed !important; visibility: hidden !important; pointer-events: none !important;"></iframe></body></html>

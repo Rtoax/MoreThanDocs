@@ -1,0 +1,103 @@
+OpenStack KVM镜像制作发布
+
+一.KVM Linux 镜像制作发布
+宿主系统 ubuntu-10.10-server-amd64
+适用于   ubuntu-11.10-server-amd64
+         ubuntu-11.04-server-amd64
+         ubuntu-10.10-server-amd64
+         centos-5.5-x86_64 以上
+         centos-6.0-x86_64
+
+以ubuntu-11.10-server-amd64为例
+
+1.KVM安装系统
+kvm安装模板系统，只能有一个根分区，不能有swap
+
+以下使用tap可以实现ssh连接到kvm模板系统
+apt-get install uml-utilities
+tunctl -u openstack -t tap0
+ifconfig tap0 up
+brctl addif br100 tap0
+
+kvm-img create -f raw ori-ubuntu1110.img 5G
+光盘安装系统
+kvm -m 1024 -drive file=ori-ubuntu1110.img,cache=writeback,if=virtio,boot=on -boot order=d,menu=on -net nic,model=virtio -net tap,ifname=tap0,script=no,downscript=no -nographic -vnc :0  -cdrom ubuntu-11.10-server-amd64.iso   
+从硬盘启动
+kvm -m 1024 -drive file=ori-ubuntu1110.img,cache=writeback,if=virtio,boot=on -boot order=c -net nic,model=virtio -net tap,ifname=tap0,script=no,downscript=no -nographic -vnc :0
+更新系统
+apt-get update -y
+apt-get upgrade -y
+
+安装所需软件包，调整环境。
+
+2.制作系统磁盘镜像 以下针对raw格式 非raw格式可以转换或者使用对应方法
+挂载raw文件
+losetup -f ori-ubuntu1110.img
+查看分区偏移
+fdisk -l /dev/loop0
+offset = $start * 512 
+卸载
+losetup -d /dev/loop0
+
+挂载根分区
+losetup -f -o 1048576 ori-ubuntu1110.img
+导出根分区
+dd if=/dev/loop0 of=ubuntu1110.img
+卸载镜像
+losetup -d /dev/loop0
+挂载根分区
+mount -o loop ubuntu1110.img /mnt
+修改 /etc/fstab
+LABEL=rootfs / ext4 defaults 0 0
+删除udev net规则
+rm -rf /mnt/etc/udev/rules.d/70-persistent-net.rules
+拷贝kernel 和 initrd.img
+卸载根分区
+umount /mnt
+修改根分区lable
+tune2fs -L rootfs ubuntu1110.img
+
+3.发布镜像
+glance add -A openstack -H 192.168.1.18 name="ubuntu1110-kernel" is_public=true container_format=aki disk_format=aki < vmlinuz-3.0.0-13-server
+glance add -A openstack -H 192.168.1.18 name="ubuntu1110-initrd" is_public=true container_format=ari disk_format=ari < initrd.img-3.0.0-13-server
+glance add -A openstack -H 192.168.1.18 name="ubuntu1110-rootfs" is_public=true container_format=ami disk_format=ami kernel_id=1 ramdisk_id=2 < ubuntu1110.img
+
+
+centos5.x 如果没使用virtio安装 则需要重新打包initrd 包含virtio驱动
+mkinitrd --with=virtio --with=virtio_blk --with=virtio_net --with=virtio_balloon --with=virtio_pci --with=virtio_ring -f /boot/initrd-$(uname -r) $(uname -r) 
+
+二.制作 Windows 镜像
+
+适用于 Windows XP
+       Windows 2003
+       Windows 2008
+
+1.KVM安装系统
+kvm -m 1024 -drive file=winxp.img,cache=writeback,if=virtio,boot=on \
+-fda virtio-win-1.1.16.vfd  -cdrom winxp.iso \
+-net nic -net user  \
+-boot order=d,menu=on  \
+-usbdevice tablet \
+-nographic -vnc :0
+
+2.重启并安装virtio网卡驱动
+kvm -m 1024 -drive file=winxp.img,cache=writeback,if=virtio,boot=on \
+-cdrom virtio-win-0.1-15.iso \
+-net nic,model=virtio -net user  \
+-boot order=c  \
+-usbdevice tablet \
+-nographic -vnc :0
+
+
+3.更新并安装软件
+
+4.发布系统镜像
+glance add -A openstack name="winxpsp3" is_public=true disk_format=raw < winxpsp3.img 
+
+kvm安装windows问题
+重启不从光盘启动
+-boot order=d,menu=on
+开启bios启动选择菜单，重启时候按住F12 
+
+鼠标偏移问题
+取消鼠标加速 或者 kvm 参数 -usbdevice tablet 
