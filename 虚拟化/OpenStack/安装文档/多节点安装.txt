@@ -1,7 +1,5 @@
 
 Ubuntu 12.04 Openstack Essex 安装（多节点）
- 云计算  Add comments
-Jul 202012
  	
 
 多节点的安装，其实也就是增加一个计算节点。
