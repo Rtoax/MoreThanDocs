@@ -66,6 +66,7 @@
     [VPP系统文件-'vpp.service'](https://fd.io/docs/vpp/master/gettingstarted/users/running/index.html#vpp-systemd-file-vpp-service)
 
 
+详情请见具体章节文档。
 
 
 <br/>
@@ -84,7 +85,8 @@
 * 讨论了绑定索引可扩展哈希（bihash）的不同方面，以及如何在数据库查找中使用它
 * 描述了不同类型的API支持以及如何集成插件
 
-**`TODO`**
+详情请见具体章节文档。
+
 
 <br/>
 
@@ -94,7 +96,7 @@
 * [VPP Wiki](https://fd.io/docs/vpp/master/links/index.html#vpp-wiki)
 * [源代码文档（doxygen）](https://fd.io/docs/vpp/master/links/index.html#source-code-documents-doxygen)
 
-**`TODO`**
+详情请见具体章节文档。
 
 
 <br/>
@@ -113,7 +115,8 @@
 * [构建VPP Web应用程序](https://fd.io/docs/vpp/master/usecases/webapp.html)
 * [基于容器的网络仿真](https://fd.io/docs/vpp/master/usecases/container_test.html)
 
-**`TODO`**
+详情请见具体章节文档。
+
 
 <br/>
 
@@ -126,8 +129,8 @@
 * VPP版本19.04的功能
 * VPP版本19.01的功能
 
+详情请见具体章节文档。
 
-**`TODO`**
 
 <br/>
 
@@ -136,7 +139,8 @@
 [故障排除](https://fd.io/docs/vpp/master/troubleshooting/index.html)
 本章介绍了用于解决和诊断FD.io VPP实现问题的许多技术中的一些。
 
-**`TODO`**
+详情请见具体章节文档。
+
 
 <br/>
 
@@ -148,6 +152,10 @@
 * [Github仓库](https://fd.io/docs/vpp/master/reference/github/index.html)
 
 
-**`TODO`**
+详情请见具体章节文档。
+
 
 <br/>
+
+<br/>
+<div align=right>	以上内容由荣涛翻译整理自网络。</div>

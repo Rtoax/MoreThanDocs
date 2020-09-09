@@ -183,3 +183,6 @@ local0 (dn):
 ```
 
 <br/>
+
+<br/>
+<div align=right>	以上内容由荣涛翻译整理自网络。</div>

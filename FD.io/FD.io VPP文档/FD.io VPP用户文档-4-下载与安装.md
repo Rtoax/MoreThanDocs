@@ -6,7 +6,7 @@
 <br/>
 <br/>
 
-<center><font size='20'>FD.io VPP：用户文档</font></center>
+<center><font size='20'>FD.io VPP：用户文档 VPP的下载与安装</font></center>
 <br/>
 <br/>
 <center><font size='5'>荣涛</font></center>
@@ -18,7 +18,7 @@
 
 
 
-# 1. 下载并安装VPP
+# 1. 引言
 
 如果要使用VPP，可以方便地从现有软件包中安装二进制文件。本指南介绍了如何提取，安装和运行VPP软件包。
 
@@ -30,20 +30,20 @@
 
 <br/>
 
-## 1.1. 在Ubuntu上安装
+# 2. 在Ubuntu上安装
 
 **`略`**
 
 <br/>
 
-## 1.2. 在Centos上安装
+# 3. 在Centos上安装
 
 这部分会单独出一份文档，这里简单介绍官网的安装方法，这种方法没有配置DPDK插件。
 [CentOS7安装VPP](https://fd.io/docs/vpp/master/gettingstarted/installing/centos.html)
 
 <br/>
 
-## 1.3. 更新操作系统
+# 4. 更新操作系统
 
 在开始安装存储库之前，最好先更新和升级操作系统。运行以下命令以更新操作系统并获取一些软件包。
 
@@ -54,13 +54,13 @@ $ sudo yum install pygpgme yum-utils
 
 <br/>
 
-## 1.4. 软件包云存储库
+# 5. 软件包云存储库
 
 构建工件也将发布到`packagecloud.io`存储库中。这包括官方的发行点。要使用这些构建工件中的任何一个，请创建一个文件 “ `/etc/yum.repos.d/fdio-release.repo`”，其内容指向所需的版本。以下是所需内容的一些常见示例：
 
 <br/>
 
-## 1.5. VPP最新版本
+# 6. VPP最新版本
 要允许“ yum”访问官方VPP版本，请创建包含以下内容的文件 “ /etc/yum.repos.d/fdio-release.repo”。
 
 ```bash
@@ -103,7 +103,7 @@ $ sudo yum --showduplicates list vpp* | expand
 
 <br/>
 
-## 1.6. VPP Master分支
+# 7. VPP Master分支
 要允许yum从VPP master分支访问夜间版本，请创建具有以下内容的文件“ /etc/yum.repos.d/fdio-release.repo”。
 
 ```bash
@@ -148,7 +148,7 @@ $ sudo yum --showduplicates list vpp* | expand
 
 <br/>
 
-## 1.7. 安装VPP RPM
+# 8. 安装VPP RPM
 
 要安装VPP数据包引擎，请运行以下命令：
 
@@ -169,7 +169,7 @@ sudo yum install vpp-plugins vpp-devel vpp-api-python vpp-api-lua vpp-api-java v
 
 <br/>
 
-## 1.8. 启动VPP
+# 9. 启动VPP
 
 在系统上安装VPP后，要在CentOS上将VPP作为systemd服务运行，请运行以下命令：
 
@@ -185,7 +185,7 @@ $ sudo systemctl enable vpp
 
 <br/>
 
-## 1.9. 卸载VPP RPM
+# 10. 卸载VPP RPM
 要卸载VPP RPM，请运行以下命令：
 
 ```bash
@@ -194,14 +194,14 @@ $ sudo yum autoremove vpp*
 
 <br/>
 
-## 1.10. 在openSUSE上安装
+# 11. 在openSUSE上安装
 
 
 **`略`**
 
 <br/>
 
-## 1.11. 安装包说明
+# 12. 安装包说明
 
 **以下是与VPP一起安装的软件包的简要说明。**
 
@@ -252,3 +252,6 @@ $ sudo yum autoremove vpp*
 
 
 <br/>
+
+<br/>
+<div align=right>	以上内容由荣涛翻译整理自网络。</div>

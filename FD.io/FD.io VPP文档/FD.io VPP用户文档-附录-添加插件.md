@@ -197,3 +197,6 @@ void *p = vlib_get_plugin_symbol ("plugin_name", "symbol");
 ```
 更多例子
 有关更多信息，您可以阅读目录“ ./src/plugins”中的许多示例插件。
+
+<br/>
+<div align=right>	以上内容由荣涛翻译整理自网络。</div>
