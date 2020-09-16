@@ -1,0 +1,3486 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_06.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_08.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H1>
+Color</H1>
+This chapter describes how to use color in your programs.
+Color handling in X can be more complex than in other graphics systems
+because of the need for portability to many different types of displays.
+Certain advanced topics in color handling are still poorly defined in the
+X standard. This chapter starts with the basics, which everyone working
+with color should read, and gradually moves to more advanced topics, including
+R5 device-independent color. Pick and choose from the later sections as
+appropriate.
+
+<P>A typical X application allows the user to specify colors
+for the background and border of each of its windows, colors for the cursor,
+and foreground and background colors to be set in GCs for drawing text
+and graphics. More complex applications (such as Computer Aided Design
+(CAD) applications) might use color to distinguish physical or logical
+layers. Still more complex applications, such as in imaging, might use
+fine gradations of color to represent real-world data. Yet in discussing
+the background and border window attributes and how to set the foreground
+and background members of the GC, we have spoken only of pixel values.
+
+<P>How are these pixel values translated to colors? And how
+must an X client manage color if it is to run successfully on the wide
+variety of screen hardware available in the X environment?
+
+<P>Because X must support a wide variety of systems with
+differing screen hardware, the Xlib color-handling mechanisms are fairly
+complex. Even programmers who have previously written color graphics applications
+will find there are some new concepts to learn.
+
+<P>This chapter starts out by describing the different types
+of screens that an X application may run on and the mechanisms Xlib provides
+for determining the screen type. It then describes the simplest color-allocation
+mechanisms, which could be used by applications whose principal use of
+color is for decoration. It proceeds to discuss more complex color applications
+and concludes with a section on writing applications that will be portable
+across different types of color and monochrome screens.
+<BR>
+<HR>
+<H2>
+Basic Color Terms and Concepts</H2>
+Most color screens on the market today are based on the RGB
+color model. Each pixel on the screen is actually made up of three phosphors:
+one red, one green, and one blue. Each of these three phosphors is sensitive
+to a separate electron beam. When all three phosphors are fully illuminated,
+the pixel appears white to the human eye. When all three are dark, the
+pixel appears black. When the illumination of each primary color varies,
+the three phosphors generate an additive color that might seem surprising.
+For example, equal portions of red and green, with no admixture of blue,
+make yellow. Most people are more familiar with subtractive color mixing,
+used in paints, where red, yellow, and blue are the three primary colors
+from which all other colors (except white and shades of gray) can be made.
+
+<P>You, no doubt, know that a color screen uses multiple
+bits per pixel (also referred to as multiple planes) to specify colors.
+A <I>colormap</I> is used to translate each pixel's value into the visible
+colors you see on the screen.
+
+<P>A colormap is no more than a lookup table stored in the
+server. Any given pixel value is used as an index into this table--for
+example, a pixel value of 16 will select the sixteenth element, or <I>colorcell</I>.
+
+<P>On the most common type of color system, each colorcell
+contains separate 16-bit intensity values for each of the three primary
+colors.
+
+<P>As shown in Figure 7-1, a pixel value uniquely identifies
+a particular colorcell. Each pixel value in the visible portions of a window
+is continuously read out of screen memory and looked up in the colormap.
+The RGB values in the specified colorcell control the intensity of the
+three primary colors and thus determine the color that is displayed at
+that point on the screen.
+
+<P><B>Pixel value to RGB mapping with the colormap on a color
+screen</B>
+
+<P><IMG SRC="imgs/fig.7.01.gif" ALT="fig.7.01.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;The range of colors possible on the screen is a
+function of the number of bits available in the colormap for RGB specification.
+If eight bits is available for each primary, then the range of possible
+colors is 256 3 (about 16 million colors).
+
+<P>However, the number of different colors that can be displayed
+on the screen at any one time is a function of the number of planes. A
+4-plane system could index 2 4 colorcells (16 distinct colors); an 8-plane
+system could index 2 8 colorcells (256 distinct colors); and a 24-plane
+system could index 2 24 colorcells (over 16 million distinct colors).
+
+<P>A client attempting to use color does not <I>specify</I>
+a pixel value and the color to be put in that cell in order to draw in
+a given color. Instead, it requests access to a colorcell in a colormap
+(managed by the server) and is <I>returned</I> a pixel value. This is called
+<I>allocating</I> a color. When a client allocates a color, it asks the
+server, "Which colorcell can I use?" and the server responds by saying,
+"You can use the colorcell specified by this pixel value." There are three
+basic functions that allocate colors, which are described in detail and
+demonstrated in later sections in this chapter.
+<BR>
+<HR>
+<H2>
+Color Naming and Specification</H2>
+The following sections describe the various ways to specify
+what color you want. In programs that use color only for decoration, the
+programmer simply chooses default colors, and allows the user to override
+them with resources.
+<H3>
+The Server-side Color Name Database</H3>
+In order to simplify color specification and to promote sharing
+of colors, the X server provides a color database that translates string
+color names into RGB values. Mainly this is a user convenience, since it
+is easy to specify "yellow" than to figure out the RGB values for yellow.
+But it also encourages colorcell sharing. As described above, sharing of
+colorcells can happen only if two clients allocate a read-only cell with
+the exact same RGB values. If both clients allocate a color specified by
+one of the 300-odd string names, there is a much better chance of them
+selecting the exact same RGB values and thereby sharing a cell than if
+they use one of the 2 48 possible combinations of RGB values.
+
+<P>Because of differences in screen hardware, the same RGB
+values may generate quite different colors on different hardware. Therefore,
+server implementors were intended to change the RGB values corresponding
+to each color name to make sure that the appropriate color appears on their
+screen. This is called <I>gamma correction</I>. By using names from this
+database, you are more sure of getting a color close to the one you request.
+If the server implementor has not provided a gamma-corrected color database,
+there is no way a program can tell exactly what color is being displayed
+even when it knows the RGB values. This problem is solved with the X Color
+Management System, or Xcms, which was introduced in Release 5. Xcms provides
+a client-side color database, and supports device-independent color specification.
+In R5, color name strings are looked up first with the client-side color
+database, and if not found then on the server database.
+
+<P>It is also important to note that the color names are
+not specified by the X11 protocol or Xlib. Therefore, server implementors
+may change them, but more often, they will simply add to the list. (Note
+that some servers allow users to customize this file. For more information,
+see <I>Volume Three, X Window System User's Guide</I>.)
+
+<P>Table 7-1 shows some of the color names and corresponding
+RGB values in the default color database. The complete R4 database is extensive
+and is shown in Appendix D, <I>The Server-side Color Database</I>, of <I>Volume
+Two, Xlib Reference Manual</I>. The text version of this database in the
+standard distribution on a UNIX-based system is in the file <I>/usr/lib/X11/rgb.txt</I>.
+The server reads a compiled version of it.
+
+<P>The color names in the color database are strings in which
+each character uses the ISO Latin-1 encoding. The ISO (International Standards
+Organization) Latin-1 encoding is used by virtually all workstations manufacturers.
+What this means is that the first 127 character codes correspond to 7-bit
+ASCII and are the normal English characters that appear on U.S. keyboards.
+But ISO characters are 8-bit, and the characters from 128 to 255 are used
+for characters with accents and other variations, necessary for other Western
+languages.
+
+<P>Server vendors should be able to supply a color database
+file for each foreign language. The RGB values would be the same, but the
+names would be different. In the English file, the entry for green is encoded
+with the ISO character codes 103 (g), 114 (r), 101 (e), 101 (e), 110 (n).
+In German, the same entry would be for <I>gr&uuml;n</I>, encoded with the
+ISO codes 103 (g), 114 (r), 252 (&uuml;), 110 (n). In a workstation configured
+for German, there will be an easy way to type <I>&uuml;</I>.
+
+<P>Note that keysyms also use the ISO Latin-1 standard, as
+shown in Chapter 8, "Events."
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 7-1 : </B>Sample from the Server-side Color
+Database*</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>English Words</TH>
+
+<TH>Red</TH>
+
+<TH>Green</TH>
+
+<TH>Blue</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>aquamarine</TD>
+
+<TD>112</TD>
+
+<TD>219</TD>
+
+<TD>147</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>black</TD>
+
+<TD>0</TD>
+
+<TD>0</TD>
+
+<TD>0</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>blue</TD>
+
+<TD>0</TD>
+
+<TD>0</TD>
+
+<TD>255</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>blue violet</TD>
+
+<TD>159</TD>
+
+<TD>95</TD>
+
+<TD>159</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>brown</TD>
+
+<TD>165</TD>
+
+<TD>42</TD>
+
+<TD>42</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>cadet blue</TD>
+
+<TD>95</TD>
+
+<TD>159</TD>
+
+<TD>159</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>coral</TD>
+
+<TD>255</TD>
+
+<TD>127</TD>
+
+<TD>0</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>cornflower blue</TD>
+
+<TD>66</TD>
+
+<TD>66</TD>
+
+<TD>111</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>cyan</TD>
+
+<TD>0</TD>
+
+<TD>255</TD>
+
+<TD>255</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>light gray</TD>
+
+<TD>168</TD>
+
+<TD>168</TD>
+
+<TD>168</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>light grey</TD>
+
+<TD>168</TD>
+
+<TD>168</TD>
+
+<TD>168</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>light steel blue</TD>
+
+<TD>143</TD>
+
+<TD>143</TD>
+
+<TD>188</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>lime green</TD>
+
+<TD>50</TD>
+
+<TD>204</TD>
+
+<TD>50</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>magenta</TD>
+
+<TD>255</TD>
+
+<TD>0</TD>
+
+<TD>255</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>maroon</TD>
+
+<TD>142</TD>
+
+<TD>35</TD>
+
+<TD>107</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>medium aquamarine</TD>
+
+<TD>50</TD>
+
+<TD>204</TD>
+
+<TD>153</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>Also defined are the color names "gray0" through "gray100",
+spelled with an "e" or an "a". "gray0" is black and "gray100" is white.
+See Appendix D, <I>The Server-side Color Database</I>, of <I>Volume Two,
+Xlib Reference Manual</I>, for a listing of the complete sample database.
+<H3>
+Xcms Color Specification</H3>
+In X11R5, a new string syntax is supported. It allows you
+to specify colors using device-independent color spaces or using RGB values.
+We'll show you the form of these specifications here, then return to an
+explanation of the color spaces in Section 7.9, "Device-independent Color
+and Xcms."
+
+<P>A device-dependent RGB value is represented as follows:
+<BLOCKQUOTE>
+<PRE><TT>RGB:&lt;<I>red</I>>/&lt;<I>green</I>>/&lt;<I>blue</I>></TT></PRE>
+</BLOCKQUOTE>
+where &lt;<I>red</I>>, &lt;<I>green</I>>, and &lt;<I>blue</I>>
+are each between 1 and 4 hexadecimal digits. Different primaries may be
+specified with different numbers of digits. If fewer than 4 digits are
+specified, they do not simply represent the most significant bits of the
+value; instead they represent a fraction of the maximum value. So the single
+digit 0xA does not mean 0xA000, but 10/15ths of 0xFFFF, or 0xAAAA.
+
+<P>X11R5 supports an additional device-dependent color space,
+called RGBi, in which each red, green, and blue integer <I>value</I> is
+replaced with a floating-point <I>intensity</I> between 0.0 and 1.0. In
+this model, the range of possible color values are simply mapped onto the
+real numbers between zero and one. So, for example, 0.5 always represents
+half intensity of a color. Note that these values represent the physical
+intensity of a color, which is not linearly proportional to the perceptual
+intensity of that color. A color specification for RGBi has the following
+form:
+<BLOCKQUOTE>
+<PRE><TT>RGBi:&lt;<I>red</I>>/&lt;<I>green</I>>/&lt;<I>blue</I>></TT></PRE>
+</BLOCKQUOTE>
+where &lt;<I>red</I>>, &lt;<I>green</I>>, and &lt;<I>blue</I>>
+are floating-point numbers between 0.0 and 1.0, inclusive.
+
+<P>Device-independent color specifications follow the same
+syntax--a color space name followed by a colon and slash-separated color
+space values. The following forms are recognized:
+<BLOCKQUOTE>
+<PRE><TT>CIEXYZ:&lt;<I>X</I>>/&lt;<I>Y</I>>/&lt;<I>Z</I>>&nbsp;
+CIEuvY:&lt;<I>u</I>>/&lt;<I>v</I>>/&lt;<I>Y</I>>&nbsp;
+CIExyY:&lt;<I>x</I>>/&lt;<I>y</I>>/&lt;<I>Y</I>>&nbsp;
+CIELab:&lt;<I>L</I>>/&lt;<I>a</I>>/&lt;<I>b</I>>&nbsp;
+CIELuv:&lt;<I>L</I>>/&lt;<I>u</I>>/&lt;<I>v</I>>&nbsp;
+TekHVC:&lt;<I>H</I>>/&lt;<I>V</I>>/&lt;<I>C</I>></TT></PRE>
+</BLOCKQUOTE>
+CIEXYZ and the each of the other five strings listed here
+are the names of color spaces, most of them international standards. Each
+of the values in these device-independent color spaces is a floating-point
+number. Note that different color spaces have different ranges of legal
+values for each parameter. For example, the <I>u</I> parameter of the CIEuvY
+color space must have a value between 0.0 and approximately 0.6, while
+the <I>H</I> parameter of the TekHVC color space represents an angle and
+thus varies between 0.0 and 360.0. Also, the valid values for one parameter
+often depend on the values of the others. In general, you will need to
+be familiar with the colorimetric theory behind a particular color space
+before attempting to specify colors in that space.
+
+<P>Example 7-1 shows this new style of color specification
+used in a resource file. Notice that color space names are case-insensitive.
+
+<P><B>Specifying device-independent colors from a resource
+file</B>
+<BLOCKQUOTE>
+<PRE><TT>*Background: TekHVC:72.0/50.0/44.0
+*Command.background: CIELab:75.0/.38/.71
+*quit_button.background: rgbi:1.0/0.0/0.0</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+The Client-side Color Name Database</H3>
+Support for device-independent colors in X11R5 is, by design,
+kept entirely on the client side. The X protocol and the X server still
+use device-dependent RGB colors exclusively, so it is not possible to use
+the new device-independent color specifications in the color name database
+read by the server. Because it is sometimes useful to give symbolic names
+to device-independent colors, X11R5 supports a client-side color database
+that maps names to device-independent or device-dependent color specifications.
+
+<P>Note that while X11R5 supports such a color database,
+the MIT release does not provide one, other than as an example to system
+administrators or users who want to define one of their own. The client-side
+color database should be thought of as a place for site-specific customizations,
+and useful, if non-standard, shortcuts for naming colors in user resource
+files. In particular, since the contents of the database are not standardized,
+application defaults files should not rely on any particular colors to
+be in the database.
+
+<P>X clients (on most UNIX systems) look for the client-side
+database in the file <I>/usr/lib/X11/Xcms.txt</I> by default, but the MIT
+sample implementation allows a different file to be specified with the
+XCMSDB environment variable. The format of the database is implementation-dependent.
+Example 7-2 shows an example database in the format supported by the MIT
+distribution.
+
+<P><B>Example entries from a client color database</B>
+<BLOCKQUOTE>
+<PRE><TT>XCMS_COLORDB_START 0.1
+device red&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; RGBi:1.0/0/0
+device blue&nbsp;&nbsp;&nbsp;&nbsp; RGB:00/00/ff
+navy blue&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CIEXYZ:0.0671/0.0337/0.3130
+gray0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CIELab:0.0/0.0/0.0
+gray50&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CIELuv:50.0/0.0/0.0
+grey100&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TekHVC:0.0/100.0/0.0
+rouge&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; red
+roja&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; rouge
+XCMS_COLORDB_END</TT></PRE>
+</BLOCKQUOTE>
+Note that any device-dependent or device-independent color
+format may be used, and that color <I>aliases</I> are allowed to provide
+alternate names for colors defined elsewhere in the client database or
+even in the server database. Color names may contain spaces, and the tab
+character is used to separate color names from color specifications. The
+first and last lines shown in the example are required before the first
+and after the last entry of the database. Any text before the first line
+shown in the example is treated as a comment. Comments may not appear elsewhere
+in the file.
+
+<P>When the functions <B>XAllocNamedColor()</B>, <B>XLookupColor()</B>,
+<B>XParseColor()</B>, <B>XStoreNamedColor()</B>, or their device-independent
+Xcms analogs are passed a color string, they first attempt to parse it
+as a new-style specification for one of the supported color spaces. If
+this fails, they attempt to look up the color in the client-side color
+name database. If both approaches fail, they fall back on the pre-X11R5
+behavior and attempt to parse the string in the old-style numeric format
+or pass the string to the X server to be looked up in the server database.
+Because the new X11R5 formats are supported by the pre-X11R5 Xlib functions,
+all X Toolkit widgets and type converters will work correctly with device-independent
+color specifications without change.
+<H3>
+Hexadecimal Color Specification</H3>
+It is also possible to specify colors using a hexadecimal
+string, although this is discouraged as of Release 5.
+
+<P>The hexadecimal form of color specification is necessary
+in R4 for the user to be able to specify an exact color, not just the rough
+approximation allowed by an string name. The hexadecimal specification
+must be in one of the following formats:
+<BLOCKQUOTE>
+<PRE><TT>#RGB&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (<I>4 bits each of red, green, and blue</I>)
+#RRGGBB&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (<I>8 bits each of red, green, and blue</I>)
+#RRRGGGBBB&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (<I>12 bits each of red, green, and blue</I>)
+#RRRRGGGGBBBB&nbsp;&nbsp; (<I>16 bits each of red, green, and blue</I>)</TT></PRE>
+</BLOCKQUOTE>
+Each of the letters represents a hexadecimal digit. In the
+shorter formats, the specified values are interpreted as the most significant
+bits of a 16-bit value. For example, <B>#3a7</B> and <B>#3000a0007000</B>
+are equivalent.
+
+<P>Use of hexadecimal color specifications does not preclude
+colorcell sharing, since the user could specify the same hexadecimal value
+for the color for two or more clients. However, it probably tends to make
+sharing less likely, since a window manager might allocate all the colors
+in the color database as read-only cells, and then any client that uses
+hexadecimal specifications will probably be allocating a separate cell
+instead of sharing.
+<BR>
+<HR>
+<H2>
+Differences in Display Hardware</H2>
+The description of color mapping given in the previous section
+was actually somewhat over-simplified. There are significant differences
+in how the colormap is used on mid-range color screens, monochrome and
+gray-scale screens, and high performance color screens. Color handling
+in X was designed to work with any of these hardware types.
+<H3>
+Mid-range Color Displays</H3>
+The most common type of color screen has between four and
+eight planes and uses the colormap indexing technique described above.
+This type of screen is so widespread because it provides a flexible color
+system while being moderately priced. The mapping of pixel values to colorcells,
+with arbitrary RGB values stored in each colorcell, allows a very large
+range of possible colors, even though a more limited number can be shown
+on the screen at any one time.
+
+<P>Mid-range color screens usually have only one hardware
+colormap. In other words, the pixel values in all the windows on the screen
+are mapped to colors using the same colormap. On most of these systems,
+however, the color in any colorcell in the hardware colormap can be individually
+changed, and therefore, the entire colormap can be replaced with a new
+set of values. X provides the concept of the <I>virtual colormap</I>, so
+that more than one set of colorcells can be maintained, even though only
+one of them can be in use at a time. Virtual colormaps are swapped in and
+out of the hardware colormap by the window manager. This makes it possible
+for an application that has special color needs to create its own virtual
+colormap, which the window manager will load into the hardware colormap
+when that application is in use. However, since only one hardware colormap
+is available and all applications share it, when any one application creates
+a new virtual colormap and the window manager installs it, all other applications
+will screen in false colors, since the pixel values they use now point
+to cells in the other client's colormap. This is acceptable, since the
+window manager always installs the correct colormap for the application
+in use, but it is obviously not ideal. On high performance systems, described
+below, this problem is solved by having multiple hardware colormaps.
+<H3>
+Monochrome and Gray Scale</H3>
+Monochrome (black and white) screens have only a single plane
+of screen memory. Each pixel is made up of a single phosphor, which can
+be either on or off.
+
+<P>Gray-scale screens are sometimes used for publishing applications,
+since pixels made up of a single phosphor are smaller than those made up
+of three phosphors and the resolution is, therefore, better. As shown in
+Figure 7-2, a gray-scale screen works by looking up the intensity of the
+pixel in the colormap, which, for this screen type, contains only a single
+value. This controls the intensity of a single electron beam. Gray scale
+can be simulated on a color screen by making the red, green, and blue values
+equal in a given colorcell to determine the brightness of gray pixels on
+the screen.
+
+<P><B>Pixel value to RGB mapping -- gray scale and monochrome
+screens</B>
+
+<P><IMG SRC="imgs/fig.7.02.gif" ALT="fig.7.02.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;A gray-scale screen might have a read-only colormap,
+so that the gray levels in each cell could not be changed. A monochrome
+screen is an example of this type; it is a single-plane screen with a two-element
+read-only colormap.
+<H3>
+High Performance Color Displays</H3>
+As memory has become cheaper and applications more advanced,
+workstations with 24 planes and more have become more common. With 24 bits
+per pixel, it is possible to screen every discernible color at the same
+time. This makes it possible to do smooth shading and other applications
+that use a large number of closely spaced colors.
+
+<P>The problem with having so many planes is that a colormap
+of the style used in mid-range color screens would be impossibly large:
+it would contain over 16 million entries. Instead, the available bits per
+pixel are broken down into three separate colormap indices, one for each
+primary color, as shown in Figure 7-3. This approach still allows the full
+range of colors to be generated but makes the job of loading the colormap
+much more manageable. This scheme requires three primary colormaps of only
+256 entries each to specify all 16 million colors on a 24-plane system.
+
+<P><B>Pixel value to RGB mapping -- high performance color
+screens</B>
+
+<P><IMG SRC="imgs/fig.7.03.gif" ALT="fig.7.03.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;In high performance screens, having a read-only
+colormap makes just as much sense as having it read/write, because nearly
+every color imaginable can be simultaneously available. With a read-only
+colormap, there is a fixed relationship between the pixel values used to
+select a color and the actual RGB values generated. This makes possible
+applications that want to calculate pixel values directly instead of having
+to calculate colors and then determine which pixel value represents that
+color, as is necessary when the colormap is read/write.
+
+<P>In reality, most screens in this class let you use the
+color resources in either fashion, using virtual colormaps. There can be
+one read-only virtual colormap and one read/write virtual colormap. However,
+unlike on mid-range color screen hardware, most high performance color
+systems have multiple hardware colormaps, so that both virtual colormaps
+can be installed and used at the same time. In fact, on many of these systems,
+each window can have its own virtual colormap installed in the hardware
+at the same time.
+<H3>
+How X Describes Color Support with Visuals</H3>
+A <I>visual</I> describes the characteristics of a virtual
+colormap that has been or can be created for use on a particular screen.
+As used by Xlib, a visual is actually a pointer to a structure (of type
+<B>Visual</B>) containing information about one way of using a particular
+screen. A visual must be specified when creating a colormap or a window,
+and the same visual must be used in creating a window as is used to create
+the colormap to be used in that window.
+
+<P>Most windows inherit their parent's visual, and windows
+will often share the root window's visual, which is known as the default
+visual. The default visual describes, naturally, the default colormap.
+If you create all your windows with <B>XCreateSimpleWindow()</B>, you will
+be using the default visual and colormap.
+
+<P>The <B>Visual</B> structure is intended to be opaque;
+programs are not supposed to access its contents. This is so that Xlib
+implementors can change the structure without breaking existing clients.
+The procedure used to avoid accessing its members is not all that cumbersome
+but is just beginning to come into use by application writers. Up to this
+point, most programmers have broken this rule. We will show you only the
+correct method here, since it adds only a few lines to the application.
+
+<P>Even more existing applications have avoided visuals altogether
+and used only the <B>DefaultDepth()</B> or <B>DisplayPlanes()</B> macros
+to attempt to determine whether the screen is monochrome or color. However,
+this does not work in general, because it does not distinguish between
+gray-scale screens and color screens (both have more than one plane). The
+only way to make this distinction is to get information about visuals.
+
+<P>Remember that a visual is only one way to use color on
+a particular screen. There may be a list of supported visuals on a screen,
+with each visual describing a different depth and writeability of the colormap.
+On a color system, there may be both monochrome and color visuals available.
+
+<P>The correct method to get information about the visuals
+supported on a particular screen is to use <B>XMatchVisualInfo()</B> or
+<B>XGetVisualInfo()</B>. These functions return <B>XVisualInfo</B> structures
+that contain information about the available visuals and are public so
+their fields can be safely accessed.
+
+<P>The <B>class</B> member of <B>XVisualInfo</B> contains
+a constant specifying one of six different visual classes,&nbsp; corresponding
+to the basic ways of using a screen: <B>DirectColor</B>, <B>GrayScale</B>,
+<B>PseudoColor</B>, <B>StaticColor</B>, <B>StaticGray</B>, or <B>TrueColor</B>.
+
+<P>As summarized in Table 7-2, the visual classes distinguish
+between color or monochrome, whether the colormap is read/write or read-only,
+and whether a pixel value provides a single index to the colormap or is
+decomposed into separate indices for red, green, and blue values.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 7-2 : </B>Comparison of Visual Classes</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Colormap Type</TH>
+
+<TH>Read/Write</TH>
+
+<TH>Read-only</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Monochrome/Gray</TD>
+
+<TD><B>GrayScale</B></TD>
+
+<TD><B>StaticGray</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Single Index for RG&amp;B</TD>
+
+<TD><B>PseudoColor</B></TD>
+
+<TD><B>StaticColor</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Decomposed Index for RG&amp;B</TD>
+
+<TD><B>DirectColor</B></TD>
+
+<TD><B>TrueColor</B></TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>There may be more than one way of using color on a particular
+screen, and therefore, there may be more than one supported visual. This
+is usually true of high-end workstations. There are ways to search through
+the available visuals to select the one that most closely meets the needs
+of your application, as will be described later. Several visuals of the
+same class may be provided but at different depths. On high performance
+screens, it is possible to create the colormap as read/write or as read-only.
+Both methods have certain advantages and would be used for different applications.
+There would be a separate visual for each of these ways of using the screen
+hardware. One of these visuals would be <B>TrueColor</B> class and the
+other <B>DirectColor</B> class. Some 24-plane screens allow the screen
+to be treated as two separate 12-plane <B>PseudoColor</B> visuals. (This
+allows for "double-buffering," a technique useful for animation, or for
+storing distance data to simplify hidden line and plane calculations in
+3-D applications.) In fact, on some advanced workstations, you can use
+a different visual in each window.
+
+<P>Figure 7-4 schematically represents the visual classes
+that can theoretically be supported by each type of screen hardware. A
+screen that supports the <B>DirectColor</B> class can theoretically support
+any of the six visual classes. A screen that supports the <B>PseudoColor</B>
+visual class can support <B>GrayScale</B>, <B>PseudoColor</B>, <B>StaticColor</B>,
+or <B>StaticGray</B> visual classes. A screen that supports the <B>GrayScale</B>
+visual class can also support <B>StaticGray</B> visual classes. The three
+types of screen with read-only colormaps can only support visuals of their
+own class. But remember that just because a certain visual class can theoretically
+be supported by a certain screen hardware does not mean that the server
+implementors will decide to support that class.
+
+<P><B>Hierarchy of visual classes</B>
+
+<P><IMG SRC="imgs/fig.7.04.gif" ALT="fig.7.04.gif" BORDER=0  ALIGN=ABSCENTER>
+<H3>
+Shareability vs. Changeability</H3>
+Notice that <B>DirectColor</B>, <B>GrayScale</B>, and <B>PseudoColor</B>
+visuals have changeable colormaps, but <B>StaticColor</B>, <B>StaticGray</B>,
+and <B>TrueColor</B> have immutable colormaps. Within the changeable colormaps,
+it is possible to have two types of colorcells: read-only and read/write.
+The color in a read-only cell is set once by one client and from then on
+can be shared by any client but not changed. A read/write cell can have
+its color changed at any time by the client that allocated it but cannot
+be shared by other clients. In immutable colormaps, you are limited to
+only read-only cells.
+
+<P>One advantage of immutable colormaps is that all the cells
+are read-only and can be shared between clients, so all the cells are available
+to every client. Immutable colormaps also make it possible to calculate
+pixel values from the colors desired without querying the server, since
+the mapping between pixel values and colors is predictable. This technique
+is necessary for smooth shading and 3-D rendering algorithms. As you will
+see, this is usually not possible with changeable colormaps. The disadvantages
+of immutable colormaps are that there may not be the exact color you desire
+(if there are a small number of planes) and you cannot allocate read/write
+cells, so you cannot change a colorcell to change the color of existing
+pixels on the screen. To change a color, you have to redraw the graphics
+with a new pixel value.
+
+<P>In general, the advantage of changeable colormaps is that
+you can have both private read/write cells and shareable read-only cells.
+That is why <B>PseudoColor</B> and <B>DirectColor</B> are the most useful
+visuals, when a screen supports them. <B>PseudoColor</B> and <B>DirectColor</B>
+allow you to decide whether your client really needs read/write cells or
+whether it can use read-only cells. Read-only usage is preferred, since
+these cells can be shared by all clients, which means that the colormap
+is less likely to run out of free cells.
+
+<P>Try not to confuse the writeability of colormaps with
+the writeability of colorcells. A colorcell in a read/write colormap can
+be allocated read/write or read-only. A colorcell in a read-only colormap
+can only be allocated read-only. A changeable colormap could be made entirely
+read-only if the window manager or any other client allocates all available
+colorcells read-only.
+
+<P>The advantages of read/write colorcells, available only
+in changeable colormaps, are that your program can select exactly the color
+you want (as long as it is physically possible on the screen) and you can
+change the color at will, which instantly changes the visible color of
+everything drawn with that pixel value if the colormap is currently installed.
+Although any other client can also change the values in a read/write cell,
+it is a convention that only the client that allocated the cell should
+change its contents. You <I>own</I> that pixel value. Since most clients
+cannot be satisfied with having no control over their displayed colors,
+this pixel value is not shareable. That means that if several clients that
+use read/write colorcells are running, all the colorcells might be used.
+Then some client will be forced to create its own colormap, with the negative
+consequences described in Section 7.10, "Creating and Installing Colormaps."
+<BR>
+<HR>
+<H2>
+Allocating Shared Colors</H2>
+Since free colorcells can quickly become a scarce resource
+when clients store private color values, simple clients that mainly use
+color for decoration are encouraged always to allocate read-only colors,
+so that these colorcells can be shared by other clients that allocate the
+same colors read-only.
+
+<P>The returned pixel value can be used to set the <B>background_pixel</B>
+or <B>border_pixel</B> attribute of a window or to set the <B>foreground</B>
+or <B>background</B> member of a GC, which are used by drawing requests.
+(See Chapter 4, "Window Attributes," and Chapter 5, "The Graphics Context,"
+for more information.)
+
+<P>Read-only colorcells can be allocated with the following
+routines:
+<DL>
+<DT>
+<B>XAllocColor()</B></DT>
+
+<DD>
+Returns the index of the colorcell (a pixel value) that contains
+the RGB values that are requested or that contains the closest RGB values
+physically possible on the screen. <B>XcmsAllocColor()</B> is the same
+except that colors are specified using Xcms syntax.</DD>
+
+<DT>
+<B>XAllocNamedColor()</B></DT>
+
+<DD>
+Returns the index of the colorcell that contains the RGB
+values associated with a specified color name from the string color name
+database or the closest RGB values physically possible on the screen. In
+R5, <B>XAllocNamedColor()</B> accepts strings in Xcms syntax. <B>XcmsAllocNamedColor()</B>
+is almost the same except with a different style of arguments. <B>XcmsAllocNamedColor()</B>
+also is capable of returning a symbol describing the format found in the
+specified string.</DD>
+</DL>
+By convention, clients allow the user to specify colors on
+the command line or in the resource database using a color name. When the
+RGB values are chosen from the color database by specifying color name
+strings, sharing of read-only colorcells is much more likely than if colors
+are specified as raw RGB values or using hexadecimal specifications.
+
+<P><B>XParseColor()</B> parses a color name string or a hexadecimal
+color specification string and returns RGB values. It can be used with
+<B>XAllocColor()</B> or the routines that allocate read/write cells, which
+will be described later. For color names, it gets the RGB values from the
+server's color database just like <B>XAllocNamedColor()</B>. You may have
+noticed that <B>XAllocNamedColor()</B> is very similar to the combination
+of <B>XParseColor()</B> and <B>XAllocColor()</B>. The difference is slight:
+<B>XAllocNamedColor()</B> can interpret color names but not hexadecimal
+specifications--but hexadecimal specifications are rarely made by users
+anyway. The two-routine combination is more often used because it allows
+you to separately report errors in parsing the color specified and allocating
+the colorcell.
+
+<P>Using <B>XQueryColor()</B> and <B>XQueryColors()</B> you
+can find out what RGB values are in each colorcell. But there is no way
+to determine whether a given cell is read-only or read/write. The only
+way to tell how many cells are currently unallocated is to allocate N colors
+using <B>XAllocColorCells()</B>, using the maximum possible N initially,
+then reduce N until it succeeds (not recommended). A binary search is a
+faster way to find N.
+
+<P>A request to allocate a color may fail because there are
+no free colormap cells and, for read-only colorcells, because no existing
+colorcell contains the closest color possible on the hardware to the exact
+color requested. Applications must allocate colors by trial and error.
+The routines that allocate colorcells all have <B>Status</B> return values.
+If the call to allocate colorcells returns <B>False</B>, the client may
+modify the arguments and try again. If repeated attempts fail, the client
+can settle with <B>BlackPixel</B> and <B>WhitePixel()</B> or, if these
+colors are inadequate, create a new virtual colormap. An application with
+picky color needs that cannot be satisfied can simply report to the user
+that its color needs cannot be met and exit.
+
+<P>Note that <B>XAllocColor()</B> works somewhat differently
+on dynamic visuals (such as <B>PseudoColor</B>) than it does on static
+visuals (like <B>StaticColor</B>). On dynamic visuals, it fails if it is
+unable to allocate the exact RGB values requested (i.e., if there are no
+free cells and no cells already allocated with the exact RGB values requested).
+On static visuals, it returns the cell with the closest RGB values. The
+algorithm used to determine "closest" is server-dependent. The moral of
+this is that a program must be prepared for <B>XAllocColor()</B> to fail.
+<H3>
+The XColor Structure</H3>
+Both <B>XAllocColor()</B> and <B>XAllocNamedColor()</B> (as
+well as other functions that manipulate colorcells) take as an argument
+an <B>XColor</B> structure. This structure is used to specify the desired
+RGB values, as well as to return the pixel value.
+
+<P>The <B>XColor</B> structure is shown in Example 7-3. The
+information it contains closely matches the information in each cell of
+the colormap.
+
+<P><B>The XColor structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; unsigned long pixel;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Pixel value */
+&nbsp;&nbsp; unsigned short red, green, blue;&nbsp;&nbsp; /* RGB values */
+&nbsp;&nbsp; char flags;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* DoRed,&nbsp; DoGreen, and/or
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * DoBlue */
+&nbsp;&nbsp; char pad;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Unused; pads structure
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * to even word boundary */
+} XColor;</TT></PRE>
+</BLOCKQUOTE>
+In <B>XAllocColor()</B> and <B>XAllocNamedColor()</B>, the
+<B>pixel</B> member returns the pixel value that will be used to set the
+foreground or background pixel value in the GC or window attributes. In
+<B>XStoreColor()</B> and <B>XQueryColor()</B>, which you will see later,
+the <B>pixel</B> member indicates which cell in the colormap is having
+its color set (read/write cells only) or is having its RGB values queried.
+
+<P>The <B>red</B>, <B>green</B>, and <B>blue</B> members
+are 16-bit values. Full brightness in a color is a value of 65535, half
+brightness is 32767, and off is 0. (The server automatically scales these
+values if the hardware colormap includes fewer bits for RGB values.)
+
+<P>The <B>flags</B> member of the <B>XColor</B> structure
+is a bitwise OR of the symbols <B>DoRed</B>, <B>DoGreen</B>, and <B>DoBlue</B>.
+These flags are used to specify which of the red, green, and blue values
+should be read while changing the RGB values in a read/write colorcell.
+How these are used is demonstrated in Example 7-4.
+<H3>
+Code to Allocate Read-only Colors</H3>
+As we have said, applications that have basic color needs
+should allocate read-only, shareable color cells. Example 7-5 shows code
+to allocate a color specified using a name from the color name database.
+In this case, we have simply hardcoded the color name strings. In a real
+application, you would hardcode the default color but allow user specification
+of the string, as is done in <I>basecalc</I>, described in Chapter 14,
+"A Complete Application."
+
+<P>This routine uses <B>XMatchVisualInfo()</B> to determine
+whether color is supported on the screen. If any of the four color visual
+classes are supported, it proceeds to attempt to allocate read-only colors.
+Whenever anything fails or if color is not supported, the routine uses
+black and white. For some applications, this could be modified to allocate
+levels of gray on GrayScale visual class screens.
+
+<P>The code for all the examples in this chapter is in the
+example source in the directory <I>/basicwin/color/</I>. This example is
+called <I>basic.ro</I>.
+
+<P><B>Allocating read-only colorcells</B>
+<BLOCKQUOTE>
+<PRE><TT>#include &lt;X11/Xlib.h>
+#include &lt;X11/Xutil.h>
+#include &lt;X11/Xos.h>
+#include &lt;stdio.h>
+extern Display *display;
+extern int screen_num;
+extern Screen *screen_ptr;
+extern unsigned long foreground_pixel, background_pixel,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border_pixel;
+extern char *progname;
+#define MAX_COLORS 3
+/* This is just so we can print the visual class intelligibly */
+static char *visual_class[] = {
+&nbsp;&nbsp; "StaticGray",
+&nbsp;&nbsp; "GrayScale",
+&nbsp;&nbsp; "StaticColor",
+&nbsp;&nbsp; "PseudoColor",
+&nbsp;&nbsp; "TrueColor",
+&nbsp;&nbsp; "DirectColor"
+};
+get_colors()
+{
+&nbsp;&nbsp; int default_depth;
+&nbsp;&nbsp; Visual *default_visual;
+&nbsp;&nbsp; static char *name[] = {"Red", "Yellow", "Green"};
+&nbsp;&nbsp; XColor exact_def;
+&nbsp;&nbsp; Colormap default_cmap;
+&nbsp;&nbsp; int ncolors = 0;
+&nbsp;&nbsp; int colors[MAX_COLORS];
+&nbsp;&nbsp; int i = 5;
+&nbsp;&nbsp; XVisualInfo visual_info;
+
+&nbsp;&nbsp; /* Try to allocate colors for PseudoColor, TrueColor,
+&nbsp;&nbsp;&nbsp; * DirectColor, and StaticColor; use black and white
+&nbsp;&nbsp;&nbsp; * for StaticGray and GrayScale */
+&nbsp;&nbsp; default_depth = DefaultDepth(display, screen_num);
+&nbsp;&nbsp; default_visual = DefaultVisual(display, screen_num);
+&nbsp;&nbsp; default_cmap&nbsp;&nbsp; = DefaultColormap(display, screen_num);
+&nbsp;&nbsp; if (default_depth == 1) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Must be StaticGray, use black and white */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border_pixel = BlackPixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background_pixel = WhitePixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreground_pixel = BlackPixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return(0);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; while (!XMatchVisualInfo(display, screen_num, default_depth,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* visual class */i--, &amp;visual_info))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;
+&nbsp;&nbsp; printf("%s: found a %s class visual at default depth.\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; progname, visual_class[++i]);
+
+&nbsp;&nbsp; if (i &lt; StaticColor) { /* Color visual classes are 2 to 5 */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* No color visual available at default depth;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * some applications might call XMatchVisualInfo
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * here to try for a GrayScale visual if they
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * can use gray to advantage, before giving up
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * and using black and white */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border_pixel = BlackPixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background_pixel = WhitePixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreground_pixel = BlackPixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return(0);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Otherwise, got a color visual at default depth */
+&nbsp;&nbsp; /* The visual we found is not necessarily the default
+&nbsp;&nbsp;&nbsp; * visual, and therefore it is not necessarily the one
+&nbsp;&nbsp;&nbsp; * we used to create our window; however, we now know
+&nbsp;&nbsp;&nbsp; * for sure that color is supported, so the following
+&nbsp;&nbsp;&nbsp; * code will work (or fail in a controlled way) */
+&nbsp;&nbsp; /* Let's check just out of curiosity: */
+&nbsp;&nbsp; if (visual_info.visual != default_visual)
+&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("%s: %s class visual at default depth\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; progname, visual_class[i]);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("is not default visual! Continuing anyway...\n");
+&nbsp;&nbsp; }
+&nbsp;&nbsp; for (i = 0; i &lt; MAX_COLORS; i++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("allocating %s\n", name[i]);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!XParseColor (display, default_cmap, name[i],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;exact_def)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "%s: color name %s not in database",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; progname, name[i]);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(0);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("The RGB values from the database are %d, %d, %d\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exact_def.red, exact_def.green, exact_def.blue);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!XAllocColor(display, default_cmap, &amp;exact_def)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "%s: can't allocate color:\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; progname);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "All colorcells allocated and\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "no matching cell found.\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(0);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("The RGB values actually allocated are %d, %d, %d\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exact_def.red, exact_def.green,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exact_def.blue);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; colors[i] = exact_def.pixel;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ncolors++;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; printf("%s: allocated %d read-only color cells\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; progname, ncolors);
+&nbsp;&nbsp; border_pixel = colors[0];
+&nbsp;&nbsp; background_pixel = colors[1];
+&nbsp;&nbsp; foreground_pixel = colors[2];
+&nbsp;&nbsp; return(1);
+}</TT></PRE>
+</BLOCKQUOTE>
+This code begins by setting variables to the default depth,
+visual, and colormap for later use. If the default depth is one, then the
+application is displaying on a monochrome screen, and black and white are
+returned. Then the code calls <B>XMatchVisualInfo()</B> in a loop to look
+for a color visual at the default depth--it is called up to four times,
+until a color visual is found. If none is found, it again returns black
+and white, since this screen must support only a <B>GrayScale</B> visual
+(at this depth, anyway). Some applications may wish to allocate grays in
+this branch. The rest of the code loops through the list of color names
+to be allocated, looks them up in the color database, and then allocates
+them. If either the lookup stage or the allocation stage fails for any
+color, the routine prints an error and exits. It could instead simply fall
+back on black and white again; your choice.
+
+<P>As noted in the code, the visual found might not necessarily
+be the default visual. This does not always matter, because if any color
+visual is available, it is a good bet that the default visual is also color,
+and so colors can be allocated without doing any further research. With
+<B>XMatchVisualInfo()</B>, it is difficult to develop an algorithm that
+is guaranteed to find the default visual. This is much easier with <B>XGetVisualInfo()</B>,
+which returns a list of available visual structures that match a set of
+criteria you specify. If you pass no criteria, it simply returns the entire
+list of available visuals. You can then search through the list matching
+the <B>visual</B> member of the <B>XVisualInfo</B> structures to the default
+visual. This will be demonstrated in Section 7.6, "Getting Complete Visual
+Information."
+
+<P>The <B>XParseColor()</B> call specifies a color name,
+and the RGB values corresponding to that name are returned from the color
+database in the passed <B>XColor</B> structure. This structure is then
+passed to <B>XAllocColor()</B>, and the pixel value allocated is returned
+in the <B>pixel</B> field of the structure.
+
+<P>The same calls would be used to parse a hexadecimal color
+string. Pink could be specified in the call to <B>XParseColor()</B> as
+"<B>#bc8f8f</B>" instead of "<B>pink</B>". But, as we have said before,
+color names are preferred, because there is a better chance that they will
+specify a color already allocated or later to be allocated by another client.
+
+<P>It is also possible to specify the desired RGB values
+explicitly. This is good for default colors because it saves a call to
+<B>XParseColor()</B>, but on the other hand, you might not get a consistent
+color on all systems because you are bypassing the gamma correction implemented
+through the color database. Simply declare an <B>XColor</B> structure and
+set its <B>red</B>, <B>green</B>, and <B>blue</B> members to the desired
+RGB values. Of course, these values can be specified as integers, hexadecimal
+values, or any other way that the C language allows. Then pass this structure
+to <B>XAllocColor()</B>. But remember, as we have said, it is better to
+use color names when allocating read-only colorcells than to use any of
+these explicit RGB values.
+<H3>
+Highlighting in Two Colors</H3>
+It is easy to highlight graphics on a monochrome system.
+The simplest way is to set the GC to the <B>GXxor</B> logical function
+and draw your graphics once to draw them and again to undraw them. You
+must grab the server between the drawing and undrawing so that no other
+client changes the same pixels in between (by, for example, covering part
+of the area with another window). On a monochrome system, this always changes
+white to black and black to white if you set the foreground in the GC to
+<B>1</B> (setting it to <B>BlackPixel()</B> or <B>WhitePixel()</B> is not
+guaranteed to work on all systems, because either may be <B>0</B>).
+
+<P>When drawing in <B>BlackPixel()</B> and <B>WhitePixel()</B>
+on a color system, the color drawn by the <B>GXxor</B> operation is random
+if <B>BlackPixel()</B> or <B>WhitePixel()</B> are used for the foreground
+pixel value in the GC. This is because there is no restriction on which
+pixel value <B>BlackPixel()</B> and <B>WhitePixel()</B> can be on a server--they
+are not necessarily <B>1</B> and <B>0</B> and not necessarily different
+by just one bit. For example, the pixel value drawn if the foreground pixel
+value in the GC is <B>BlackPixel()</B> and the pixel value on the screen
+is <B>WhitePixel()</B> is <B>BlackPixel()</B> XOR <B>WhitePixel()</B>,
+which, unless <B>BlackPixel()</B> and <B>WhitePixel()</B> are different
+by only one bit, is a third pixel value not allocated by this client. The
+colorcell identified by this pixel value might contain black, in which
+case the operation would not change the screen.
+
+<P>The solution to this problem, which works on monochrome
+and color systems, is to set the foreground pixel value in the GC used
+in drawing with <B>GXxor</B> to the exclusive OR of <B>BlackPixel()</B>
+and <B>WhitePixel()</B> or by setting the logical function to <B>GXinvert</B>
+and using a plane mask which is the exclusive OR of <B>WhitePixel()</B>
+and <B>BlackPixel()</B>. All applications that highlight graphics drawn
+in <B>BlackPixel()</B> and <B>WhitePixel()</B> on a color system should
+use one of these two methods. The following example illustrates how this
+works using two arbitrarily chosen pixel values (which could be <B>BlackPixel()</B>
+and <B>WhitePixel()</B> or could be any two colors).
+
+<P>Let's assume that we draw in two pixel values, which we
+will call <B>color1</B> and <B>color2</B>. The pixel values for these could
+be:
+<BLOCKQUOTE>
+<PRE><TT>color1 = 11111111111111110000000000000000
+color2 = 00000000111111111111111100000000</TT></PRE>
+</BLOCKQUOTE>
+The pixel value we will use to draw is generated by taking
+the exclusive OR of <B>color1</B> and <B>color2</B>:
+<BLOCKQUOTE>
+<PRE><TT>color1 XOR color2 = 11111111000000001111111100000000</TT></PRE>
+</BLOCKQUOTE>
+Now we set the <B>foreground</B> in the GC to this pixel
+value and the <B>function</B> in the GC to <B>GXxor</B> and draw. This
+changes existing pixels that contained <B>color1</B> to <B>color2</B> and
+existing pixels that were <B>color2</B> to <B>color1</B>.
+<BLOCKQUOTE>
+<PRE><TT>foreground =&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 11111111000000001111111100000000
+existing pixel (color1) =&nbsp; 11111111111111110000000000000000
+resulting pixel (color2) = 00000000111111111111111100000000</TT></PRE>
+</BLOCKQUOTE>
+The other way to do this is to set the <B>plane_mask</B>
+in the GC to (<B>color1^color2</B>) and then use a logical function of
+<B>GXinvert</B>. This is equally effective.
+<H3>
+Choosing Default Colors</H3>
+A client that uses color should allow the user to specify
+the colors either on the command line or in the resource database, or both.
+The resource manager (described in Chapter 13, "Managing User Preferences")
+can be used to merge these preferences with the defaults of the program.
+However, the client needs to have reasonable default colors in case the
+user does not specify any preferences.
+
+<P>Follow these guidelines for your application's default
+colors:
+<UL>
+<LI>
+Use string color names for read-only colorcells if possible,
+since this maximizes the chance of sharing cells.</LI>
+
+<LI>
+Use colors with large contributions from two or all three
+primary colors--they light the screen more brightly.</LI>
+
+<LI>
+Avoid shades of pure blue--the human eye is relatively insensitive
+to and unable to focus on images made of pure blue light. Mix blue shades
+with white (white contains equal parts of all three primary colors).</LI>
+
+<LI>
+Remember that some users are color blind. Do not use the
+same intensity of green and red for "safe" and "danger"--use colors with
+differing intensity.</LI>
+</UL>
+
+<HR>
+<H2>
+Allocating Private Colors</H2>
+In colormaps of the <B>PseudoColor</B> or <B>TrueColor</B>
+visual classes, a client can allocate read/write cells. Read/write colorcells
+should be allocated when:
+<UL>
+<LI>
+The application draws something whose color must be changed
+dynamically without redrawing it. For example, in a color mixing program,
+the palette must be drawn in colors that change frequently. If this were
+done with read-only colors, cells would have to be allocated and freed
+frequently and the palette area redrawn with each new color. However, with
+read/write colorcells, the steps of allocation and color setting are separate,
+so that the color of an already allocated cell can be changed at will.
+Anything drawn using the pixel value of this colorcell will change color
+immediately when the RGB values in the colorcell are changed.</LI>
+
+<LI>
+The application needs to overlay graphics on top of other
+graphics in such a way that the overlayed graphics can be erased without
+disturbing the underlying graphics. For example, in a Computer Aided Design
+(CAD) package for chip design, it is often useful to overlay the various
+layers of a chip in different colors on the screen. When one of the layers
+is removed, you want to avoid having to redraw all the underlying layers.
+How to do this by allocating read/write cells will be described.</LI>
+
+<LI>
+The system has a huge colormap, and the application needs
+to set a large number of colorcells. The calls for manipulating read/write
+colorcells allow you to manipulate multiple cells per call, whereas with
+read-only cells, you are limited to one cell per call.</LI>
+</UL>
+Note that read/write colorcell allocation never works on
+<B>TrueColor</B> or <B>StaticColor</B> visuals. Therefore, on systems that
+only support these visuals, an application that uses read/write colorcells
+cannot work. Read/write colorcells should only be used when really needed.
+
+<P><B>XAllocColorCells()</B> allocates read/write colorcells.
+At its simplest, it allows you to allocate read/write cells so you can
+change the RGB values dynamically.
+
+<P>But to simply allocate just a few cells, you set the ncolors
+argument to the number of colorcells desired and nplanes to <B>0</B>, and
+all the pixel values you need will be returned in the pixels array. The
+real reason for the nplanes and plane_masks arguments will become clear
+in Section 7.5.2, "Allocating Read/Write Colorcells for Overlays." The
+RGB values of the allocated cells are set with <B>XStoreColor()</B>, <B>XStoreColors()</B>,
+or <B>XStoreNamedColor()</B>.
+
+<P><B>XAllocColorPlanes()</B>, on the other hand, is only
+used when you want to be able to vary a primary color component of graphics
+already drawn without redrawing them. It allocates read/write cells, so
+that a preset number of bits are reserved for each primary color. Primarily
+for <B>DirectColor</B>, it also allows you to simulate a small <B>DirectColor</B>
+colormap on a <B>PseudoColor</B> visual but uses up colorcells quickly.
+It treats the colormap as three separate lookup tables, allocating ncolors<B>*2</B>nreds
+entries in the red lookup table, ncolors<B>*2</B>ngreens entries in the
+green lookup table, and ncolors<B>*2</B>nblues entries in the blue lookup
+table.
+
+<P>The following routines are used to actually store colors
+into read/write colorcells once they are allocated:
+<DL>
+<DT>
+<B>XStoreColor()</B></DT>
+
+<DD>
+Changes the read/write colormap cell corresponding to the
+specified pixel value to the hardware color that most closely matches the
+RGB values specified.&nbsp; The flags <B>DoRed</B>, <B>DoGreen</B>, and
+<B>DoBlue</B> in the <B>XColor</B> structure indicate which primary colors
+in the cell are to be changed. <B>XcmsStoreColor()</B> is similar but allows
+you to specify the color string in Xcms syntax.</DD>
+
+<DT>
+<B>XStoreColors()</B></DT>
+
+<DD>
+Like <B>XStoreColor()</B>, except it does multiple cells
+per call. Changes the read/write colormap cell corresponding to the specified
+pixel value to the hardware color that most closely matches the RGB values
+specified. The flags <B>DoRed</B>, <B>DoGreen</B>, and <B>DoBlue</B> in
+each <B>XColor</B> structure indicate which primary colors in each cell
+are to be changed. <B>XcmsStoreColors()</B> is similar but allows you to
+specify color strings in Xcms syntax.</DD>
+
+<DT>
+<B>XStoreNamedColor()</B></DT>
+
+<DD>
+Performs the same function as <B>StoreColor()</B>, except
+that it stores the RGB values associated with a string color name in the
+RGB database. This call would be useful for loading a private colormap
+with each of the default named colors. No Xcms equivalent, since this function
+accepts Xcms syntax (in R5 and later).</DD>
+</DL>
+
+<H3>
+Allocating Read/Write Colorcells for Dynamic Colors</H3>
+As described above, the simplest use of read/write colors
+is to allocate colorcells whose colors can by changed at any time. Example
+7-6 is analogous to the code just shown to allocate read-only colors, except
+that it allocates read/write colors instead. Note that it calls <B>XAllocColorCells()</B>
+with the ncolors argument set to the number of colorcells desired and nplanes
+set to zero.
+
+<P><B>Allocating read/write colorcells for dynamic colors</B>
+<BLOCKQUOTE>
+<PRE><TT>#include &lt;X11/Xlib.h>
+#include &lt;X11/Xutil.h>
+#include &lt;X11/Xos.h>
+#include &lt;stdio.h>
+extern Display *display;
+extern int screen_num;
+extern unsigned long foreground_pixel, background_pixel,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border_pixel;
+#define MAX_COLORS 3
+get_colors()
+{
+&nbsp;&nbsp; int default_depth;
+&nbsp;&nbsp; Visual *default_visual;
+&nbsp;&nbsp; static char *name[] = {"Red", "Yellow", "Green"};
+&nbsp;&nbsp; XColor exact_defs[MAX_COLORS];
+&nbsp;&nbsp; Colormap default_cmap;
+&nbsp;&nbsp; int ncolors = MAX_COLORS;
+&nbsp;&nbsp; int plane_masks[1];
+&nbsp;&nbsp; int colors[MAX_COLORS];
+&nbsp;&nbsp; int i;
+&nbsp;&nbsp; XVisualInfo visual_info;
+&nbsp;&nbsp; int class;
+&nbsp;&nbsp; class = PseudoColor;
+&nbsp;&nbsp; default_depth = DefaultDepth(display, screen_num);
+&nbsp;&nbsp; default_visual = DefaultVisual(display, screen_num);
+&nbsp;&nbsp; default_cmap&nbsp;&nbsp; = DefaultColormap(display, screen_num);
+&nbsp;&nbsp; if (default_depth == 1) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Must be StaticGray, use black and white */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border_pixel = BlackPixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background_pixel = WhitePixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreground_pixel = BlackPixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return(0);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; if (!XMatchVisualInfo(display, screen_num, default_depth,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; PseudoColor, &amp;visual_info)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!XMatchVisualInfo(display, screen_num, default_depth,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DirectColor, &amp;visual_info)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* No PseudoColor visual available at default_depth;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * some applications might try for a GrayScale
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * visual here if they can use gray to advantage,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * before giving up and using black and white */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border_pixel = BlackPixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background_pixel = WhitePixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreground_pixel = BlackPixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return(0);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Got PseudoColor or DirectColor visual at default_depth */
+&nbsp;&nbsp; /* The visual we found is not necessarily the default
+&nbsp;&nbsp;&nbsp; * visual, and therefore it is not necessarily the one
+&nbsp;&nbsp;&nbsp; * we used to create our window; however, we now know
+&nbsp;&nbsp;&nbsp; * for sure that color is supported, so the following
+&nbsp;&nbsp;&nbsp; * code will work (or fail in a controlled way) */
+&nbsp;&nbsp; /* Allocate as many cells as we can */
+&nbsp;&nbsp; ncolors = MAX_COLORS;
+&nbsp;&nbsp; while (1) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (XAllocColorCells (display, default_cmap, False,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; plane_masks, /* nplanes */0, colors, ncolors))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; ncolors--;
+&nbsp;&nbsp; if (ncolors == 0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "basic: couldn't allocate read/write \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; colors\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(0);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; printf("basic: allocated %d read/write color cells\n", ncolors);
+&nbsp;&nbsp; for (i = 0; i &lt; ncolors; i++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!XParseColor (display, default_cmap, name[i],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;exact_defs[i])) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "basic: color name %s not in database",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; name[i]);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(0);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Set pixel value in struct to the allocated one */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exact_defs[i].pixel = colors[i];
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exact_defs[i].flags = DoRed | DoGreen | DoBlue;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* This sets the color of read/write cell */
+&nbsp;&nbsp; XStoreColors (display, default_cmap, exact_defs, ncolors);
+&nbsp;&nbsp; border_pixel = colors[0];
+&nbsp;&nbsp; background_pixel = colors[1];
+&nbsp;&nbsp; foreground_pixel = colors[2];
+}</TT></PRE>
+</BLOCKQUOTE>
+The <B>main</B> that calls this <B>get_colors</B> function,
+shown in Example 7-7 contains an <B>XQueryColor()</B> call that gets the
+current RGB values in the colorcell (necessary because <B>main</B> and
+<B>get_colors</B> are in separate source files and the RGB values used
+in <B>get_colors</B> are not global variables) and an <B>XStoreColor()</B>
+call that changes the color of what is drawn in the foreground pixel value
+every time you press a button in the window. In the example source, this
+application is in the directory <I>basicwin/color/</I> and is called <I>basic.rw</I>.
+
+<P><B>Main of basic.rw -- changing colors of dynamic colorcells</B>
+<BLOCKQUOTE>
+<PRE><TT>&nbsp; .
+&nbsp; .
+&nbsp; .
+void main(argc, argv)
+int argc;
+char **argv;
+{
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; XColor color;
+&nbsp;&nbsp; unsigned short red, green, blue;
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; /* Open display, etc. */
+&nbsp;&nbsp; color.pixel = foreground_pixel;
+&nbsp;&nbsp; XQueryColor(display, DefaultColormap(display, screen_num),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;color);
+&nbsp;&nbsp; printf("red is %d, green is %d, blue is %d\n", color.red,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color.green, color.blue);
+&nbsp;&nbsp; while (1)&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNextEvent(display, &amp;report);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch&nbsp; (report.type) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ButtonPress:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color.red += 5000;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color.green -= 5000;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color.blue += 3000;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("red is %d, green is %d, blue is %d\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color.red,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color.green, color.blue);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XStoreColor(display, DefaultColormap(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; screen_num), &amp;color);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; }
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Allocating Read/Write Colorcells for Overlays</H3>
+<B>XAllocColorCells()</B> has another use: it allows you
+to nondestructively overlay one set of graphics over another. The underlying
+graphics will not be visible where the overlay is drawn, but they can be
+refreshed by simply setting or clearing one or more complete planes in
+the drawable. This technique can improve the performance of a client by
+reducing the amount of complicated graphics that have to be redrawn. It
+can be useful for highlighting graphics for selection. However, as noted
+earlier, read/write colorcells can only be allocated in <B>PseudoColor</B>
+and <B>DirectColor</B> visuals, so any application that attempts to use
+this technique should also provide a fallback technique for use on other
+visuals or in case of failure.
+
+<P>The trick that allows drawing without destroying what
+is already drawn relies on the fact that we can draw in one plane of the
+drawable, changing the pixel values and therefore the color, without changing
+any other plane. This is possible using the <B>plane_mask</B> component
+of the GC. It is these other planes that contain the information about
+the drawing that was already there. The disadvantage of this approach is
+that we have to allocate more colorcells than we would normally need. Some
+of the colorcells will need to be loaded with duplicate RGB values. Because
+of this waste of colorcells, this technique should be used only when the
+graphics being preserved are slow for the client or the server to redraw.
+
+<P>To illustrate this trick, we are going to draw in one
+color (the foreground in the GC), set the <B>background_pixel</B> attribute
+of the window to a second color, and then draw something temporary over
+the top with a third color.&nbsp; To do this, we need to allocate four
+colorcells with <B>XAllocColorCells()</B>. The pixel values allocated will
+look something like this:
+<BLOCKQUOTE>
+<PRE><TT>Color&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Important Bits&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Remaining Bits&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+foreground:&nbsp;&nbsp;&nbsp; ----0--0------------------------&nbsp; <I>all other bits don't matter
+</I>background:&nbsp;&nbsp;&nbsp; ----0--1------------------------&nbsp; <I>all other bits don't matter
+</I>highlight1:&nbsp;&nbsp;&nbsp; ----1--0------------------------&nbsp; <I>all other bits don't matter
+</I>highlight2:&nbsp;&nbsp;&nbsp; ----1--1------------------------&nbsp; <I>all other bits don't matter</I></TT></PRE>
+</BLOCKQUOTE>
+The bits indicated could have been any bits, but it is significant
+that only two bits distinguish the four pixel values. The first pixel value
+is used for the foreground, and the second for the background. We draw
+overlays in the third or fourth pixel value. Since we do not want to erase
+what was drawn in the foreground and background pixel values, we use a
+plane mask to restrict the drawing of the highlighting pixel value to a
+single plane, the one where bits in the highlighting pixel values are set
+to 1. When this entire plane (indicated by the 1 in pixel values <B>highlight1</B>
+and <B>highlight2</B>) is cleared, anything drawn in <B>highlight1</B>
+or <B>highlight2</B> disappears, and anything that was drawn in the foreground
+or background will reappear.&nbsp; The color in the colorcell indicated
+by <B>highlight2</B> must be the same as the color of colorcell <B>highlight1</B>
+so that the same highlighting color appears regardless of the bit already
+in the drawable that distinguishes the foreground and background pixel
+values.
+
+<P><B>XAllocColorCells()</B> does not return these four pixel
+values directly. Instead it returns the arrays colors and plane_masks that
+are more convenient for actually using the overlays than a single array
+of pixel values. (Each of these arrays has the number of members that was
+specified in the ncolors and nplanes arguments.) Both arrays consist of
+unsigned long values like pixel values. One array contains the plane masks
+of the overlay planes, and the other contains the pixel values that can
+be used for drawing independent of the overlay planes. Here are the values
+returned in each array after we call <B>XAllocColorCells()</B> with ncolors<B>
+= 2</B> and nplanes<B> = 1</B>. These values are then used to generate
+the pixel values shown above.
+<BLOCKQUOTE>
+<PRE><TT>Array Members&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Important Bits&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Remaining Bits
+colors[0]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =&nbsp; ----0--0------------------------&nbsp; <I>other bits don't matter
+</I>colors[1]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =&nbsp; ----0--1------------------------
+plane_masks[0] =&nbsp; ----1---------------------------&nbsp; <I>all other bits 0</I></TT></PRE>
+</BLOCKQUOTE>
+The two members of the colors array are used for the foreground
+and background. Pixel values <B>highlight1</B> and <B>highlight2</B> are
+composed by combining with a bitwise OR each item in the colors array with
+each item in the plane_masks array. In this case, <B>highlight1</B> is
+(colors<B>[0] | </B>plane_masks<B>[0]</B>). The <B>plane_mask</B> in the
+GC used when highlighting should be set to the OR of the members of plane_masks
+used to make the highlighting pixel value. In this simplest case, highlighting
+should be done with the <B>plane_mask</B> in the GC set to plane_masks<B>[0]</B>.
+
+<P>Note that <B>highlight2</B>, generated with (colors<B>[1]
+| </B>plane_masks<B>[0]</B>), can be useful. As mentioned earlier, <B>highlight2</B>
+can be used interchangeably with <B>highlight1</B>, as long as the <B>plane_mask</B>
+in the GC is set to plane_masks<B>[0]</B>. But <B>highlight2</B> has another
+use. With a GC that does not have its <B>plane_mask</B> set to plane_masks<B>[0]</B>
+(the GC used for drawing with the foreground or background), this fourth
+pixel value can be used for drawing in the highlighting color while wiping
+out the underlying graphics, so that when the highlight is removed, the
+background color appears regardless of the contents of the drawable before
+the highlighting.
+
+<P>We have been hinting at the fact that this overlay technique
+can be used with more than two colors and more than one plane. ncolors
+specifies the number of colors than can be drawn and preserved while drawing
+in the overlays. nplanes specifies how many separate one-color overlays
+you may have or how many bits of color are available in a single overlay.
+The pixel values in the colors array are the ones that will be preserved
+through overlays. By ORing together each colors with any combination of
+plane_masks, you get the pixel values that are used for drawing the overlays.
+Note, however, that the plane mask of the GC used for the overlaying must
+be the OR of the same combination of members of the plane_masks array as
+were used to generate the pixel value.
+
+<P>The total number of pixel values (colorcells) allocated
+by <B>XAllocColorCells()</B> is ncolors<B>*2</B>nplanes . Note that the
+more planes you try to allocate, the less likely this request is to succeed,
+particularly on <B>PseudoColor</B> visuals. Therefore, if you are trying
+for multiple overlays or one multicolor overlay, this will probably work
+reliably only on <B>DirectColor</B> visuals, so make sure you have a backup
+plan for more common systems. In most cases, the underlying graphics can
+be redrawn if the overlays that would preserve them cannot be allocated.
+It is also possible to use backing store (which can save selective planes)
+or to manage your own off-screen pixmaps for use in fast redrawing of complicated
+graphics.
+
+<P><B>XAllocColorCells()</B> takes a contig argument that
+specifies whether the planes returned in plane_masks must be contiguous.
+The contig argument is normally set to <B>False</B>, specifying that the
+allocated planes need not be contiguous, because then the chances of success
+of the <B>XAllocColorCells()</B> call are greater. There are more likely
+to be a number of noncontiguous planes available than the same number of
+contiguous planes. The contig argument may have to be set to <B>True</B>
+for imaging applications that want to be able to perform mathematical operations
+on the pixel values. It is easier to perform operations by shifting bits
+with contiguous planes than to achieve the same effect with random planes.
+
+<P>Each plane mask has one bit for <B>GrayScale</B> and <B>PseudoColor</B>
+or three bits for <B>DirectColor</B> or <B>TrueColor</B>, and none of the
+masks have bits in common.
+
+<P>Example 7-4 demonstrates allocating the read/write cells
+for a single overlay plane. It implements the overlay scheme described
+above. If this overlay plan fails, it allocates three colors so that a
+highlight can still be implemented even though the underlying graphics
+will have to be redrawn. If the color allocation fails completely, it uses
+black and white, which can be highlighted using the <B>GXxor</B> logical
+function to invert the color, as described in Section 7.4.3, "Highlighting
+in Two Colors."
+
+<P><B>Using XAllocColorCells() to allocate read/write colorcells
+for overlay plane</B>
+<BLOCKQUOTE>
+<PRE><TT>#include &lt;X11/Xlib.h>
+#include &lt;X11/Xutil.h>
+#include &lt;X11/Xos.h>
+#include &lt;stdio.h>
+extern Display *display;
+extern int screen_num;
+extern unsigned long foreground, background_pixel, overlay_pixel_1,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; overlay_pixel_2;
+extern unsigned long overlay_plane_mask;
+#define MAX_COLORS 2
+#define MAX_PLANES 1
+#define MAX_CELLS 4&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* MAX_COLORS * 2 ^ MAX_PLANES */
+#define CANNOT_OVERLAY 0
+#define CAN_OVERLAY 1
+int
+get_colors()
+{
+&nbsp;&nbsp; int default_depth;
+&nbsp;&nbsp; static char *name[] = {"Red", "Yellow", "Green", "Green"};
+&nbsp;&nbsp; XColor exact_defs[MAX_CELLS];
+&nbsp;&nbsp; Colormap default_cmap;
+&nbsp;&nbsp; int ncolors = 4;
+&nbsp;&nbsp; int plane_masks[MAX_PLANES];
+&nbsp;&nbsp; int colors[MAX_COLORS];
+&nbsp;&nbsp; int i;
+&nbsp;&nbsp; XVisualInfo visual_info;
+&nbsp;&nbsp; int class;
+&nbsp;&nbsp; default_depth = DefaultDepth(display, screen_num);
+&nbsp;&nbsp; default_cmap&nbsp;&nbsp; = DefaultColormap(display, screen_num);
+&nbsp;&nbsp; if (default_depth == 1) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Must be StaticGray, use black and white */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background_pixel = WhitePixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreground = BlackPixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("using black and white\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return(CANNOT_OVERLAY);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; if (!XMatchVisualInfo(display, screen_num, default_depth,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; PseudoColor, &amp;visual_info)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!XMatchVisualInfo(display, screen_num, default_depth,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DirectColor, &amp;visual_info)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* No PseudoColor or TrueColor visual available at
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * default_depth; some applications might try for a
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * GrayScale visual here if they can use gray to
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * advantage, before giving up and using black and white */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background_pixel = WhitePixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreground = BlackPixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("using black and white\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return(CANNOT_OVERLAY);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Got PseudoColor or TrueColor visual at default depth */
+&nbsp;&nbsp; /* The visual we found is not necessarily the default visual, and
+&nbsp;&nbsp;&nbsp; * therefore it is not necessarily the one we used to create our
+&nbsp;&nbsp;&nbsp; * window; however, we now know for sure that color is supported,
+&nbsp;&nbsp;&nbsp; * so the following code will work (or fail in a controlled way) */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (XAllocColorCells (display, default_cmap, False, plane_masks,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1, colors, 2) == 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Can't get enough read/write cells to overlay;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * try at least to get three colors */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (XAllocColorCells (display, default_cmap, False,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; plane_masks, 0, colors, 3) == 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Can't even get that; give up and use black and white */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background_pixel = WhitePixel(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreground = BlackPixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("using black and white\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return(CANNOT_OVERLAY);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ncolors = 3;
+&nbsp;&nbsp; }
+
+&nbsp;&nbsp; /* Allocated three or four colorcells successfully, now set their
+&nbsp;&nbsp;&nbsp; * colors -- three and four are set to the same RGB values */
+&nbsp;&nbsp; for (i = 0; i &lt; ncolors; i++)
+&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!XParseColor (display, default_cmap, name[i],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;exact_defs[i])) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "basic: color name %s not in database",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; name[i]);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(0);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* This needed before calling XStoreColors */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exact_defs[i].flags = DoRed | DoGreen | DoBlue;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; printf("got RGB values\n");
+&nbsp;&nbsp; /* Set pixel value in struct to the allocated ones */
+&nbsp;&nbsp; exact_defs[0].pixel = colors[0];
+&nbsp;&nbsp; exact_defs[1].pixel = colors[1];
+&nbsp;&nbsp; exact_defs[2].pixel = colors[0] | plane_masks[0];
+&nbsp;&nbsp; exact_defs[3].pixel = colors[1] | plane_masks[0];
+&nbsp;&nbsp; /* This sets the color of the read/write cells */
+&nbsp;&nbsp; XStoreColors (display, default_cmap, exact_defs, ncolors);
+&nbsp;&nbsp; printf("stored colors\n");
+&nbsp;&nbsp; background_pixel = exact_defs[0].pixel;
+&nbsp;&nbsp; foreground = exact_defs[1].pixel;
+&nbsp;&nbsp; if (ncolors == 4) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; overlay_pixel_1 = exact_defs[2].pixel;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; overlay_pixel_2 = exact_defs[3].pixel;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; overlay_plane_mask = plane_masks[0];
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("set can\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return(CAN_OVERLAY);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* This must be used as a normal color, not overlay */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; overlay_pixel_1 = exact_defs[2].pixel;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("set can't\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return(CANNOT_OVERLAY);
+&nbsp;&nbsp; }
+}</TT></PRE>
+</BLOCKQUOTE>
+The technique used for overlay planes can be used to implement
+a form of double buffering. Double buffering is a technique common used
+in animation, where drawing is done in an invisible buffer which is then
+made visible by a quick operation. While the first buffer is visible, a
+second invisible buffer is drawn into. When the second buffer is drawn,
+it is made visible and the first buffer invisible. This technique allows
+animation to appear smoothly without the person seeing the individual drawing
+operations that were necessary to draw the pictures.
+
+<P>Implementing this is just like overlays: one buffer is
+the overlay, and the other is what we have previously considered static
+graphics. The only change in double buffering is that you draw into the
+invisible buffer by using pixel values that do not change the visible colors
+in the visible buffer. Then you use <B>XFillRectangle()</B> to set or clear
+all pixels in the plane or planes that distinguish between the visible
+and invisible buffers. The price of doing this is that you have much fewer
+colors in each picture. For example, on an 8-plane system, you can only
+use 16 colors since you have two buffers of 4 bits each. (Also note that
+there is a double-buffering extension in progress in the X Consortium.)
+<H3>
+Using XAllocColorPlanes()</H3>
+<B>XAllocColorPlanes()</B> also allocates read/write colorcells
+but in a different way than <B>XAllocColorCells()</B>. <B>XAllocColorPlanes()</B>
+is used when you want to be able to change the amount of a primary color
+in graphics without having to redraw them. In other words, perhaps you
+are looking at an image and would like to increase the redness of it. The
+best way to do this is to increase the amount of red in every pixel value.
+<B>XAllocColorPlanes()</B> would be the way to allocate colors to allow
+this. It is rarely used except in imaging applications and 3-D graphics
+and will rarely work except on 24-plane workstations with a <B>DirectColor</B>
+visual.
+
+<P>Note that for applications like a paint mixing program,
+in which you have three bars for the three primary colors and a palette
+that shows the mixed color, you would not use <B>XAllocColorPlanes()</B>.
+The correct way to implement this is to allocate a single read/write color
+for the palette and to change it dynamically. (If the primary colors are
+displayed, they should be allocated using read-only colors.)
+
+<P>The piece of code shown in Example 7-8 is similar to Example
+7-4 but it uses <B>XAllocColorPlanes()</B>. It is somewhat sketchy, because
+real applications that use <B>XAllocColorPlanes()</B> are complicated.
+
+<P>After allocating colors with <B>XAllocColorPlanes()</B>,
+you can then use <B>XStoreColors()</B> to set the colors. When nred, ngreen,
+and nblue are each <B>8</B>, only one call to <B>XAllocColorPlanes()</B>
+and one call to <B>XStoreColors()</B> are necessary to allocate and set
+all 16 million colors of an entire 24-plane colormap.
+
+<P><B>Using XAllocColorPlanes() to allocate colorcells for
+DirectColor</B>
+<BLOCKQUOTE>
+<PRE><TT>#define PIXELS 256
+Display *display;
+int screen_num;
+int contig = False;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Noncontiguous planes */
+unsigned long pixels[PIXELS];&nbsp;&nbsp; /* Return of pixel values */
+/* Number of independent pixel values allocate */
+unsigned int ncolors = PIXELS;
+/* Need PIXELS * 2 ^ maxplanes defs, where maxplanes
+&nbsp;* is the largest of nred, ngreen, and nblue */
+XColor defs[2048];
+/* Number of planes to allocate for each primary */
+unsigned int nreds = 3, ngreens = 3, nblues = 2;
+/* Returned masks, which bits of pixel value for each primary */
+unsigned long red_mask, green_mask, blue_mask;
+Colormap colormap;
+Status status;
+/* Open display, etc. */
+/* Get or create large DirectColor colormap */
+while (status = XAllocColorPlanes(display, colormap,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; contig, pixels, ncolors, nreds, ngreens, nblues,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;red_mask, &amp;green_mask, &amp;blue_mask) == 0) {
+&nbsp;&nbsp; /* Make contig False if it was True; reduce value of
+&nbsp;&nbsp;&nbsp; * ncolors; reduce value of nreds, ngreens, and/or
+&nbsp;&nbsp;&nbsp; * nblues; or try allocating new map; break when
+&nbsp;&nbsp;&nbsp; * you give up */
+&nbsp;&nbsp; break;
+}
+if (status == 0) {
+&nbsp;&nbsp; fprintf(stderr, "%s: couldn't allocate requested colorcells",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; argv[0]);
+&nbsp;&nbsp; exit(-1);
+}
+/* Define desired colors in defs */
+while (status = XStoreColors(display, colormap, defs,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ncolors) == 0) {
+&nbsp;&nbsp; fprintf(stderr, "%s: can't store colors", argv[0]);
+&nbsp;&nbsp; /* Try to fix problem here, exit or break */
+&nbsp;&nbsp; exit(-1);
+}
+
+/* Draw your shaded stuff! */</TT></PRE>
+</BLOCKQUOTE>
+
+<HR>
+<H2>
+Getting Complete Visual Information</H2>
+As mentioned earlier, some systems define more than one visual.
+The default visual might not be the most appropriate for your application.
+Moreover, the visual found using the technique described in Section 7.4.2,
+"Code to Allocate Read-only Colors" using <B>XMatchVisualInfo()</B> is
+fine for applications with routine color needs but is not necessarily the
+best. As you may recall, <B>XMatchVisualInfo()</B> returns a single visual
+arbitrarily selected from the list that matches the passed visual class
+and depth. The most thorough method is to get a complete list of visual
+information for every available visual, using <B>XGetVisualInfo()</B>,
+and then choose from these.
+
+<P><B>XGetVisualInfo()</B> returns a list of visual structures
+that match the attributes specified by template and mask arguments. The
+template is an <B>XVisualInfo</B> structure with members set to the required
+values, and the mask indicates which members are matched with the list
+of available visuals. By passing an empty template structure, you can get
+a complete list of <B>XVisualInfo</B> structures.
+<H3>
+The XVisualInfo Structure</H3>
+The <B>XVisualInfo</B> structure returns information about
+the available visuals. It is used both to select a visual type from those
+available and as a source of information while using a particular visual.
+
+<P>The <B>XVisualInfo</B> structure is shown in Example 7-9.
+
+<P><B>The XVisualInfo structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; Visual *visual;
+&nbsp;&nbsp; VisualID visualid;
+&nbsp;&nbsp; int screen_num;
+&nbsp;&nbsp; unsigned int depth;
+&nbsp;&nbsp; int class;
+&nbsp;&nbsp; unsigned long red_mask;
+&nbsp;&nbsp; unsigned long green_mask;
+&nbsp;&nbsp; unsigned long blue_mask;
+&nbsp;&nbsp; int colormap_size;&nbsp;&nbsp;&nbsp;&nbsp; /* Same as map_entries member of Visual */
+&nbsp;&nbsp; int bits_per_rgb;
+} XVisualInfo;</TT></PRE>
+</BLOCKQUOTE>
+The <B>visual</B> member is a pointer to the internal <B>Visual</B>
+structure. This pointer is used as the visual argument of <B>XCreateWindow()</B>
+and <B>XCreateColormap()</B>.
+
+<P>The <B>visualid</B> member is not normally needed by applications.
+
+<P>As discussed earlier, the <B>class</B> member specifies
+whether the screen is to be considered color or monochrome and changeable
+or immutable. The <B>class</B> member can be one of the constants <B>DirectColor</B>,
+<B>GrayScale</B>, <B>PseudoColor</B>, <B>StaticColor</B>, <B>StaticGray</B>,
+or <B>TrueColor</B>.
+
+<P>The <B>red_mask</B>, <B>green_mask</B>, and <B>blue_mask</B>
+members are used only for the <B>DirectColor</B> and <B>TrueColor</B> visual
+classes, where there is a separate map for each primary color. They define
+which bits of the pixel value index into the colormap for each primary
+color. Each mask has one contiguous set of bits, with no bits in common
+with the other masks. These values are zero for monochrome and most four-
+to eight-plane color systems.
+
+<P>The <B>colormap_size</B> member of the structure tells
+you how many different pixel values are valid with this visual. For a monochrome
+screen, this value is two. For the default visual of an eight-plane color
+system, this value is typically 254 or 256 (two colors are often reserved
+for the cursor). For <B>DirectColor</B> and <B>TrueColor</B>, <B>colormap_size</B>
+will be the number of cells for the biggest individual pixel subfield.
+The <B>colormap_size</B> member is the same as the <B>map_entries</B> member
+of the visual structure.
+
+<P>The <B>bits_per_rgb</B> member specifies how many bits
+in each of the red, green, and blue values in a colorcell are used to drive
+the RGB gun in the screen. For a monochrome screen, this value is one.
+For the default visual of an eight-plane color system, this value is typically
+eight. The pixel subfields (the red, green, and blue values in each colorcell)
+are 16-bit unsigned short values, but only the highest <B>bits_per_rgb</B>
+bits are used to drive the RGB gun in the screen. This number corresponds
+the number of bits of resolution in the Digital to Analog Converter (DAC)
+in the screen hardware.
+<H3>
+Example of Choosing a Visual</H3>
+Example 7-10 shows a routine that uses <B>XGetVisualInfo()</B>
+to get all the visuals of depth 8 on the current screen, as defined by
+the X server, and then creates a colormap and window.
+
+<P><B>Code to match visuals</B>
+<BLOCKQUOTE>
+<PRE><TT>#include &lt;X11/Xlib.h>
+#include &lt;X11/Xutil.h>
+visual()
+{
+Display *display;
+Colormap colormap;
+Window window;
+XSetWindowAttributes attributes;
+unsigned long valuemask;
+int screen_num;
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+XVisualInfo vTemplate;&nbsp;&nbsp;&nbsp; /* Template of the visual we want */
+XVisualInfo *visualList;&nbsp; /* List of XVisualInfo structs that
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * match */
+int visualsMatched;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Number of visuals that match */
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+/* Set up the XVisualInfo template so that it returns a list
+&nbsp;* of all the visuals of depth 8 defined on the current screen
+&nbsp;* by the X server */
+vTemplate.screen = screen_num;
+vTemplate.depth = 8;
+visualList = XGetVisualInfo (display, VisualScreenMask |
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; VisualDepthMask, &amp;vTemplate, &amp;visualsMatched);
+if ( visualsMatched == 0 )
+&nbsp;&nbsp; fatalError ("No matching visuals\n");
+/* Create a colormap for a window using the first of the
+&nbsp;* visuals in the list of XVisualInfo structs returned by
+&nbsp;* XGetVisualInfo */
+colormap = XCreateColormap (display, RootWindow(display, screen_num),
+&nbsp;&nbsp; visualList[0].visual, AllocNone);
+/* Must specify colormap attribute if using nondefault visual */
+attributes.colormap = colormap;
+valuemask |= CWColormap;
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+window = XCreateWindow (display, RootWindow(display, screen_num),
+&nbsp;&nbsp; x, y, width, height, border_width, vTemplate.depth,
+&nbsp;&nbsp; InputOutput, visualList[0].visual, valuemask, &amp;attributes);
+XSetWindowColormap(display, window, colormap);
+/* All done with visual information; free it */
+XFree(visualList);
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+} /* End routine */</TT></PRE>
+</BLOCKQUOTE>
+Notice that the list of <B>XVisualInfo</B> structures is
+freed with <B>XFree()</B> after use.
+<BR>
+<HR>
+<H2>
+The GrayScale Visual</H2>
+On a gray-scale workstation or a <B>GrayScale</B> visual
+on a color workstation, a color application should still work correctly.
+The only problem might be that when colors are allocated, the closest physically
+possible colors (returned by <B>XAllocColor()</B>) will result in shades
+of gray that provide insufficient contrast. The best way to avoid this
+is to explicitly check for the <B>StaticGray</B> visual. For true bulletproof
+operation, it is a good idea to check any user-specified colors to make
+sure they contrast.
+
+<P>The color names "gray0" through "gray100", spelled with
+an "e" or an "a", can be used with <B>XParseColor()</B> to get RGB values
+for various grays.
+
+<P>You should set the red, green, and blue values to be equal.
+Some servers only use one of the values, and others combine all three according
+to the NTSC standard that makes color television signals work on black-and-white
+televisions:
+<BLOCKQUOTE>
+<PRE><TT>intensity = (.30 * red) + (.59 * green) + (.11 * blue)</TT></PRE>
+</BLOCKQUOTE>
+MIT's implementations use a least-squares algorithm that
+determines the closest RGB values in the (gray) colormap to the RGB values
+specified. Exactly what algorithm is used is up to the server implementor.
+<BR>
+<HR>
+<H2>
+Standard Colormaps</H2>
+A <I>standard colormap</I> is one in which the mapping between
+pixel values and colors is predictable. The purpose of standard colormaps
+is to encourage sharing of entire colormaps (not just individual cells)
+between applications that have too demanding color needs to be able to
+allocate read-only colors out of the default colormaps.
+
+<P>X defines a set of properties that contain information
+describing commonly used colormaps. An application reads these properties
+by calling <B>XGetRGBColormaps()</B>. This call returns an <B>XStandardColormap</B>
+structure that contains enough information so that the application can
+calculate the colors in every colormap cell (or a certain range within
+the colormap). This structure may also include the ID of a colormap matching
+this description that was created by the window manager or another client.
+The X distribution from MIT includes a standard client, <I>xstdcmap</I>,
+that creates the standard colormaps. The user can arrange for <I>xstdcmap</I>
+to be invoked when the X server starts up, or in the user's <I>.xsession</I>
+or <I>.xinitrc</I> file. If this program has not been run, the application
+can create a new colormap and use the information in the standard colormap
+properties to allocate and set the colors according to the information
+in the property. There are functions in the Xmu (miscellaneous utilities)
+library for allocating standard colormaps.
+
+<P>But how does the sharing work? After creating this colormap,
+the application (or <I>xstdcmap</I>) sets the ID of the created colormap
+into the <B>colormap</B> field of the <B>XStandardColormap</B> structure
+and then calls <B>XSetRGBColormaps()</B>. This resets the property, so
+that the next time another client calls <B>XGetRGBColormaps()</B>, the
+<B>colormap</B> field of the returned structure will actually contain the
+ID of the appropriate colormap.
+
+<P>Therefore, although an application must have the code
+to create, allocate, and set colors in a standard colormap to be robust,
+in some cases this code will not be executed because some other client
+will have already done the work. After calling <B>XGetRGBColormaps()</B>,
+if the <B>colormap</B> field is zero, the application must create the colormap.
+Otherwise, the <B>colormap</B> field holds the ID of an appropriate colormap.
+
+<P>When an application uses standard colormaps, two (or more)
+instances of the application can run at the same time without increasing
+the load on the system caused by creating multiple copies of the same colormap.
+Applications that do not use standard colormaps will end up creating separate
+but identical colormaps. The window manager will switch these in and out
+of the hardware colormap whenever a different instance is in use. Although
+nothing on the screen will change color because both the colormaps are
+identical, the server will be performing unnecessary installing and uninstalling,
+and the extra colormaps will waste server memory.
+
+<P>In some cases, the window manager or even the server will
+create one or more standard colormaps. This does not change how applications
+work at all. Applications do not care whether it was the window manager,
+the server, or some other client that created a standard colormap.
+
+<P>If your application does not create or use a custom colormap,
+you can skip this section if pressed for time.
+
+<P>Applications can also use the knowledge about a standard
+colormap to optimize the process of figuring out which existing pixel values
+correspond to required colors and which colors must be allocated and set
+from scratch.
+<H3>
+The Standard Colormap Properties</H3>
+The standard colormap properties contain information about
+a few commonly used colormaps. However, note that even if an application
+creates a custom colormap unlike any of these, it should still use the
+standard property mechanism by creating its own standard colormap structure.
+
+<P>Properties were introduced in Section 2.1.4, "Properties
+and Atoms." For a more complete description of properties, see Section
+12.1, "Properties and Atoms."
+
+<P>In the call to <B>XGetRGBColormaps()</B> you specify one
+of these atoms like <B>XA_RGB_BEST_MAP</B> (or, if necessary, one unique
+to your application).
+
+<P>The following list names the atoms and describes the colormap
+associated with each one:
+<DL>
+<DT>
+<B>XA_RGB_DEFAULT_MAP</B></DT>
+
+<DD>
+This property defines part of the system default colormap.
+This colormap may be initially completely unallocated, or it may contain
+a selection of read-only colorcells with the RGB values from the color
+database and a few unallocated cells for use by applications that need
+read/write cells. A typical allocation of the <B>XA_RGB_DEFAULT_MAP</B>
+on eight-plane screens is all the colors produced from any combination
+of six reds, six greens, and six blues. This gives 216 uniformly distributed
+colors and leaves 40 for other programs or for special purpose colors for
+text, borders, and so on. A typical allocation for the <B>XA_RGB_DEFAULT_MAP</B>
+on 24-plane screens is 64 reds, 64 greens, and 64 blues. This gives about
+one million uniformly distributed colors (64 intensities of 4096 different
+hues) and leaves lots of colorcells available for other purposes.</DD>
+
+<DT>
+<B>XA_RGB_BEST_MAP</B></DT>
+
+<DD>
+This property defines the "best" RGB colormap available on
+the screen. Of course, this is a subjective evaluation. Many image-processing
+and 3-D programs need to use all available colormap cells and to distribute
+as many perceptually distinct colors as possible over those cells. In this
+case, there may be more green values available than red and more green
+or red than blue.</DD>
+
+<DD>
+On an eight-plane <B>DirectColor</B> visual, <B>XA_RGB_BEST_MAP</B>
+is usually a 3/3/2 allocation. On a 24-plane <B>DirectColor</B> visual,
+<B>XA_RGB_BEST_MAP</B> is usually an 8/8/8 allocation. On other screens,
+<B>XA_RGB_BEST_MAP</B> is purely up to the implementor of the server.</DD>
+
+<DT>
+<B>XA_RGB_RED_MAP</B>, <B>XA_RGB_GREEN_MAP</B>, <B>XA_RGB_BLUE_MAP</B></DT>
+
+<DD>
+These properties define all-red, all-green, and all-blue
+colormaps, respectively. These maps are used by programs that make color-separated
+images. For example, a user might generate a full color image on an eight-plane
+screen by rendering an image once with high color resolution in red, once
+with green, and once with blue and exposing a single frame in a camera
+with three images.</DD>
+
+<DT>
+<B>XA_RGB_GRAY_MAP</B></DT>
+
+<DD>
+This property describes the "best" gray-scale colormap available
+on the screen.</DD>
+</DL>
+
+<H3>
+The XStandardColormap Structure</H3>
+As described above, an application that wants to use a standard
+colormap must get the structure that contains the specification for the
+colormap using <B>XGetRGBColormaps()</B>. Some servers and window managers,
+particularly on high performance workstations, create some or all of the
+standard colormaps when they initialize. If the desired colormap has already
+been created, it is returned in the <B>colormap</B> member of the <B>XStandardColormap</B>
+structure shown in Example 7-11. If the colormap does not yet exist, the
+<B>colormap</B> member will be zero. In that case, the application can
+create a colormap and allocate entries to match the specification in the
+members of <B>XStandardColormap</B>, then call <B>XSetRGBColormaps()</B>
+to allow other clients to share this colormap.
+
+<P><B>The XStandardColormap structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct _XStandardColormap {
+&nbsp;&nbsp; Colormap colormap;
+&nbsp;&nbsp; unsigned long red_max, green_max, blue_max;
+&nbsp;&nbsp; unsigned long red_mult, green_mult, blue_mult;
+&nbsp;&nbsp; unsigned long base_pixel;
+&nbsp;&nbsp; VisualID visualid;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Added in R4:&nbsp; ICCCM version 1 */
+&nbsp;&nbsp; XID killid;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Added in R4:&nbsp; ICCCM version 1 */
+} XStandardColormap;</TT></PRE>
+</BLOCKQUOTE>
+The members of the <B>XStandardColormap</B> structure are
+as follows:
+<UL>
+<LI>
+The <B>colormap</B> member is the ID of a colormap created
+by the <B>XCreateColormap()</B> function or the default colormap. This
+ID can be used to install a virtual colormap into the hardware colormap.</LI>
+
+<LI>
+The <B>red_max</B>, <B>green_max</B>, and <B>blue_max</B>
+fields give the maximum red, green, and blue values, respectively. A typical
+allocation that provides 63 = 216 read-only, shareable colors in a <B>PseudoColor</B>
+colormap on a standard eight-plane workstation is <B>red_max</B> = 5, <B>green_max</B>
+= 5, and <B>blue_max</B> = 5. This leaves 40 cells available for special
+colors and private, nonshareable purposes. On a 24-plane workstation, there
+would be eight bits available for each color in a <B>TrueColor</B> visual,
+which would allow 256 shades of each primary color. In this case, <B>red_max</B>
+= 255, <B>green_max</B> = 255, and <B>blue_max</B> = 255. This map would
+include 2563 = 16.38 million total colors.</LI>
+
+<LI>
+The <B>red_mult</B>, <B>green_mult</B>, and <B>blue_mult</B>
+fields scale each pixel subfield into the proper range in the 16-bit RGB
+value in the colorcell with the range 0 to 65535. The red pixel subfield
+is moved <B>red_mult</B> bits toward the most significant bit of the pixel
+value.For a 3/3/2 <B>DirectColor</B> allocation (eight reds, eight greens,
+four blues), <B>red_mult</B> might be 32, <B>green_mult</B> might be 4,
+and <B>blue_mult</B> might be 1 (as shown in Figure 7-5). These effectively
+move the red value into the most significant bits of the RGB value in the
+colorcell, the green into the middle, and the blue into the least significant
+bits. This arrangement is arbitrary but useful. For a six-colors-each allocation,
+which must be <B>PseudoColor</B> since the planes cannot be evenly allocated
+to separate primaries, <B>red_mult</B> might be 36, <B>green_mult</B> might
+be 6, and <B>blue_mult</B> might be 1.</LI>
+
+<LI>
+The <B>base_pixel</B> field gives the base value that is
+added to the pixel value calculated from the RGB values and scale factors.
+Usually the <B>base_pixel</B> is obtained from a call to the <B>XAllocColorPlanes()</B>
+function.</LI>
+
+<LI>
+The <B>visualid</B> field is the ID of a server resource
+associated with each visual, of type <B>VisualID</B>. You will need this
+ID only if you intend to use standard colormaps. This field was added in
+R4 because only with this information can standard colormaps be used with
+other than the default visual. Prior to R4, standard colormaps were not
+in wide use, partly because they could only be used with the default visual.</LI>
+
+<LI>
+The <B>killid</B> field returns a number that is used if
+the application needs to free the colormap for some reason. If <B>killid</B>
+is greater than one, then the resources should be freed by calling <B>XKillClient()</B>
+with the <B>killid</B> field as the argument. If <B>killid</B> is one,
+then the resources should be freed by calling <B>XFreeColormap()</B> with
+the <B>colormap</B> field as the argument. If <B>killid</B> is zero, then
+no attempt should be made to free the resources.</LI>
+</UL>
+<B>GrayScale</B> colormaps should be used just like color
+visuals in every way. For example, all three color fields in the <B>XStandardColormap</B>
+should be used. The standard client <I>xstdcmap</I> currently creates <B>GrayScale</B>
+standard colormaps using the NTSC color-to-mono mapping algorithm described
+earlier.
+<H3>
+The 3/3/2 Standard Colormap</H3>
+Now let's look at a typical standard colormap. The following
+example describes the 3/3/2 <B>DirectColor</B> standard colormap used on
+eight-plane screens. Three planes are used for red, three planes for green,
+and two planes for blue. This 3/3/2 allocation allows values in the range
+of:
+<BLOCKQUOTE>
+<PRE><TT>red&nbsp;&nbsp;&nbsp; 0-7&nbsp;&nbsp;&nbsp; thus&nbsp;&nbsp;&nbsp; red_max&nbsp;&nbsp;&nbsp; =&nbsp; 7
+green&nbsp; 0-7&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; green_max&nbsp; =&nbsp; 7
+blue&nbsp;&nbsp; 0-3&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; blue_max&nbsp;&nbsp; =&nbsp; 3</TT></PRE>
+</BLOCKQUOTE>
+To obtain the pixel value, these RGB values must be shifted
+to their corresponding planes. If the red value is contained in the three
+most significant planes or bits, the green values in the three next most
+significant planes or bits, and the blue value in the two least significant
+planes or bits, then the pixel can be constructed as shown in Figure 7-5.
+
+<P><B>Shifting pixel subfields into pixel value</B>
+
+<P><IMG SRC="imgs/fig.7.05.gif" ALT="fig.7.05.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;In a <B>DirectColor</B> system like this, the multiples
+are equal to 2<I>n</I>, where <I>n</I> is their lowest plane or bit position.
+If the red, green, and blue were stored in a different order, the multiples
+would not be 32, 4, 1 but would still be calculated from the above description
+and formula. The 3/3/2 standard colormap allocation is fairly standard.
+<H3>
+Creating and Using a Standard Colormap</H3>
+Two members were added to the <B>XStandardColormap</B> structure
+in Release 4 to comply with the ICCCM (interclient communication conventions,
+described in Chapter 12, "Interclient Communication"). Because of this,
+there are two different sets of routines that manage standard colormaps,
+one for use with R3 (and earlier) and the other for use with R4 (and later).
+The now-outdated R3 routines are <B>XGetStandardColormap()</B> and <B>XSetStandardColormap()</B>;
+the R4 routines are <B>XGetRGBColormaps()</B> and <B>XSetRGBColormaps()</B>.
+The reason for the plural form of the R4 routine <B>XGetRGBColormaps()</B>
+is that it returns a list of colormaps; it also has a count argument not
+present in the R3 routine. According to the ICCCM, only queries of the
+<B>XA_RGB_DEFAULT_MAP</B> standard colormap can return more than one structure.
+
+<P>Example 7-12 gets information about the <B>XA_RGB_BEST_MAP</B>
+standard colormap, creates it if no other client already has, calculates
+pixel values from it, and sets the colormap window attribute of the window.
+This example gives up and falls back on read-only colorcell allocation
+if the standard colormap property is not defined by the server or if creating
+a colormap returns the default colormap (which happens on systems with
+an immutable hardware colormap).
+
+<P><B>Code to create and use XA_RGB_BEST_MAP</B>
+<BLOCKQUOTE>
+<PRE><TT>&nbsp; .
+&nbsp; .
+&nbsp; .
+#define USE_DEFAULT_COLORMAP 1
+#define USE_STANDARD_COLORMAP 0
+void main(argc, argv)
+int argc;
+char **argv;
+{
+&nbsp;&nbsp;&nbsp; XStandardColormap *best_map_info;
+&nbsp;&nbsp;&nbsp; XColor *exact_defs;
+&nbsp;&nbsp;&nbsp; XSetWindowAttributes attrib;
+&nbsp;&nbsp;&nbsp; unsigned long attribmask;
+&nbsp;&nbsp;&nbsp; int i, j, k, l;
+&nbsp;&nbsp;&nbsp; int ncells;
+&nbsp;&nbsp;&nbsp; XVisualInfo *vlist, vinfo_template, *v;
+&nbsp;&nbsp;&nbsp; int num_vis;
+&nbsp;&nbsp;&nbsp; int count;
+&nbsp;&nbsp;&nbsp; Visual *visual;
+&nbsp;&nbsp;&nbsp; int strategy = USE_STANDARD_COLORMAP;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp; /* Open display */
+&nbsp;&nbsp;&nbsp; visual = DefaultVisual(display, screen_num);
+&nbsp;&nbsp;&nbsp; if (XGetRGBColormaps(display, RootWindow(display, screen_num),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;best_map_info, &amp;count, XA_RGB_BEST_MAP) == 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("%s: RGB_BEST_MAP colormap property not set.\n", argv[0]);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Give up standard colormaps; use one of the
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * basic color strategies */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; get_colors();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; strategy = USE_DEFAULT_COLORMAP;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; else if (best_map_info->colormap) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Someone else created the map we need; make sure
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * it's valid, then we'll use it below */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (best_map_info->red_max == 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("%s: RGB_BEST_MAP colormap property is set\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; argv[0]);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("but is missing data.\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; strategy = USE_DEFAULT_COLORMAP;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("stnd colormap ID: %d, best_map_info->colormap);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; attrib.colormap = best_map_info->colormap;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; else if (best_map_info->visualid == 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("%s: Standard colormap property is set\n", argv[0]);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("but is missing data.");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Some systems define the properties but don't
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * place any data in them; this is a server bug,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * but we'll check for it anyway */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Fall back on a basic color strategy */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; strategy = USE_DEFAULT_COLORMAP;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Got information, but the described colormap
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * has not been created yet; create it and
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * allocate all cells read/write */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* XCreateColormap requires a visual argument
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * (pointer to a Visual structure); however, the
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * XStandardColormap structure returns a VisualID,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * which might not be the default visual;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * Converting between these two is painful */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; vlist = XGetVisualInfo(display, VisualNoMask,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;vinfo_template, &amp;num_vis);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (v = vlist; v &lt; vlist + num_vis; v++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (v->visualid == best_map_info->visualid) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; visual = v->visual;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; best_map_info->colormap = XCreateColormap(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; RootWindow(display, screen_num), visual, AllocAll);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (best_map_info->colormap ==
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DefaultColormap(display, screen_num)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("%s: hardware colormap is immutable:\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; argv[0]);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("cannot create new colormap.\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; attrib.colormap = best_map_info->colormap;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ncells = best_map_info->base_pixel +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ((best_map_info->red_max + 1) *
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (best_map_info->green_max + 1) *
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (best_map_info->blue_max + 1));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exact_defs = (XColor *) calloc(sizeof(XColor), ncells);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Permute the levels of red, green, and blue */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; l = best_map_info->base_pixel;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (i = 0; i &lt; best_map_info->blue_max; i++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (j = 0; j &lt; best_map_info->blue_max; j++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (k = 0; k &lt; best_map_info->blue_max; k++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exact_defs[l].red = 0xFFFF * k /
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; best_map_info->red_max;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exact_defs[l].green = 0xFFFF * j /
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; best_map_info->green_max;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exact_defs[l].blue = 0xFFFF * i /
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; best_map_info->blue_max;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; l++;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XStoreColors (display, best_map_info->colormap, exact_defs, ncells);
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* If to be used in a window not created with the
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * default visual, must create the window first and
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * use instead of RootWindow in this call; here we
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * assume the default visual */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSetRGBColormaps(display, RootWindow(display, screen_num),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;best_map_info, count, XA_RGB_BEST_MAP);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if (strategy == USE_STANDARD_COLORMAP) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* We must not have called get_colors above,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * must be using standard colormaps strategy */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Note that we act like we have already allocated pixel
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * pixel values, even though actually another client did */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background_pixel = best_map_info->base_pixel&nbsp; +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (best_map_info->red_max * best_map_info->red_mult) +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (best_map_info->green_max * best_map_info->green_mult) +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (best_map_info->blue_max * best_map_info->blue_mult);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; attribmask = CWBackPixel | CWColormap;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreground_pixel = (best_map_info->green_max *
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; best_map_info->green_mult / 2) +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; best_map_info->base_pixel;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border_pixel = (best_map_info->blue_max *
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; best_map_info->blue_mult / 2) +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; best_map_info->base_pixel;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; /* Create opaque window */
+&nbsp;&nbsp;&nbsp; win = XCreateWindow(display, RootWindow(display,screen_num), x,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; y, width, height, borderwidth, DefaultDepth(display, screen_num),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; InputOutput, visual, attribmask, &amp;attrib);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+}</TT></PRE>
+</BLOCKQUOTE>
+This code begins by reading the <B>XA_RGB_BEST_MAP</B> property
+using the <B>XGetRGBColormaps()</B> call. The name <B>XGetRGBColormaps()</B>
+suggests that the function returns a description of multiple colormaps--but
+this is true only for <B>XA_RGB_DEFAULT_MAP</B>. If this call succeeds,
+the property is defined and its contents have been placed in the <B>best_map_info</B>
+structure. Since any other, perhaps buggy, client might have set this property
+(like your own application while you are debugging it), it is a good idea
+not to trust its contents any more than necessary. (Properties set on the
+root window remain defined even after the client that set them has exited.)
+The code checks to make sure that the fields contain reasonable values
+before using them.
+
+<P>If the <B>colormap</B> field of <B>best_map_info</B> is
+nonzero, it should be the ID of a standard colormap that another client
+has created. Your application can immediately proceed to use the pixel
+values in this colormap as though your application had already allocated
+them read-only, even though in reality some other client allocated them
+read/write.
+
+<P>On the other hand, if the <B>colormap</B> field is zero,
+your application needs to create, allocate, and set the values of the standard
+colormap itself. You allocate the cells read/write, because this allows
+you to explicitly set the RGB values of each pixel value. Even though you
+allocate the cells read/write, you should use them as if they were read-only,
+so that other applications can share them after you reset the <B>XA_RGB_BEST_MAP</B>
+property to include the new colormap ID. As this suggests, a read/write
+cell, even though described earlier as being private and changeable by
+that one client, can be public if all the applications agree not to change
+its RGB values.
+
+<P>The algorithm used to store RGB values into the cells
+in the colormap is somewhat arbitrary. Conventions for it will probably
+be adopted by the X Consortium when there is more interest in standard
+colormaps. Any algorithm is good enough to allow two instances of the same
+application to share a colormap. But for two different applications to
+share the colormap, each must know exactly what RGB values the other would
+place in the colormap if the other were run before the colormap was created.
+
+<P>The <B>XGetVisualInfo()</B> call is described in Section
+7.6, "Getting Complete Visual Information."
+
+<P>If you pass <B>AllocAll</B> to <B>XCreateColormap()</B>,
+you do not need to make an <B>XAllocColorCells()</B> call to allocate all
+the cells read/write. However, you can use <B>AllocAll</B> only if you
+intend the entire colormap to be read-only to all clients. Some clients
+want a few cells preserved to be rewriteable for dynamically changing colors.
+If yours is that way, you must use <B>AllocNone</B> and then call <B>XAllocColorCells()</B>
+once to create the standard portion of the colormap and again to allocate
+the cells your application will treat as private.
+
+<P>Once the colormap window attribute of a window is set,
+the window manager will take care of installing the colormap. When there
+is only one hardware colormap, the window manager usually installs an application's
+colormap when that application contains the pointer (for real-estate type
+window managers) or is given the keyboard focus (for click-to-type style
+window managers).
+
+<P>When a window manager creates a standard colormap, it
+can use a slightly different technique to make sure that the standard colormap
+remains defined even after the window manager exits. Assuming that it has
+already checked to see whether some other client has created a standard
+colormap and none has, it performs the following sequence of steps:
+<UL>
+<LI>
+Create a new connection to the same server.</LI>
+
+<LI>
+Determine the color capabilities of the screen. Choose a
+visual.</LI>
+
+<LI>
+Create a colormap (not required for <B>XA_RGB_DEFAULT_MAP</B>).</LI>
+
+<LI>
+Call <B>XAllocColorPlanes()</B> or <B>XAllocColorCells()</B>
+to allocate cells in the colormap (if did not use <B>AllocAll</B> flag
+when creating the colormap).</LI>
+
+<LI>
+Call <B>XStoreColors()</B> to store appropriate color values
+in the colormap.</LI>
+
+<LI>
+Fill in the descriptive fields in the <B>XStandardColormap</B>
+structure, including the ID of the created colormap.</LI>
+
+<LI>
+Call <B>XSetRGBColormaps()</B> to set the property on the
+root window. The <B>killid</B> field should be set to the colormap ID.</LI>
+
+<LI>
+Use <B>XSetCloseDownMode()</B> to make the resource permanent.</LI>
+
+<LI>
+Close the new connection to the server.</LI>
+</UL>
+
+<H3>
+RGB-to-Pixel Conversion</H3>
+The standard colormaps such as <B>XA_RGB_BEST_MAP</B> are
+useful when you want to calculate pixel values from RGB values.
+
+<P>Consider a 3-D display program that draws a smoothly shaded
+sphere. At each pixel in the image of the sphere, the program computes
+the intensity and color of light reflected to the viewer. The result of
+each computation is a triple of red, green, and blue coefficients in the
+range 0.0 to 1.0. To draw the sphere, the program needs a colormap that
+provides a large range of uniformly distributed colors. The colormap must
+be arranged so that the program can convert its RGB triples into pixel
+values very quickly, because drawing the entire sphere will require many
+such conversions. An example of one such calculation is shown in Example
+7-13. Example 7-12 demonstrated how to do this for integral RGB values.
+
+<P><B>Calculating pixel values from floating point RGB values</B>
+<BLOCKQUOTE>
+<PRE><TT>XStandardColormap best_map_info;
+float red, green, blue;
+unsigned long pixelvalue;
+pixelvalue = best_map_info.base_pixel +
+&nbsp;&nbsp; ((unsigned long)(0.5 + (red * best_map_info.red_max)) *
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; best_map_info.red_mult) +
+&nbsp;&nbsp; ((unsigned long)(0.5 + (green * best_map_info.green_max)) *
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; best_map_info.green_mult) +
+&nbsp;&nbsp; ((unsigned long)(0.5 + (blue * best_map_info.blue_max)) *
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; best_map_info.blue_mult);</TT></PRE>
+</BLOCKQUOTE>
+For gray scale colormaps, only the <B>colormap</B>, <B>red_max</B>,
+<B>red_mult</B>, and <B>base_pixel</B> fields of the <B>XStandardColormap</B>
+structure are defined. The other fields are ignored. Pixel values for a
+<B>StaticGray</B> or <B>GrayScale</B> visual must be in the range:
+<BLOCKQUOTE>
+<PRE><TT>base_pixel &lt;= pixel_value &lt; (red_max * red_mult) + base_pixel</TT></PRE>
+</BLOCKQUOTE>
+To compute a gray pixel value, use the following expression:
+<BLOCKQUOTE>
+<PRE><TT>pixel_value = gray * red_mult + base_pixel;</TT></PRE>
+</BLOCKQUOTE>
+where:
+<BLOCKQUOTE>
+<PRE><TT>&nbsp;&nbsp; gray&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =&nbsp;&nbsp; the gray value you desire (0 to red_max)
+&nbsp;&nbsp; red_mult&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =&nbsp;&nbsp; value from XStandardColormap structure
+&nbsp;&nbsp; base_pixel&nbsp;&nbsp;&nbsp;&nbsp; =&nbsp;&nbsp; value from XStandardColormap structure</TT></PRE>
+</BLOCKQUOTE>
+
+<HR>
+<H2>
+Device-independent Color and Xcms</H2>
+As already described, the X server supports a color name
+database in order to translate textual color names into intensity values
+for the red, green, and blue primaries. This is a convenience for users
+and a simple attempt at device-independent color--if server vendors tune
+the database to the particular displays they support, then applications
+that use the standard named colors can be confident that those colors will
+appear the same across all displays.
+
+<P>In practice, however, the color database has not been
+tuned for most displays. Furthermore, there are a growing number of visualization
+and other applications that use color and shading to display data and convey
+information rather than simply as decoration. These applications need the
+ability to precisely specify device-independent colors and often to divide
+a range of colors into perceptually equal intervals. A small number of
+hand-tuned named colors in a database is simply not adequate. X11R5 addresses
+these needs with Xcms, the X Color Management System, which was developed
+primarily by Tektronix for the X Consortium.
+
+<P>Xcms includes:
+<UL>
+<LI>
+A new standard textual representation for device-independent
+color strings.</LI>
+
+<LI>
+Modifications to several existing Xlib functions to support
+this new standard representation.</LI>
+
+<LI>
+The provision for a database that maps color names to device-independent
+color specifications. This database is read by Xlib rather than by the
+X server.</LI>
+
+<LI>
+The Xcms API--a new set of Xlib functions that allow the
+allocation of device-independent colors and provide extremely precise control
+over conversions between device-independent color representations. Several
+of these functions are device-independent analogs to the device-dependent
+X11R4 color allocation and lookup functions.</LI>
+
+<LI>
+The X Device Color Characterization Conventions (XDCCC),
+a standard format for new root window properties that contains the information
+about the physical characteristics of the screen necessary to support the
+conversion of device-independent color specifications into device-dependent
+values. X11R5 provides a new client, <I>xcmsdb</I>, to set the values of
+these properties. The XDCCC is part of the ICCCM (Inter-Client Communication
+Conventions Manual), which is described in Chapter 12.</LI>
+</UL>
+Xcms involves no changes to the X protocol or the X server.
+So, for example, an R5 Xcms application can successfully connect to an
+R4 X server.
+<H3>
+The Fundamentals of Color Representation</H3>
+Colorimetry is an involved science, and this book can only
+scratch its surface. This section documents the most useful and commonly
+used Xcms functions, but because a complete understanding of Xcms requires
+a deeper introduction to colorimetry than is presented here, some of the
+more obscure functions will be glossed over and left undocumented. <I>Volume
+Two, Xlib Reference Manual</I> contains man pages for all the Xcms functions,
+but not all of them are described here. If you are curious about colorimetry
+or need or want to know all the details of Xcms, O'Reilly &amp; Associates
+will be publishing a book on Xcms, XCMSBOOK, by Al Tabayoyon, Joann Taylor,
+and Chuck Adams of Tektronix. It gives a more thorough treatment of colorimetry,
+provides complete documentation of Xcms, and describes how to make effective
+use of color in your applications. It should be available in late 1992.
+
+<P>Until Release 5, X provided only an RGB system for describing
+colors. In this scheme, the color of a pixel is described by three numbers
+which represent the intensity of the electrical signal sent to the electron
+guns that excite the red, green, and blue phosphors in a monitor. This
+model is simple from the standpoint of a systems programmer because it
+is so closely tied to the physical hardware. Unfortunately, our eyes do
+not perceive color proportionally to the voltage applied to the electron
+guns, so equal voltage changes over a range of red, green, or blue intensities
+do not produce an equal perceptual change. At low intensities, a change
+of many voltage steps may be required before any perceptual difference
+is produced. In addition, selecting a desired color by additive mixing
+of each of the primaries is not as simple as it sounds. Fine-tuning a color
+by this method is essentially a process of trial and error. The RGB color
+model is a device-dependent color model because it is tied directly to
+the physical characteristics of a given screen--the electrical response
+of the electron guns, the precise composition of the phosphors used, and
+so on. If the same RGB color specification is displayed on two different
+monitors, the resulting colors will be noticeably different.
+
+<P>By definition, a device-independent color specification
+will result in identical displayed colors regardless of the device that
+is used. The device-independent color representations supported by X11R5
+are all based on an international standard color representation model known
+informally as CIEXYZ. In CIEXYZ and related color spaces, a color is described
+by the value of three coordinates (as is the case with RGB), and the color
+space itself is commonly referred to by the names of its coordinates. X11R5
+supports the CIEXYZ color space, related spaces known as CIExyY, CIExyY,
+CIEuvY, CIELuv, CIELab, and a color space designed by Tektronix known as
+TekHVC. The interpretation of the coordinates of all but the last of these
+spaces is not particularly intuitive and requires some knowledge of colorimetry.
+These spaces will not be described here; instead all discussion and examples
+in this chapter will use the TekHVC color space. This is a perceptually
+uniform color space designed to be intuitive. It is mathematically related
+to the CIE spaces, but is easier to describe and to understand. In this
+model, a color is characterized by Hue, Value, and Chroma. The Hue of a
+color is what distinguishes it from colors of other color families--the
+blues are of different hues from the greens, for example. Value describes
+the lightness or darkness of a color, and Chroma describes the saturation
+or "vibrancy" of a color. The range of possible values for these three
+coordinates define the HVC "color solid." It is an irregular solid defined
+in cylindrical coordinates with Hue as the angle, Chroma the radius, and
+Value the z-coordinate of a point. The model is designed to make it intuitive
+to find a desired color. Because the space is perceptually uniform, uniform
+increments in the value of any of the coordinates of a color result in
+uniform perceptual differences in displayed colors. Figure 7-6 shows a
+diagram of the TekHVC "color solid," and a "hue leaf," the cross section
+of the solid for a single Hue.
+
+<P><B>Three views of the TekHVC color solid and a single
+hue leaf from the solid</B>
+
+<P><IMG SRC="imgs/fig.7.06.gif" ALT="fig.7.06.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;In the TekHVC space, Hues near 0.0 are reds, Hues
+near 60.0 are oranges and yellows, Hues near 120.0 are greens, Hues near
+180.0 are blue-greens, Hues near 240.0 are blues, and Hues near 300.0 are
+violets. Because the Hue coordinate is an angle, the reds near 0.0 "wrap
+around" to Hues near 360.0. At any given Hue, the legal values of Value
+and Chroma define an approximately triangular area, sometimes called a
+<I>hue leaf</I>. For example, for the red Hues around 10.0, colors with
+Chromas near 0.0 are almost grey, and as the Chroma increases, the range
+of legal Values decreases, and the colors redden, passing through various
+reddish-brown shades, until around the maximum Chroma (near 90.0) there
+are only a few legal Values (near 50.0), and the colors are all bright
+"sports car" red. At the same Hue of 10.0, a Chroma of 55.0 and the minimum
+legal Value (near 30.0), the color is a deep maroon, and it lightens as
+the Value increases until at the maximum Value (near 65.0) it is a salmon
+pink.
+
+<P>Any color that is visible to the human eye can be described
+by three coordinates in a device-independent color space, but no given
+device can display all possible colors. Stated in another way, all colors
+visible to the human eye lie within the TekHVC color solid, but the colors
+that can be generated by any particular device lie within some subset of
+that solid. Each monitor type has a <I>device gamut</I> which is the set
+of colors it can display. When a color is requested that is outside of
+the gamut for a device, some form of <I>gamut compression</I> must be used
+to map the requested color into a displayable color in a sensible way.
+When an Xcms function attempts to convert a device-independent color that
+is outside of the device gamut to a device-dependent color, Xlib automatically
+performs gamut compression on that color, and the function returns a special
+value that indicates that compression occurred.
+<H3>
+Screen Characterization and the XDCCC</H3>
+In order for Xcms to convert from device-independent color
+used by X clients to the device-dependent colors used by the X server,
+it must know the characteristics of the screen or screens connected to
+the server. What is needed is a 3 &times; 3 matrix to convert between the
+CIEXYZ and RGBi color spaces, and a lookup table to convert from RGBi intensities
+to RGB integer values. The X server stores this data in properties of the
+root window of each screen so that the Xcms functions have access to it
+without the necessity of extending the X Protocol. The names and formats
+of these root window properties are specified in the X Device Color Characterization
+Conventions (or XDCCC) which has been added to the <I>Inter-Client Communication
+Conventions Manual</I> (or ICCCM). The ICCCM is printed as Appendix L of
+Volume Zero, <I>X Protocol Reference Manual</I>.
+
+<P>X11R5 provides a new client, <I>xcmsdb</I>, which reads
+screen characterization data from a file and sets the data on the appropriate
+properties. System administrators may configure <I>xdm</I> to automatically
+invoke <I>xcmsdb</I> for every screen of a display, or users who make use
+of device-independent color may invoke it themselves. The source code for
+<I>xcmsdb</I> in the MIT distribution includes two sample screen characterization
+data files, but the distribution does not attempt to provide data for all
+possible screen types. If screen characterization data is not specified
+on root window properties, Xlib will fall back on default data. This means
+that you can experiment with the new Xcms features, but because the default
+data will almost certainly not match your display, the colors you see will
+not actually be the device-independent colors you request. Vendors may
+make screen characterization data available in the contributed section
+of the X11R5 release, but even these will not get you truly device-independent
+color: the physical characteristics of a monitor change as it ages, so
+for accurate color reproduction, you will have to have your monitor calibrated.
+<H3>
+The Xcms Programming Interface</H3>
+The Xcms programming interface is part of Xlib and contains
+many new functions and a number of new datatypes, all of which begin with
+the prefix "Xcms" (X Color Management System). Some of these new functions
+are close analogs to the pre-X11R5 color functions that allocate cells
+in colormaps and that store and query colors in colormap cells. Where the
+existing Xlib functions operate on an <B>XColor</B> structure, the analogous
+Xcms colormap functions operate on an <B>XcmsColor</B> structure that allows
+colors to be specified in a device-independent fashion. These are the functions
+that will be most frequently used by programmers.
+
+<P>There is a group of Xcms functions used to manipulate
+an Xcms datatype known as a "color conversion context" or CCC. In X11R5,
+every colormap has an associated CCC which contains attributes that control
+the details of the conversion of colors from one color space to another.
+Default CCCs are automatically handled by Xcms, and many programmers will
+never have to use them explicitly. The theory behind color conversions
+is complicated, and so only the simplest and most useful of the CCC functions
+are documented here.
+
+<P>Xcms also provides a number of functions to query the
+boundaries of the device gamut. This means that programmers can ensure
+that allocated colors will be displayable (without gamut compression) on
+a given screen. Or it means that programmers can query the most vibrant
+shade of a color displayable on a particular device. The gamut-querying
+functions that operate with the TekHVC color model are fully documented
+in this book. Because other color spaces have not been described in any
+detail in this chapter, those gamut-querying functions that operate in
+color spaces other than TekHVC are not documented here.
+
+<P>Finally, Xcms provides functions that allow the extension
+of Xcms by adding new color spaces and support for new types of display
+devices. These functions are not documented here. See XCMSBOOK for full
+documentation of these functions as well as all the color conversion context
+functions and the gamut-querying functions.
+
+<P>Note that Xcms functions require significantly more computation
+that their device-dependent analogs. In particular, they require trigonometric
+and other floating-point operations. In the MIT distribution, the standard
+math library is not used. Instead, the floating-point operations are implemented
+in Xlib directly. Because these functions cannot take advantage of floating-point
+hardware and do not have the efficiency of a highly optimized math library,
+they are relatively slow. As a result, adding Xcms functions to a program
+can add noticeable delays, particularly when gamut compression occurs.
+You can force the Xcms functions to use the standard math library by editing
+the macros defined in <I>mit/lib/X/Xcmsint.h</I> and rebuilding Xlib.
+<H4>
+Color and Colormap Functions</H4>
+Xcms provides the following functions for setting or querying
+colormap cells. They are close analogs to pre-X11R5 color allocation functions,
+but use the <B>XcmsColor</B> structure to specify device-independent colors
+rather than the <B>XColor</B> structure, which can only specify RGB colors.
+These functions are fully documented in <I>Volume Two, Xlib Reference Manual</I>.
+<DL>
+<DT>
+<B>XcmsAllocColor()</B></DT>
+
+<DD>
+Allocates a read-only color cell with the specified color.
+Returns the color specification of the color actually allocated (i.e.,
+the closest color the hardware could support). Analogous to <B>XAllocColor()</B>,
+but with an additional argument that specifies the desired color space
+for the return value. If the requested color is outside of the gamut of
+the screen, gamut compression is performed.</DD>
+
+<DT>
+<B>XcmsAllocNamedColor()</B></DT>
+
+<DD>
+Allocates a read-only color cell with the color specified
+in the passed color string. Returns the exact color specification for the
+color string, as well as the color specification and pixel value for the
+color actually allocated. If the requested color is outside of the gamut
+of the screen, gamut compression is performed. Analogous to <B>XAllocNamedColor()</B>,
+but with an additional argument that specifies the desired color space
+of the return values. Any color string that can be allocated by <B>XcmsAllocNamedColor()</B>
+can also be allocated by <B>XAllocNamedColor()</B>. The difference is only
+that the Xcms function returns a device-independent specification of the
+color.</DD>
+
+<DT>
+<B>XcmsLookupColor()</B></DT>
+
+<DD>
+Converts a color string into an <B>XcmsColor</B> specification,
+but does not store that color in a color map. Returns the exact color specification
+of the color string as well as the closest color that could actually be
+produced on the screen. If the requested color is outside the gamut of
+the screen, gamut compression is performed. Analogous to <B>XLookupColor()</B>,
+but with an additional argument that specifies the desired color space
+for the return values. Any color string that can be looked up by <B>XcmsLookupColor()</B>
+can also be looked up by <B>XLookupColor()</B>. The difference is only
+that the Xcms function returns a device-independent specification of the
+color.</DD>
+
+<DT>
+<B>XcmsQueryColor()</B></DT>
+
+<DD>
+Given a pixel value, returns the color of that pixel in the
+given colormap. Analogous to <B>XQueryColor()</B>, but with an additional
+argument that specifies which color space the queried color should be represented
+in.</DD>
+
+<DT>
+<B>XcmsQueryColors()</B></DT>
+
+<DD>
+Returns the colors associated with a set of pixels in a given
+colormap. Analogous to <B>XQueryColors()</B>, but with an additional argument
+that specifies the desired color space for the returned colors.</DD>
+
+<DT>
+<B>XcmsStoreColor()</B></DT>
+
+<DD>
+Sets the color of a read/write color cell in the specified
+colormap. Analogous to <B>XStoreColor()</B>, but has a return value that
+indicates whether the conversion from device-independent color specification
+to RGB values was successful. If the requested color is outside the gamut
+of the screen, gamut compression is performed.</DD>
+
+<DT>
+<B>XcmsStoreColors()</B></DT>
+
+<DD>
+Sets the colors of multiple read/write color cells in the
+specified colormap. Analogous to <B>XStoreColors()</B>, but has return
+values that indicate whether the conversions from device-independent specifications
+to RGB values were successful. If any of the requested colors are outside
+the gamut of the screen, gamut compression is performed.</DD>
+</DL>
+The <B>XcmsColor</B> structure is the device-independent
+analog to the <B>XColor</B> structure, and is used by all of the Xcms functions
+described above. It contains a pixel value, a format value which specifies
+the device-dependent or device-independent color space used to describe
+the color, and a union of structures that specify the parameters for each
+of the supported formats. The structure is shown in Example 7-14.
+
+<P><B>The XcmsColor structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp;&nbsp; union {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XcmsRGB RGB;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XcmsRGBi RGBi;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XcmsCIEXYZ CIEXYZ;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XcmsCIEuvY CIEuvY;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XcmsCIExyY CIExyY;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XcmsCIELab CIELab;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XcmsCIELuv CIELuv;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XcmsTekHVC TekHVC;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XcmsPad Pad;
+&nbsp;&nbsp;&nbsp; } spec;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* the color specification&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; */
+&nbsp;&nbsp;&nbsp; unsigned long pixel;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* pixel value (as needed)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; */
+&nbsp;&nbsp;&nbsp; XcmsColorFormat format;&nbsp;&nbsp;&nbsp;&nbsp; /* the specification format&nbsp;&nbsp;&nbsp;&nbsp; */
+} XcmsColor;</TT></PRE>
+</BLOCKQUOTE>
+The legal values for the format field are: <B>XcmsUndefinedFormat</B>,
+<B>XcmsCIEXYZFormat</B>, <B>XcmsCIEuvYFormat</B>, <B>XcmsCIExyYFormat</B>,
+<B>XcmsCIELabFormat</B>, <B>XcmsCIELuvFormat</B>, <B>XcmsTekHVCFormat</B>,
+<B>XcmsRGBFormat</B>, and <B>XcmsRGBiFormat</B>. The RGB substructure within
+the union <B>spec</B> consists of three unsigned 16-bit integers. All the
+other color space structures consist of three doubles, and the <B>XcmsPad</B>
+structure reserves four doubles for possible extensions. Example 7-15 shows
+these structures.
+
+<P><B>Selected XcmsColor sub-structures</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef unsigned int XcmsColorFormat;&nbsp;&nbsp; /* Color Space Format ID */
+typedef double XcmsFloat;
+typedef struct {&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Device RGB */
+&nbsp;&nbsp;&nbsp; unsigned short red;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* scaled from 0x0000 to 0xffff */
+&nbsp;&nbsp;&nbsp; unsigned short green;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* scaled from 0x0000 to 0xffff */
+&nbsp;&nbsp;&nbsp; unsigned short blue;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* scaled from 0x0000 to 0xffff */
+} XcmsRGB;
+typedef struct {&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* RGB intensity */
+&nbsp;&nbsp;&nbsp; XcmsFloat red;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* 0.0 - 1.0 */
+&nbsp;&nbsp;&nbsp; XcmsFloat green;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* 0.0 - 1.0 */
+&nbsp;&nbsp;&nbsp; XcmsFloat blue;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* 0.0 - 1.0 */
+} XcmsRGBi;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* structures for other color spaces omitted */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+typedef struct {&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* TekHVC */
+&nbsp;&nbsp;&nbsp; XcmsFloat H;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* 0.0 - 360.0 */
+&nbsp;&nbsp;&nbsp; XcmsFloat V;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* 0.0 - 100.0 */
+&nbsp;&nbsp;&nbsp; XcmsFloat C;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* 0.0 - 100.0 */
+} XcmsTekHVC;
+typedef struct {&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* 4 doubles of pad */
+&nbsp;&nbsp;&nbsp; XcmsFloat pad0;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* for use by Xcms extensions */
+&nbsp;&nbsp;&nbsp; XcmsFloat pad1;
+&nbsp;&nbsp;&nbsp; XcmsFloat pad2;
+&nbsp;&nbsp;&nbsp; XcmsFloat pad3;
+} XcmsPad;</TT></PRE>
+</BLOCKQUOTE>
+Example 7-16 shows a procedure that uses the TekHVC color
+space and <B>XcmsAllocColor()</B> to allocate a number of colors with a
+given Hue and Chroma, and with perceptually uniform steps between a given
+maximum and a given minimum Value.
+
+<P><B>Allocating device-independent colors</B>
+<BLOCKQUOTE>
+<PRE><TT>/*
+&nbsp;* This procedure allocates n colors with the given Hue and Chroma, and
+&nbsp;* with Values equally spaced between minv and maxv.&nbsp; The pixels values
+&nbsp;* are returned in the passed array of pixels, which is assumed to be
+&nbsp;* large enough to hold them.&nbsp; Returns XcmsFailure if one of the calls
+&nbsp;* to XcmsAllocColor returned XcmsFailure, otherwise XcmsSuccess.
+&nbsp;*/
+Status AllocShades(dpy, cmap, hue, chroma, minv, maxv, pixels, n)
+Display *dpy;
+Colormap cmap;
+double hue, chroma, minv, maxv;
+long *pixels;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* RETURN */
+int n;
+{
+&nbsp;&nbsp;&nbsp; XcmsColor color;
+&nbsp;&nbsp;&nbsp; double value, deltav;
+&nbsp;&nbsp;&nbsp; int i;
+&nbsp;&nbsp;&nbsp; if (n > 1) deltav = (maxv - minv)/(n-1);
+&nbsp;&nbsp;&nbsp; else deltav = (maxv-minv);
+&nbsp;&nbsp;&nbsp; color.format = XcmsTekHVCFormat;
+&nbsp;&nbsp;&nbsp; color.spec.TekHVC.H = hue;
+&nbsp;&nbsp;&nbsp; color.spec.TekHVC.C = chroma;
+&nbsp;&nbsp;&nbsp; for(i = 0; i &lt; n; i++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color.spec.TekHVC.V = minv + i*deltav;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (XcmsAllocColor(dpy, cmap, &amp;color, XcmsTekHVCFormat) == XcmsFailure)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return XcmsFailure;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pixels[i] = color.pixel;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; return XcmsSuccess;
+}</TT></PRE>
+</BLOCKQUOTE>
+Example 7-16 has one serious weakness: no checking is performed
+to ensure that the minimum and maximum Values passed to the procedure are
+valid. This is particularly important because the range of valid Values
+depends on both Hue and Chroma. If either of the specified Values is outside
+the boundaries of the TekHVC color space, or outside the gamut of the device
+being used, gamut compression will occur on the allocated colors. Later
+in this section, we develop a refinement to this example that allocates
+shades, all of which are within the gamut of the device.
+<H4>
+Color Conversion</H4>
+In X11R5, each colormap has a <I>color conversion context</I>
+automatically associated with it. A color conversion context, or CCC, is
+an opaque structure of type <B>XcmsCCC</B>. It contains the attributes
+that control the details of color conversion from one color space to another.
+These attributes include the procedure that is called to perform gamut
+compression when a device-independent color specification is outside the
+range of displayable colors for a particular device.
+
+<P>Xlib contains functions to create and destroy CCCs, set
+and get CCC attribute values, and associate a CCC with a colormap. Because
+the colorimetric theory behind these CCC attributes is beyond the scope
+of this chapter, these functions will not be described here. Many programmers
+will never have to use CCCs at all. Others may use CCCs, but will never
+use anything but the default CCC. This section describes the CCC functions
+that are useful to this second category of programmer.
+
+<P>Because every colormap has a CCC associated with it, all
+of the Xcms functions described so far have had an implicit CCC argument.
+The functions that will be described in the next section, however, do not
+require a colormap argument but are passed a CCC directly. For these functions,
+you may obtain the CCC of a colormap with the function <B>XcmsCCCOfColormap()</B>,
+or you may obtain the default CCC of a screen with <B>XcmsDefaultCCC()</B>.
+
+<P>The color conversion context controls the details of color
+conversions performed by other Xcms functions. It can also be used to control
+the explicit conversion of colors with the function <B>XcmsConvertColors()</B>.
+This function takes a CCC as an argument, along with an array of <B>XcmsColor</B>
+structures and converts those colors to a single specified target format.
+
+<P>The functions <B>XcmsCCCOfColormap()</B>, <B>XcmsDefaultCCC()</B>,
+and <B>XcmsConvertColors()</B> are documented in the reference section
+of this book. The remaining CCC functions are listed in Table 7-3. For
+information on these functions and an explanation of the CCC attributes,
+see <I>Volume Two, Xlib Reference Manual</I> or XCMSBOOK.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 7-3 : </B>Other Color Conversion Context
+Functions</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XcmsClientWhitePointOfCCC</B></TD>
+
+<TD><B>XcmsScreenWhitePointOfCCC</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XcmsCreateCCC</B></TD>
+
+<TD><B>XcmsSetCCCOfColormap</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XcmsDisplayOfCCC</B></TD>
+
+<TD><B>XcmsSetCompressionProc</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XcmsFreeCCC</B></TD>
+
+<TD><B>XcmsSetWhiteAdjustProc</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XcmsScreenNumberOfCCC</B></TD>
+
+<TD><B>XcmsSetWhitePoint</B></TD>
+</TR>
+</TABLE>
+&nbsp;
+<H4>
+Gamut-querying Functions</H4>
+To make full use of a screen's color capability, some applications
+will want to explicitly query the gamut of a screen. Even programs that
+are not concerned with the precise boundaries of a screen's gamut may need
+to query the boundaries of an irregular color space to ensure that requested
+color specifications are legal for that space. In the TekHVC space, for
+example, the maximum value of Chroma varies with Hue, and the maximum and
+minimum legal Value varies with both Hue and Chroma. The functions described
+here can be used to verify that requested colors are legal for the color
+space, are within the device gamut, and can therefore be displayed as requested,
+without gamut compression.
+
+<P>The functions <B>XcmsQueryBlack()</B>, <B>XcmsQueryWhite()</B>,
+<B>XcmsQueryRed()</B>, <B>XcmsQueryGreen()</B>, and <B>XcmsQueryBlue()</B>
+return the device-independent color specification, in the desired format,
+of pure black, white, red, green, and blue. That is, they convert from
+the device-dependent colors RGBi:0.0/0.0/0.0, RGBi:1.0/1.0/1.0, RGBi:1.0/0.0/0.0,
+RGBi:0.0/1.0/0.0, and RGBi:0.0/0.0/1.0 to the specified color space. These
+functions are fully documented in the reference section at the end of this
+book.
+
+<P>The following functions are used to query the screen gamut
+in terms of the TekHVC color space:
+<DL>
+<DT>
+<B>XcmsTekHVCQueryMaxC()</B></DT>
+
+<DD>
+Determines the maximum displayable Chroma for a given Hue
+and Value.</DD>
+
+<DT>
+<B>XcmsTekHVCQueryMaxV()</B></DT>
+
+<DD>
+Determines the maximum displayable Value for a given Hue
+and Chroma.</DD>
+
+<DT>
+<B>XcmsTekHVCQueryMinV()</B></DT>
+
+<DD>
+Determines the minimum displayable Value for a given Hue
+and Chroma.</DD>
+
+<DT>
+<B>XcmsTekHVCQueryMaxVC()</B></DT>
+
+<DD>
+For a given Hue, determines the maximum displayable Chroma
+and the Value at which that Chroma is reached.</DD>
+
+<DT>
+<B>XcmsTekHVCQueryMaxVSamples()</B></DT>
+
+<DD>
+For a given Hue, partitions the displayable values of Chroma
+into a specified number of sampling intervals and determines the maximum
+value for each interval. This can be used to plot the boundaries of a screen's
+gamut at a given Hue.</DD>
+</DL>
+These functions are fully documented in <I>Volume Two, Xlib
+Reference Manual</I>. Similar query functions exist for the CIELab and
+CIELuv color spaces, and are listed in Table 7-4. Because CIELab and CIELuv
+are analogous but less intuitive than the TekHVC space, those functions
+are not documented here. See Volume Tow, <I>Xlib Reference Manual</I> or
+<I>The X Color Management System</I> for complete information.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 7-4 : </B>Gamut-querying Functions for
+the CIELab and CIELuv Color Spaces</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>CIELab Queries</TH>
+
+<TH>CIELuv Queries</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XcmsCIELabQueryMaxC</B></TD>
+
+<TD><B>XcmsCIELuvQueryMaxC</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XcmsCIELabQueryMaxL</B></TD>
+
+<TD><B>XcmsCIELuvQueryMaxL</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XcmsCIELabQueryMaxLC</B></TD>
+
+<TD><B>XcmsCIELuvQueryMaxLC</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XcmsCIELabQueryMinL</B></TD>
+
+<TD><B>XcmsCIELuvQueryMinL</B></TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>Example 7-17 is a refinement to Example 7-16. It queries
+the screen's gamut to determine the minimum and maximum displayable Values
+for the given Hue and Chroma and allocates a specified number of colors
+spaced at perceptually equal intervals between that minimum and maximum.
+If the specified Hue and Chroma are within the screen's gamut, this function
+will only allocate colors that do not require gamut compression.
+
+<P><B>Querying the screen gamut and allocating colors</B>
+<BLOCKQUOTE>
+<PRE><TT>/*
+&nbsp;* This routine allocates n shades of the color with specified Hue and
+&nbsp;* Chroma.&nbsp; The shades will be at perceptually equal intervals between
+&nbsp;* the minimum and maximum Values of the device gamut for the given Hue
+&nbsp;* and Chroma.
+&nbsp;*/
+Status AllocShades(dpy, cmap, hue, chroma, pixels, n)
+Display *dpy;
+Colormap cmap;
+double hue, chroma;
+long *pixels;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* RETURN */
+int n;
+{
+&nbsp;&nbsp;&nbsp; XcmsColor color;
+&nbsp;&nbsp;&nbsp; XcmsCCC ccc;
+&nbsp;&nbsp;&nbsp; int i;
+&nbsp;&nbsp;&nbsp; double minv, maxv;
+&nbsp;&nbsp;&nbsp; double deltav;
+&nbsp;&nbsp;&nbsp; ccc = XcmsCCCOfColormap(dpy, cmap);
+&nbsp;&nbsp;&nbsp; if (XcmsTekHVCQueryMinV(ccc, hue, chroma, &amp;color) == XcmsFailure)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return XcmsFailure;
+&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; minv = color.spec.TekHVC.V;
+&nbsp;&nbsp;&nbsp; if (XcmsTekHVCQueryMaxV(ccc, hue, chroma, &amp;color) == XcmsFailure)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return XcmsFailure;
+&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; maxv = color.spec.TekHVC.V;
+&nbsp;&nbsp;&nbsp; if (n > 1) deltav = (maxv - minv)/(n-1);
+&nbsp;&nbsp;&nbsp; else deltav = maxv - minv;
+&nbsp;&nbsp;&nbsp; for(i=0; i &lt; n; i++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color.format = XcmsTekHVCFormat;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color.spec.TekHVC.H = hue;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color.spec.TekHVC.C = chroma;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color.spec.TekHVC.V = minv + i*deltav;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (XcmsAllocColor(dpy, cmap, &amp;color, XcmsRGBFormat) == XcmsFailure)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return XcmsFailure;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pixels[i] = color.pixel;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; return XcmsSuccess;
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<HR>
+<H2>
+Creating and Installing Colormaps</H2>
+In discussing colormaps earlier in this chapter, we mentioned
+that there are hardware colormaps and virtual colormaps, but we did not
+discuss the ramifications of this fact.
+
+<P>A hardware colormap is a physical register from which
+the screen hardware reads the RGB intensity values that generate the colors
+on the screen. Most workstations have only one hardware colormap, in which
+case all windows on the screen are interpreted using the same colormap.
+Some high performance workstations have multiple hardware colormaps, in
+which case separate windows may have their own independent hardware colormaps.
+
+<P>If the hardware colormap cannot be changed, it is termed
+<I>immutable</I>. Monochrome systems normally have an immutable colormap,
+since it does little good to swap the two entries or make them both black
+or white. Some low-cost color systems and some X terminals have immutable
+hardware colormaps. The <B>StaticColor</B>, <B>StaticGray</B>, and <B>TrueColor</B>
+visuals are the only visuals that can possibly work on systems that have
+immutable hardware colormaps. In immutable colormaps, no client can allocate
+private colorcells and all RGB values are preset. On these systems, <B>XCreateColormap()</B>
+succeeds, but it just gives you another copy of the default colormap (or
+one of the default colormaps if there are multiple immutable colormaps).
+The application should check for this when creating colormaps.
+
+<P>On most color workstations, you can write new values into
+the hardware colormap or colormaps to change that mapping. These hardware
+colormaps are termed <I>changeable</I>. The <B>DirectColor</B>, <B>GrayScale</B>,
+and <B>PseudoColor</B> visuals are available only on systems that have
+changeable colormaps.
+
+<P>X manages multiple colormaps by keeping <I>virtual colormaps</I>
+in memory and installing them as instructed by the window manager. <I>Installing</I>
+a colormap is the process of moving a virtual colormap into the hardware
+colormap. Only installed colormaps are used to determine the colors appearing
+on the screen. When there is only one hardware colormap and a new virtual
+colormap is installed, the virtual colormap that was previously installed
+becomes <I>uninstalled</I>.
+
+<P>Up to this point in this chapter, we have been allocating
+colors out of the default colormap, which is created and installed when
+the server starts up. On the most common color workstations, with four
+to eight planes, it is quite easy for clients that require precise colors
+to allocate all the available colorcells. Virtual colormaps are a response
+to this problem. When a client cannot get the colorcells it needs from
+the installed colormap, it can create a new virtual one. The window manager
+will then install this virtual colormap when this application is in use.
+
+<P>When a virtual colormap is installed and there is only
+one hardware colormap, all the clients that used the old colormap will
+be displayed in false colors, since the pixel values in their windows will
+be interpreted according to the new colormap.
+
+<P>When an application creates a virtual colormap, it must
+set the colormap window attribute of its top-level window so that the window
+manager can find out what colormap to install. By default, this attribute
+indicates the default colormap. If its subwindows use different colormaps
+from the main window, there is a property that can be set to tell this
+to the window manager, as described in Chapter 12, "Interclient Communication."
+
+<P>It is a hard rule that an application should never install
+its own colormaps. This is required by the current conventions described
+in Chapter 12, "Interclient Communication."
+
+<P>By now you should be getting the idea that it is much
+better to arrange to share the default colormap with the other applications
+than to try to create one of your own. The only time when you should really
+need to create a special colormap is when you are doing smooth shading
+or similar applications that need many strangely distributed colors. On
+the other hand, creating a virtual colormap might be the only way to make
+your application that has demanding color needs work on a system that provides
+only a <B>PseudoColor</B> visual. On systems with multiple hardware colormaps,
+you can create your own colormap and have it installed without affecting
+other applications. You can use <B>XListInstalledColormaps()</B> to get
+information about how many colormaps are installed into the hardware.
+<H3>
+Functions for Manipulating Colormaps</H3>
+The following functions should be used by applications only
+if they need a special purpose colormap:
+<DL>
+<DT>
+<B>XCreateColormap()</B></DT>
+
+<DD>
+Creates a virtual colormap resource, either with no allocated
+entries or with all allocated read/write, that matches the passed visual.
+If no entries are allocated, they can be allocated either as read/write
+or as read-only cells. If all entries are allocated read/write, the colormap
+is completely private and just needs its colors set with <B>XStoreColors()</B>.</DD>
+
+<DT>
+<B>XFreeColormap()</B></DT>
+
+<DD>
+Uninstalls the specified virtual colormap and frees the resources
+associated with the colormap. Applications are allowed to use this. Sends
+a <B>ColormapNotify</B> event to any windows that were using the colormap.</DD>
+
+<DT>
+<B>XListInstalledColormaps()</B></DT>
+
+<DD>
+Lists the installed colormaps.</DD>
+
+<DT>
+<B>XCopyColormapAndFree()</B></DT>
+
+<DD>
+Moves all the client's existing colormap entries to a new
+colormap and frees those entries of the old colormap. This is used when
+colorcell allocation fails and some cells have already been allocated.
+It saves needing to create a colormap and start from the beginning allocating
+colors. For applications with special color needs that can't make do, they
+can call <B>XCopyColormapAndFree()</B>, set their colormap window attribute,
+and continue allocating colors in the new colormap where they left off.</DD>
+
+<DT>
+<B>XSetWindowColormap()</B></DT>
+
+<DD>
+Sets the colormap window attribute of a window.</DD>
+</DL>
+The following functions are use by the window manager to
+install and uninstall colormaps:
+<DL>
+<DT>
+<B>XInstallColormap()</B></DT>
+
+<DD>
+A function only to be used by window managers to install
+a colormap. Any window using that colormap ID as its colormap attribute
+receives a <B>ColormapNotify</B> event.</DD>
+
+<DT>
+<B>XUninstallColormap()</B></DT>
+
+<DD>
+A function only to be used by window managers to uninstall
+a colormap. Removes a virtual colormap from the set of installed hardware
+colormaps. On systems with only one hardware colormap, the default colormap
+is reinstalled. Sends <B>ColormapNotify</B> event to windows that are using
+the specified map.</DD>
+</DL>
+
+<H3>
+The ColormapNotify Event</H3>
+<B>ColormapNotify</B> events notify an application when the
+colormap specified in the colormap attribute for a particular window has
+been installed, uninstalled, or freed or when the attribute itself has
+been changed. The former is used by applications, and the latter (attribute
+changes) by window managers.
+
+<P>If your application wants to know when your colormap is
+installed or uninstalled, it should watch for these events and act accordingly.
+To receive <B>ColormapNotify</B> events, pass <B>ColormapChangeMask</B>
+(ORed with the other masks you need) to <B>XSelectInput()</B>. Example
+7-18 shows the <B>XColormapEvent</B> structure.
+
+<P><B>The ColormapEvent structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; Colormap colormap;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Colormap or None */
+&nbsp;&nbsp; Bool new;
+&nbsp;&nbsp; int state;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* ColormapInstalled, ColormapUninstalled */
+} XColormapEvent;</TT></PRE>
+</BLOCKQUOTE>
+Here is a brief explanation of each member of the <B>XColormapEvent</B>
+structure:
+<DL>
+<DT>
+<B>window</B></DT>
+
+<DD>
+The window for which this event was selected, whose colormap
+attribute was changed or whose colormap specified in that attribute was
+installed, uninstalled, or freed.</DD>
+
+<DT>
+<B>colormap</B></DT>
+
+<DD>
+The colormap associated with the window, either a colormap
+ID or the constant <B>None</B>. It will be <B>None</B> only if this event
+was in response to an <B>XFreeColormap()</B> call.</DD>
+
+<DT>
+<B>new</B></DT>
+
+<DD>
+<B>True</B> when the colormap attribute has been changed,
+or <B>False</B> when the colormap is installed or uninstalled.</DD>
+
+<DT>
+<B>state</B></DT>
+
+<DD>
+Either <B>ColormapInstalled</B> or <B>ColormapUninstalled</B>;
+it indicates whether the colormap is installed or uninstalled.</DD>
+</DL>
+<B>XFreeColormap()</B>, <B>XInstallColormap()</B>, and <B>XUninstallColormap()</B>
+generate this event for windows that have their colormap attribute set
+to the colormap that was affected. <B>XSetWindowColormap()</B> and <B>XChangeWindowAttributes()</B>
+can also generate this event. From the information in the structure, you
+can tell which of these calls generated the event and what the current
+status of the colormap is. See Chapter 12, "Interclient Communication,"
+in this manual and Appendix L, <I>Interclient Communcation Conventions</I>,
+of <I>Volume Zero, X Protocol Reference Manual</I> (as of the second printing)
+for an additional description of the conventions regarding colormaps.
+<H3>
+The Required Colormap List</H3>
+The X protocol specifies that each server can specify a required
+list of colormaps, which affects what happens when other colormaps are
+installed or uninstalled. Here is what the protocol specification says
+about the required list (translated into Xlib terms):
+
+<P>At any time, there is a subset of the installed maps,
+viewed as an ordered list, called the required list. The length of the
+required list is at most <B>min_maps</B>, where <B>min_maps</B> is a member
+of the <B>Display</B> structure. The required list is maintained as follows.
+When a colormap is an explicit argument to <B>XInstallColormap()</B>, it
+is added to the head of the list, and the list is truncated at the tail
+if necessary to keep the length of the list to at most <B>min_maps</B>.
+When a colormap is an explicit argument to <B>XUninstallColormap()</B>
+and it is in the required list, it is removed from the list. A colormap
+is not added to the required list when it is installed implicitly by the
+server, and the server cannot implicitly uninstall a colormap that is in
+the required list.
+
+<P>In less precise words, the <B>min_maps</B> most recently
+installed maps are guaranteed to be installed. This number will often be
+one; clients needing multiple colormaps should beware.
+<BR>
+<HR>
+<H2>
+Miscellaneous Color-handling Functions</H2>
+The following miscellaneous functions provide additional
+ways to use the color database, to find out the RGB values in a colormap
+cell, and to free cells that are no longer needed:
+<DL>
+<DT>
+<B>XLookupColor()</B></DT>
+
+<DD>
+Looks up a string color name in the color database and returns
+separate color structures containing the exact RGB values specified in
+the database for that name and the closest RGB values available on the
+hardware. This function does not look at any cells in the colormap, even
+though it has a colormap argument! This argument specifies which screen
+the color should be looked up on, which is relevant only if each screen
+has a different color characterization or color database. The difference
+between <B>XLookupColor()</B> and <B>XParseColor()</B> is that <B>XParseColor()</B>
+accepts the hexadecimal color specification (which <B>XLookupColor()</B>
+does not), while <B>XLookupColor()</B> returns the closest colors available
+on the hardware (which <B>XParseColor()</B> does not). <B>XLookupColor()</B>
+might be useful for making sure that user-specified colors are contrasting.
+There is also an Xcms version, <B>XcmsLookupColor()</B>, that is analogous
+to <B>XLookupColor()</B> except with different arguments and the Xcms version
+returns a device-independent color specification.</DD>
+
+<DT>
+<B>XQueryColor()</B></DT>
+
+<DD>
+Fills an <B>XColor</B> structure with the RGB values corresponding
+to the colormap cell indicated by a pixel value. Also sets the <B>flags</B>
+member of the structure to (<B>DoRed | DoGreen | DoBlue</B>). The Xcms
+version, <B>XcmsQueryColor()</B>, translates the current RGB values in
+the colormap cell into a device-independent specification.</DD>
+
+<DT>
+<B>XQueryColors()</B></DT>
+
+<DD>
+Fills multiple <B>XColor</B> structures with the RGB values
+and flags corresponding to the colormap cells indicated by a pixel values.
+Also sets each <B>flags</B> member to (<B>DoRed | DoGreen | DoBlue</B>).
+The Xcms version, <B>XcmsQueryColors()</B>, translates the current RGB
+values in the colormap cells into device-independent specifications.</DD>
+
+<DT>
+<B>XFreeColors()</B></DT>
+
+<DD>
+Frees the colormap cells associated with the given pixel
+values and/or frees the given planes. Since all the colorcells an application
+allocates are freed when the application exits, this routine is needed
+only when an application is finished with cells before it exits. Freeing
+a read/write colorcell makes that cell available to other applications.
+Freeing a read-only cell may make the cell unallocated, but only if no
+other application is sharing that cell.</DD>
+</DL>
+
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

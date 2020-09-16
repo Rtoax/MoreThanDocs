@@ -1,0 +1,2325 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_11.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_13.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H1>
+Interclient Communication</H1>
+As a multi-window environment, X must support a mechanism
+for communication between applications. There are three: properties, selections,
+and cut buffers, all of which are described in this chapter. The special
+case of communication between an application and the window manager is
+also covered here. Internationalized interclient communication is described
+in Section 10.5, "Internationalized Interclient Communication." Standard
+conventions for additional aspects of interclient communication are covered
+in Appendix L of Volume Zero, <I>X Protocol Reference Manual</I>.
+
+<P>Communication is necessary to make sure that all applications
+running under X cooperate properly with the window manager and share the
+system resources politely. Communication also allows applications to interchange
+data. Most applications in an integrated computing environment should have
+the ability to transfer data to and accept data from other applications.
+
+<P>Communication between clients takes place through <I>properties</I>.
+Sometimes properties are set directly by one application and read by another.
+This is the case with most communication between the window manager and
+the clients.
+
+<P>There is also a simple but limited means of communication
+through properties called <I>cut buffers</I>. But the preferred and most
+powerful method of general communication between clients is called <I>selections</I>.
+Selections actually establish a dialog between the two applications, not
+just a one-way communication. Both cut buffers and selections are ways
+of using properties for communication.
+
+<P>Successful communication depends on conventions for the
+meanings of the data communicated through properties and selections. The
+conventions in this area were established initially in Release 4, with
+the adoption as an X Consortium standard of the <I>Inter-Client Communication
+Conventions Manual</I> (ICCCM), which is reprinted in Appendix L, <I>Interclient
+Communcation Conventions</I>, of <I>Volume Zero, X Protocol Reference Manual</I>
+(as of the second printing). The current version of the ICCCM is version
+1.
+
+<P>Several R3 routines are now obsolete because of new routines
+added to Xlib in R4. This edition describes only the currently valid interfaces.
+The outdated routines formerly used by applications are <B>XSetStandardProperties()</B>,
+<B>XSetWMHints()</B>, <B>XSetZoomHints()</B>, <B>XSetNormalHints()</B>,
+<B>XStoreName()</B> and <B>XSetIconName()</B>.
+<BR>
+<HR>
+<H2>
+Properties and Atoms</H2>
+Properties allow you to associate arbitrary information with
+windows, usually to make that data available to the window manager or other
+applications. Properties are stored in the server.
+
+<P>Each property has a unique integer ID, called an atom.
+An atom is just a nickname for a property, so that arbitrary length property
+name strings do not have to be transferred back and forth between Xlib
+and the server. The atom is assigned by the server and will remain defined
+in the server even after the client that defined it terminates. The atoms
+for the predefined properties are constants defined in &lt;<I>X11/Xatom.h</I>>;
+all of them begin with the prefix <B>XA_</B>. This naming convention avoids
+name clashes with user-defined symbols.
+
+<P>A property is uniquely identified by an atom and a window.
+Therefore, there may be one property on each window identified by a given
+atom. In other words, there can be a <B>XA_WM_NAME</B> property on each
+and every window, even though by convention this property is only set or
+read on the top-level windows of each application. A property on a window
+takes up space only once it is set.
+
+<P>Each property also has a name, which is an ASCII string.
+For the predefined properties, the name is never used in code. That is
+why we have chosen for this manual to refer to all predefined properties
+by their atoms. But for properties defined by convention between related
+clients (not predefined), the property name string is used so that the
+applications can determine the correct atom for the property. The first
+client to call <B>XInternAtom()</B> with the property name string as an
+argument gets a new atom. Subsequent clients that call <B>XInternAtom()</B>
+with the same string will get the same atom. After each client has called
+<B>XInternAtom()</B>, they use the atom rather than the string to refer
+to the property. They use this process because for properties defined by
+clients, the actual number used for an atom may differ between invocations
+of the server.
+
+<P>Once created, an atom remains defined in the server even
+after the client that created it has exited. A server remembers all atoms
+that were ever defined since the server started up. This means that one
+client can refer to an atom first interned by another client even if that
+other client has already exited.
+
+<P>Each property has a type, which itself is a property.
+There are several predefined properties for use as some of the more often
+needed types.
+
+<P>The data associated with a property can be stored as an
+array of 8-bit quantities, 16-bit quantities, or 32-bit quantities only.
+Properties can contain structures or raw data, but if one is to contain
+a structure of complex type, it must be encoded into one of the three byte
+formats by the program before being sent to the server and decoded when
+read from the server. The predefined property types have been carefully
+designed to match one of the data formats so that encoding and decoding
+are not necessary.
+
+<P>Properties remain set until the window to which they are
+attached is destroyed, which happens automatically when the client that
+created the window exits. However, properties set on the root window remain
+defined even after the client that set them has exited, since the root
+window is never destroyed.
+
+<P>There are 68 predefined properties for window manager
+communication, selections, standard colormaps, and font specifications.
+The properties used for window manager communication and selections are
+described in this chapter. The standard colormap properties are described
+in Chapter 7, "Color," and the font properties are described in Chapter
+6, "Drawing Graphics and Text."
+
+<P>Properties are set with <B>XChangeProperty()</B> and read
+with <B>XGetWindowProperty()</B>. Whenever <B>XChangeProperty()</B> is
+called, a <B>PropertyNotify</B> event is generated.
+<BR>
+<HR>
+<H2>
+The Compound Text Encoding</H2>
+An X Consortium standard defines a format for text properties
+that support multiple character sets, such as multi-lingual text. It is
+called the Compound Text Encoding. As of late 1992, the Compound Text Encoding
+specification is printed in Volume Zero, <I>X Protocol Reference Manual</I>.
+
+<P>The format is based on ISO standards for encoding and
+combining character sets. Compound Text is intended to be used in three
+main contexts: inter-client communication using selections; window properties
+(e.g., window manager hints); and resources (e.g., as defined in Xlib and
+the Xt Intrinsics). All of the standard routines for setting window manager
+hints that set text properties support the compound text encoding. If you
+are only concerned with your program operating in English on a system where
+the window manager also uses English, these routines are easy to use.
+
+<P>The target type for selections in the Compound Text encoding
+is COMPOUND_TEXT.
+<BR>
+<HR>
+<H2>
+Communicating with the Window Manager</H2>
+To permit window managers to perform their role of mediating
+the competing demands for screen space and colormaps, the clients being
+managed must adhere to certain conventions. These conventions specify things
+that clients must do, things they should or can do if desired, and things
+that they must not do. The most basic thing clients are expected to do
+is to set certain properties so that the window manager has information
+on which to base its decisions.
+
+<P>It is a fundamental principle of client-window manager
+communication that a general client should not care which window manager
+is running or, indeed, if one is running at all. The choice of window manager
+is up to the user or perhaps the system administrator, not the client.
+
+<P>The fact that window managers need information about the
+clients they are managing and yet that window managers vary and might not
+be running lead to the concept of the hint. A <I>hint</I> is a suggestion
+to the window manager about a preference of the application made by setting
+a property. Xlib makes this easy by providing routines that conveniently
+set the right properties. The window manager is encouraged to honor as
+many of the hints as possible, but it is not required to honor any of them.
+Therefore, the application must not depend on its hints being honored;
+it must be capable of operating when any of its hints are ignored or denied.
+
+<P>In general, the object of the X11 design is that clients
+should, as far as possible, do exactly what they would do in the absence
+of a window manager, except for:
+<UL>
+<LI>
+Hinting to the window manager about the screen space and
+colormaps they would like to use.</LI>
+
+<LI>
+Cooperating with the window manager by accepting the resources
+they are allocated, even if not those requested.</LI>
+
+<LI>
+Being prepared for hardware-limited resource allocations
+to change at any time. The client can select events that will announce
+these changes.</LI>
+</UL>
+Note that these procedures are not required for the virtually
+unlimited X resources such as windows or cursors.
+
+<P>Clients create one or more windows that are children of
+the root window. All these windows are known as top-level windows. It is
+these windows that the window manager controls, and it is also these windows
+on which the application sets window manager hint properties.
+<H3>
+Standard Properties for Window Manager</H3>
+Once the client has created one or more top-level windows
+but before it maps them, it must place properties on those windows to help
+the window manager manage them effectively. The following sections describe
+each property that must or should be set and how to set it.
+
+<P>It is important to remember that the version 1 conventions
+are the accepted X Consortium standard and will continue to be valid in
+R5 and later; there will be additions but not incompatible changes.
+
+<P>Some of the properties that a client sets for the window
+manager are mandatory (the <I>standard properties</I>), and some are optional.
+<B>XSetWMProperties()</B> which was introduced and used in <I>basicwin</I>
+in Chapter 3, "Basic Window Program," sets all the required properties.
+The purpose of <B>XSetWMProperties()</B> is to provide a simple interface
+for the programmer who wants to code an application quickly. Other functions
+are provided to communicate more optional information to the window manager.
+
+<P>In order to work well with most window managers, every
+program should call <B>XSetWMProperties()</B> for each top-level window.
+These provide the window manager with the following information:
+<UL>
+<LI>
+Name of the application for titlebar.</LI>
+
+<LI>
+Name string for the icon.</LI>
+
+<LI>
+Command and arguments used to invoke the program.</LI>
+
+<LI>
+Icon pixmap and mask or window.</LI>
+
+<LI>
+Preferred initial icon position.</LI>
+
+<LI>
+Size hints for window in normal state.</LI>
+
+<LI>
+Startup state (normal or iconified).</LI>
+
+<LI>
+Keyboard focus model used by the application.</LI>
+
+<LI>
+Window group; for applications with multiple top-level windows,
+this describes which window is the main window for iconifying.</LI>
+</UL>
+The window manager, not Xlib, chooses its own default response
+when any of these properties are not set. Also, they are only hints. A
+window manager determines what to do with this information and is allowed
+to ignore it. They will, of course, be ignored if no window manager is
+running.
+
+<P>The following sections describe the properties set by
+the client that indicate its preferences to the window manager. Table 12-1
+shows all the predefined properties that clients can set and the section
+in this chapter where they are described.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 12-1 : </B>The Window Manager Hints Property
+Atoms</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Property</TH>
+
+<TH>Property Type</TH>
+
+<TH>C Type</TH>
+
+<TH>Description</TH>
+
+<TH>See</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><I>For window manager:</I></TD>
+
+<TD></TD>
+
+<TD></TD>
+
+<TD></TD>
+
+<TD></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_WM_CLASS</B></TD>
+
+<TD><B>XA_STRING</B></TD>
+
+<TD><B>XClassHint</B></TD>
+
+<TD>Application class and name for resource database lookup.</TD>
+
+<TD>Section 12.3.1.5</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_WM_HINTS</B></TD>
+
+<TD><B>XA_WM_HINTS</B></TD>
+
+<TD><B>XWMHints</B></TD>
+
+<TD>Additional hints set by client for use by window manager.</TD>
+
+<TD>Section 12.3.1</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_WM_ICON_NAME</B></TD>
+
+<TD><B>"TEXT"</B></TD>
+
+<TD><B>XTextProper ty</B></TD>
+
+<TD>Name to be used in icon.</TD>
+
+<TD>Section 12.3.1.2</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_WM_NAME</B></TD>
+
+<TD><B>"TEXT"</B></TD>
+
+<TD><B>XTextProper ty</B></TD>
+
+<TD>Application name.</TD>
+
+<TD>Section12.3.1.1</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_WM_NORMAL_HINTS</B></TD>
+
+<TD><B>XA_WM_SIZE_ HINTS</B></TD>
+
+<TD><B>XSizeHints</B></TD>
+
+<TD>Size hints for window in normal state (not iconified
+or zoomed).</TD>
+
+<TD>Section12.3.1.3</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_WM_TRANSIENT_FO R_HINT</B></TD>
+
+<TD><B>XA_STRING</B></TD>
+
+<TD><B>char *</B></TD>
+
+<TD>Tells window manager which window is the real main window
+with which a temporary window is associated.</TD>
+
+<TD>Section 12.3.1.4.6</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_WM_ZOOM_HINTS</B></TD>
+
+<TD><B>XA_WM_SIZE_ HINTS</B></TD>
+
+<TD><B>XSizeHints</B></TD>
+
+<TD>Size hints for zoomed window.</TD>
+
+<TD>Section 12.3.1.3</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><I>For session manager:</I></TD>
+
+<TD></TD>
+
+<TD></TD>
+
+<TD></TD>
+
+<TD></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>WM_CLIENT_MACHINE</B></TD>
+
+<TD><B>"TEXT"</B></TD>
+
+<TD><B>XTextProper ty</B></TD>
+
+<TD>The name of machine running the client, as seen from
+the machine running the server.</TD>
+
+<TD>Section12.3.1</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_WM_COMMAND</B></TD>
+
+<TD><B>"TEXT"</B></TD>
+
+<TD><B>XTextProper ty</B></TD>
+
+<TD>Command and arguments, separated by ASCII 0's, used to
+invoke application.</TD>
+
+<TD>Section 12.3.2.1</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>In addition to the functions mentioned above that set
+all of the standard properties, Xlib also provides separate functions for
+setting and getting each property. These are referenced in the sections
+below describing each property. See the relevant pages in <I>Volume Two,
+Xlib Reference Manual</I>, for full details on each function. Applications
+set these properties and never read them, and the window manager gets them
+but never sets them. Therefore, if you are writing an application, you
+will only use the routines that set these properties.
+<H4>
+Application Name - XA_WM_NAME</H4>
+The <B>XA_WM_NAME</B> property is a string that the client
+wishes displayed in association with the window (for example, in a window
+titlebar).
+
+<P>Window managers are expected to make an effort to display
+this information; simply ignoring <B>XA_WM_NAME</B> is not acceptable window
+manager behavior. Clients can assume that at least the first part of this
+string is visible to the user, unless the user has made an explicit decision
+to make it invisible by placing the headline off-screen or covering it
+by other windows. But <B>XA_WM_NAME</B> should not be used for application-critical
+information nor to announce changes of application state that require timely
+user response. The expected uses are:
+<UL>
+<LI>
+To permit the user to identify one of a number of instances
+of the same client.</LI>
+
+<LI>
+To provide the user with noncritical state information.</LI>
+</UL>
+Even window managers that support headline bars will place
+some limit on the length of string that can be visible; brevity here is
+important.
+
+<P><B>XSetWMName()</B> and <B>XGetWMName()</B> set and get
+the <B>XA_WM_NAME</B> property. These interfaces support the use of the
+Compound Text Encoding.
+<H4>
+Icon Name - XA_WM_ICON_NAME</H4>
+The <B>XA_WM_ICON_NAME</B> property is a string that the
+client wishes displayed in association with its icon window when the client
+is iconified (for example, an icon label). In other respects, it is similar
+to <B>XA_WM_NAME</B>. Fewer characters will normally be visible in <B>XA_WM_ICON_NAME</B>
+than <B>XA_WM_NAME</B>, for obvious geometric reasons.
+
+<P>If an icon pixmap has been specified in the standard properties
+or <B>XA_WM_HINTS</B>, it may be displayed in the icon in addition to or
+instead of the icon name. <B>XSetWMIconName()</B> and <B>XGetWMIconName()</B>
+set the <B>XA_WM_NAME</B> property.
+<H4>
+Window Size Hints - XA_WM_NORMAL_HINTS</H4>
+An application must tell the window manager its geometry
+preferences for each of its top-level windows before mapping them.&nbsp;
+These hints specify not only the preferred initial size (and sometimes
+position) of the window but also the preferred increments of sizes and
+aspect ratios the window manager should respect when allowing the user
+to resize the application. (The aspect ratio is the ratio of the width
+of the application to its height.)
+
+<P><B>XSetWMProperties()</B> normally sets the <B>XA_WM_NORMAL_HINTS</B>
+property for a window in normal state. <B>XSetWMNormalHints()</B> is also
+available if for some reason <B>XSetWMProperties()</B> is not suitable.
+
+<P>The <B>XA_WM_NORMAL_HINTS</B> property is an <B>XSizeHints</B>
+structure, shown in Example 12-1.
+
+<P><B>The XSizeHints structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; long flags;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Marks defined members in
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * structure */
+&nbsp;&nbsp; int x, y;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Obsolete */
+&nbsp;&nbsp; int width, height;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Obsolete */
+&nbsp;&nbsp; int min_width, min_height;
+&nbsp;&nbsp; int max_width, max_height;
+&nbsp;&nbsp; int width_inc, height_inc;
+&nbsp;&nbsp; struct {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int x;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Numerator */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int y;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Denominator */
+&nbsp;&nbsp; } min_aspect, max_aspect;
+&nbsp;&nbsp; int base_width, base_height;
+&nbsp;&nbsp; int win_gravity;
+} XSizeHints;</TT></PRE>
+</BLOCKQUOTE>
+
+<UL>
+<LI>
+The <B>x</B>, <B>y</B>, <B>width</B>, and <B>height</B> members
+describe a desired position and size for the window. The coordinate system
+for <B>x</B> and <B>y</B> is the root window, irrespective of any reparenting
+that may have occurred. These fields are obsolete, because the window manager
+will use the initial size and position of the window when mapped to get
+this information. (The window manager <I>redirects</I> the application's
+mapping request to itself, so that the window manager can inspect the position
+and size of the window set by the application, and perhaps change them,
+before mapping the window.)</LI>
+
+<LI>
+The <B>min_width</B> and <B>min_height</B> members specify
+the minimum size that the window can be for the application to be useful.
+Most window managers will not allow the user to resize the application
+smaller than this size. The <B>base_width</B> and <B>base_height</B> fields
+if set are used instead of <B>min_width</B> and <B>min_height</B>. If they
+are not set, <B>min_width</B> and <B>min_height</B> are used.</LI>
+
+<LI>
+The <B>max_width</B> and <B>max_height</B> members specify
+the maximum useful size.</LI>
+
+<LI>
+The <B>width_inc</B> and <B>height_inc</B> members define
+an arithmetic progression of sizes, from the minimum size to the maximum
+size, into which the window prefers to be resized. For example, <I>xterm</I>
+prefers size increments matching the dimensions of the font being used.The
+following algorithm should be used by the window manager to calculate the
+displayed size of the top-level window. <B>i</B> and <B>j</B> are nonnegative
+integer loop variables within the window manager that would be incremented
+until a size that matches the window manager's window management policy
+is reached.</LI>
+
+<LI>
+width = base_width + (i * width_inc) height = base_height
++ (j * height_inc)</LI>
+
+<BR>(When <B>base_width</B> and <B>base_height</B> are not
+set, <B>min_width</B> and <B>min_height</B> are used instead of <B>base_width</B>
+and <B>base_height</B>.) Window managers will use <B>i</B> and <B>j</B>
+instead of <B>width</B> and <B>height</B> in reporting window sizes to
+users. Similarly, applications should interpret the command line or user
+default geometry using <B>width_inc</B> and <B>height_inc</B> pixels instead
+of single pixels as the unit. <I>xterm</I>, for example, interprets size
+specifications in terms of multiples of the font dimensions, not in pixels.
+A default <I>xterm</I> window has 80 columns and 24 rows of characters.
+To create an <I>xterm</I> window with more rows, you can use the command:
+<LI>
+spike%<B>xterm -geometry 80x40</B></LI>
+
+<LI>
+The <B>min_aspect</B> and <B>max_aspect</B> members specify
+the desired range of ratios of width to height for the window and are each
+expressed as a ratio of the <B>x</B> and <B>y</B> members of <B>min_aspect</B>
+and <B>max_aspect</B>. (The ratio <B>x / y</B> in <B>min_aspect</B> or
+<B>max_aspect</B> is the minimum or maximum value for <B>width / height</B>.)</LI>
+
+<LI>
+The <B>base_width</B> and <B>base_height</B> fields if set
+are used instead of <B>min_width</B> and <B>min_height</B>. If they are
+not set, <B>min_width</B> and <B>min_height</B> are used.</LI>
+
+<LI>
+The <B>win_gravity</B> field controls how the window's initial
+position will be interpreted by the window manager. By default, this hint
+is <B>NorthWestGravity</B>, which means that the position of the window
+when mapped by the application is used by the window manager as the position
+of the northwest corner (top-left) of the window. The other values for
+this field are <B>CenterGravity</B>, <B>EastGravity</B>, <B>NorthEastGravity</B>,
+<B>NorthGravity</B>, <B>SouthEastGravity</B>, <B>SouthGravity</B>, <B>SouthWestGravity</B>,
+and <B>WestGravity</B>. If the hint is set to <B>CenterGravity</B>, the
+window manager will place the center of the window where the origin of
+the window was when the application mapped it.</LI>
+
+<LI>
+The <B>flags</B> member of <B>XSizeHints</B> indicates which
+members in the structure contain important information. The constants in
+Table 12-2 can be combined with bitwise OR to set <B>flags</B>. The <B>USPosition</B>
+and <B>USSize</B> flags indicate that the user specified the desired values,
+while <B>PPosition</B> and <B>PSize</B> indicate that the program determined
+the values. This distinction is important since it supports the power structure--the
+user overrides the window manager, and the window manager overrides the
+program in decisions about window layout. The window manager can override
+the program's choice of window location or geometry when <B>PPosition</B>
+or <B>PSize</B>, respectively, are set, but the user's choices should override
+the window manager's choice when <B>USPosition</B> or <B>USSize</B> are
+set.</LI>
+</UL>
+&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 12-2 : </B>The XSizeHints Flags</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Flag</TH>
+
+<TH>Description</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>USPosition</B></TD>
+
+<TD>User-specified x, y</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>USSize</B></TD>
+
+<TD>User-specified width, height</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>PPosition</B></TD>
+
+<TD>Program-specified position</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>PSize</B></TD>
+
+<TD>Program-specified size</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>PMinSize</B></TD>
+
+<TD>Program-specified minimum size</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>PMaxSize</B></TD>
+
+<TD>Program-specified maximum size</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>PResizeInc</B></TD>
+
+<TD>Program-specified resize increments</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>PAspect</B></TD>
+
+<TD>Program-specified min and max aspect ratios</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>PBaseSize</B></TD>
+
+<TD>Program-specified base size</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>PWinGravity</B></TD>
+
+<TD>Program-specified window gravity</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>PAllHints</B></TD>
+
+<TD>Program-specified all hints</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P><B>XSetWMSizeHints()</B> is only useful if an application
+and a window manager agree on a private protocol that defines a new type
+of size hint atom beyond the one defined by the version 1 conventions or
+if a new type of size hint is added in later conventions.
+
+<P><B>XAllocSizeHints()</B> allocates an <B>XSizeHints</B>
+structure and zeros all the fields. This function should be used so that
+new fields can be added in later releases while maintaining binary compatibility
+of applications written with earlier releases. In other words, using this
+function avoids compiling in the size of this structure, which may change.
+You declare only a pointer to this structure and then set it by calling
+<B>XAllocSizeHints()</B>. <B>XAllocSizeHints()</B> is used in the example
+program in Chapter 3.
+
+<P><B>XGetWMNormalHints()</B> is normally used by the window
+manager to read the hints.
+<H4>
+Additional Window Manager Hints - XA_WM_HINTS</H4>
+The hints stored in the <B>XA_WM_HINTS</B> property provide
+an assortment of information to the window manager. Setting this property
+is required according to the ICCCM. Normally this is done by calling <B>XSetWMProperties()</B>.
+The <B>XA_WM_HINTS</B> property includes:
+<UL>
+<LI>
+Whether the program sets the keyboard focus window independently
+or only when assigned by the window manager.</LI>
+
+<LI>
+Whether the program desires to begin life as a window or
+as an icon.</LI>
+
+<LI>
+A window to be used by the window manager as an icon, or
+a pixmap and mask to be used by the window manager to draw on an icon window
+it creates.</LI>
+
+<LI>
+The initial position of the icon.</LI>
+</UL>
+This property is normally set by the client with <B>XSetWMProperties()</B>.
+You should use the new <B>XAllocWMHints()</B> function to allocate an <B>XWMHints</B>
+structure, then set its fields, and then call <B>XSetWMProperties()</B>.
+An example doing this is shown in Chapter 3. The <B>XWMHints</B> structure
+is shown in Example 12-2.
+
+<P><B>The XWMHints structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; long flags;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Marks defined members in structure */
+&nbsp;&nbsp; Bool input;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Does application need window
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * manager for keyboard input */
+&nbsp;&nbsp; int initial_state;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* See below */
+&nbsp;&nbsp; Pixmap icon_pixmap;&nbsp;&nbsp;&nbsp;&nbsp; /* Pixmap to be used as icon */
+&nbsp;&nbsp; Window icon_window;&nbsp;&nbsp;&nbsp;&nbsp; /* Window to be used as icon */
+&nbsp;&nbsp; int icon_x, icon_y;&nbsp;&nbsp;&nbsp;&nbsp; /* Initial position of icon */
+&nbsp;&nbsp; Pixmap icon_mask;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Pixmap to be used as mask
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * for icon_pixmap */
+&nbsp;&nbsp; XID window_group;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* ID of related window group */
+&nbsp;&nbsp; /* This structure may be extended in the future */
+} XWMHints;</TT></PRE>
+</BLOCKQUOTE>
+The following sections describe each member of <B>XWMHints</B>
+and how it should be set.
+<H5>
+Flags Field</H5>
+The client must set the <B>flags</B> field to indicate which
+members of the <B>XWMHints</B> structure are to be read by the window manager.
+This is done by combining the symbols shown in Table 12-3 using bitwise
+OR (<I>|</I>).
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 12-3 : </B>Flags for Window Manager Hints</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Member</TH>
+
+<TH>Flag</TH>
+
+<TH>Bit</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>input</B></TD>
+
+<TD><B>InputHint</B></TD>
+
+<TD>0</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>initial_state</B></TD>
+
+<TD><B>StateHint</B></TD>
+
+<TD>1</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>icon_pixmap</B></TD>
+
+<TD><B>IconPixmapHint</B></TD>
+
+<TD>2</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>icon_window</B></TD>
+
+<TD><B>IconWindowHint</B></TD>
+
+<TD>3</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>icon_x, icon_y</B></TD>
+
+<TD><B>IconPositionHint</B></TD>
+
+<TD>4</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>icon_mask</B></TD>
+
+<TD><B>IconMaskHint</B></TD>
+
+<TD>5</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>window_group</B></TD>
+
+<TD><B>WindowGroupHint</B></TD>
+
+<TD>6</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>All of the above</B></TD>
+
+<TD><B>AllHints</B></TD>
+
+<TD>0-6</TD>
+</TR>
+</TABLE>
+&nbsp;
+<H5>
+Input Field and the Keyboard Focus</H5>
+The <B>input</B> member of <B>XWMHints</B> is used to communicate
+to the window manager the keyboard focus model used by the application.&nbsp;
+For the input hint to be read by the window manager, the <B>InputHint</B>
+constant must be specified in the <B>flags</B> field of <B>XWMHints</B>.
+
+<P>There are four input models:
+<UL>
+<LI>
+<I>No Input</I>. The client never expects keyboard input.
+An example would be <I>xload</I> or another output-only client.</LI>
+
+<LI>
+<I>Passive Input</I>. The client expects keyboard input but
+never explicitly sets the keyboard focus. An example would be a simple
+client with no subwindows, which will accept input in <B>PointerRoot</B>
+mode, or when the window manager sets the keyboard focus to its top-level
+window (in click-to-type mode).</LI>
+
+<LI>
+<I>Locally Active Input</I>. The client expects keyboard
+input and explicitly sets the keyboard focus but only does so when one
+of its windows already has the focus.An example of a Locally Active style
+client would be a client with subwindows defining various data entry members.
+Such an application might use Next and Prev keys to move the keyboard focus
+between the members, once its top-level window has acquired the focus in
+pointer-following mode or when the window manager sets the keyboard focus
+to its top-level window (in click-to-type mode).</LI>
+
+<LI>
+<I>Globally Active Input</I>. The client expects keyboard
+input and explicitly sets the keyboard focus even when the focus is set
+to a window the client does not own. An example would be a client with
+a scrollbar that wants to allow users to scroll the window without disturbing
+the keyboard focus even if it is in some other window. The client wants
+to acquire the keyboard focus when the user clicks in the scrolled region,
+but not when the user clicks in the scrollbar itself, and then set the
+focus back to its original window. Thus, the client wants to prevent the
+window manager setting the keyboard focus to any of its windows.</LI>
+</UL>
+Clients using the Globally Active and No Input models should
+set the <B>input</B> flag to <B>False</B>. Clients using the Passive and
+Locally Active models must set the <B>input</B> flag to <B>True</B>.
+
+<P>If your application requires keyboard input and you neglect
+to set the <B>input</B> flag to <B>True</B>, you application will not get
+keyboard events under some window managers, such as <I>olwm</I>.
+
+<P>Under version 1 conventions, clients that use the Locally
+Active or Globally Active focus models <I>must</I> participate in one of
+the WM_PROTOCOLS called WM_TAKE_FOCUS, as described in Section 12.3.3.2,
+"Window Manager Protocols - WM_PROTOCOLS."
+<H5>
+Initial State Field</H5>
+The <B>initial_state</B> member of <B>XWMHints</B> indicates
+to the window manager whether the application prefers to start off in iconified
+or normal state. <B>initial_state</B> specifies the state the client prefers
+to be in at the time the top-level window is mapped. The window manager
+does not reread this property so it is not useful for changing state after
+a window has been mapped. How to request a change of state is described
+in Section 12.3.6.1, "Changing Application State." The <B>initial_state</B>
+flags are shown in Table 12-4.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 12-4 : </B>Initial State Hint Flags</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Flag</TH>
+
+<TH>Description</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>IconicState</B></TD>
+
+<TD>Client wants to be iconified.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>NormalState</B></TD>
+
+<TD>Client wants top-level normal window visible.</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>When setting the <B>initial_state</B> member of <B>XWMHints</B>,
+you must OR the <B>StateHint</B> constant set into the <B>flags</B> member
+of <B>XWMHints</B> to indicate that the field is to be set.
+
+<P>Even though there is have no flag for an inactive state,
+a window manager might implement a concept of inactive state in which an
+infrequently used client's window would be represented as a string in a
+menu. But this state is invisible to the client, which would see itself
+merely as being in <B>IconicState</B>.
+<H5>
+Icon Hints Fields</H5>
+Under X, icons are by convention managed by the window manager,
+except that the client is allowed to provide a variety of pixmap patterns,
+names, and an icon window among which the window manager may pick and choose.
+The four members of <B>XWMHints</B> shown in Example 12-3 provide this
+information to the window manager.
+
+<P><B>The icon hints elements of the XWMHints structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; Pixmap icon_pixmap;&nbsp;&nbsp; /* Pixmap for icon */
+&nbsp;&nbsp; Pixmap icon_mask;&nbsp;&nbsp;&nbsp;&nbsp; /* Pixmap to be used as mask for
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * icon_pixmap */
+&nbsp;&nbsp; Window icon_window;&nbsp;&nbsp; /* Window to be used as icon */
+&nbsp;&nbsp; int icon_x, icon_y;&nbsp;&nbsp; /* Initial position of icon */
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+} XWMHints;</TT></PRE>
+</BLOCKQUOTE>
+<B>icon_pixmap</B> is the pattern to be used to distinguish
+the icon from other clients. This pixmap should be:
+<UL>
+<LI>
+One of the sizes specified in the <B>XA_WM_ICON_SIZE</B>
+property on the root, as described in Section 12.3.4.1, "XA_WM_ICON_SIZE."</LI>
+
+<LI>
+One bit deep. The window manager will select, through the
+resource database, suitable background (for the 0 bits) and foreground
+(for the 1 bits) colors. These resources can, of course, specify different
+colors for the icons of different clients.</LI>
+</UL>
+The <B>icon_mask</B> is a one-bit-deep pixmap that determines
+which pixels in <B>icon_pixmap</B> are drawn on the icon window. This allows
+for icons that appear to be nonrectangular. Some window managers (including
+<I>uwm</I>) use the icon pixmap as a background tile for the icon window,
+a method which does not allow for the use of a mask.
+
+<P><B>icon_window</B> is a window created but not mapped
+by the client. Clients that need to know their icon's ID or want to draw
+more than a simple two-color bitmap on the icon should set this hint. For
+example, <I>xbiff</I> and <I>xmh</I> change their icon pixmap when mail
+arrives, and they need to know their icon's ID to do this. Therefore, they
+must supply an icon window.
+
+<P>The <B>icon_window</B> hint should not be used unless
+needed. When it is not specified, the window manager creates the icon window
+itself.
+
+<P>You do not know which of the hints the window manager
+will honor. With current window managers, you can be confident that if
+<B>icon_window</B> is set, the window it names will be visible. If not,
+if <B>icon_pixmap</B> is set, the pixmap it names is visible. Otherwise,
+the window's <B>XA_WM_ICON_NAME</B> string is visible.
+
+<P>The conventions specify that the window manager must use
+the specified icon window. Therefore the application can read events from
+that icon window if desired.
+
+<P>An application that sets an <B>icon_window</B> is responsible
+for redrawing the window in case of <B>Expose</B> events. One way to set
+the icon design to be displayed is to set the background pixmap attribute
+of the icon window. The advantage of this approach is that there is no
+need to handle <B>Expose</B> events for the icon, because the background
+is automatically redrawn by the server. The disadvantage is that there
+is no way to apply a mask to generate a nonrectangular icon.
+
+<P>The icon window:
+<UL>
+<LI>
+Must be an <B>InputOutput</B> child of the root window.</LI>
+
+<LI>
+Should be one of the sizes specified in the <B>XA_WM_ICON_SIZE</B>
+property on the root (described in Section 12.3.4.1, "XA_WM_ICON_SIZE").</LI>
+
+<LI>
+Must use the default visual and default colormap for the
+screen in question.</LI>
+
+<LI>
+Should not be mapped, unmapped, or configured by the client.</LI>
+
+<LI>
+Should not have the <B>override_redirect</B> window attribute
+set to <B>True</B> (should be left as the default).</LI>
+</UL>
+The client must not:
+<UL>
+<LI>
+Select <B>ResizeRedirectMask</B> on the icon.</LI>
+
+<LI>
+Depend on being able to receive input events via their icon
+windows, although most window managers will allow some subset of key and
+button events through.</LI>
+
+<LI>
+Manipulate the borders of their icon windows.</LI>
+</UL>
+To summarize the client procedures regarding icons:
+<UL>
+<LI>
+Use <B>XSetWMIconName()</B> to set a string in <B>XA_WM_ICON_NAME</B>.
+All clients should do this, since it provides a fallback for window managers
+whose ideas about icons differ widely from those of the client.</LI>
+
+<LI>
+Set a pixmap into the <B>icon_pixmap</B> member of the <B>XA_WM_HINTS</B>
+property and possibly another into the <B>icon_mask</B> member. The window
+manager is expected to display the pixmap masked by the mask. The pixmap
+should be one of the sizes found in the <B>XA_WM_ICON_SIZE</B> property
+on the root. Window managers will normally clip or tile pixmaps which do
+not match <B>XA_WM_ICON_SIZE</B>.</LI>
+</UL>
+Or:
+<UL>
+<LI>
+Set a window into the <B>icon_window</B> member of the <B>XA_WM_HINTS</B>
+property. The window manager is expected to use that window instead of
+creating its own and to map that window whenever the client is in <B>IconicState</B>.
+In general, the size of the icon window should be one of those specified
+in <B>XA_WM_ICON_SIZE</B> on the root, if that property exists. Window
+managers may resize icon windows. If the client supplies an icon window,
+it is responsible for redrawing it when necessary.</LI>
+</UL>
+
+<H5>
+Window Group Field</H5>
+The <B>window_group</B> member of <B>XWMHints</B> lets the
+client specify that it has multiple top-level windows which should be iconified
+together or managed by the window manager as a group. For example, group
+leaders may have the full set of decorations and other group members a
+restricted set.
+
+<P>Applications with only one top-level window need not set
+this hint.
+
+<P>One of the top-level windows is known as the group leader.
+The <B>window_group</B> member of the hints for each of the other top-level
+windows should be set to the window ID of the group leader.
+
+<P>The group leader may be a window which exists only for
+that purpose and may never be mapped. Its <B>window_group</B> member should
+contain its own ID. The properties of the window group leader are those
+for the group as a whole (for example, the icon to be shown when the entire
+group is iconified). Every other top-level window may also have its own
+hints applicable only to itself.
+<H5>
+Transient Window Field</H5>
+All temporary subwindows of the root, such as pop-up menus
+and dialog boxes, should use <B>XSetTransientForHint()</B> to set the <B>XA_WM_TRANSIENT_FOR</B>
+property to the ID of the top-level window of the application that is creating
+the temporary window. This allows the window manager to process the temporary
+window accordingly (perhaps by decorating it differently than if it were
+a separate application). In particular, window managers will present newly
+mapped transient windows without requiring any user interaction, even if
+mapping top-level windows normally does require interaction.
+
+<P>It is important not to confuse <B>XA_WM_TRANSIENT_FOR</B>
+with the <B>override_redirect</B> window attribute. The <B>override_redirect</B>
+attribute specifies that the window manager does not get the chance to
+intercept the mapping request and thus no chance at all to decorate the
+window. This should be done only on the most temporary of windows, such
+as menus, or on windows that the programmer wants to be mapped without
+window manager intervention, such as automated demonstration programs.
+<B>XA_WM_TRANSIENT_FOR</B> should be used when other windows are allowed
+to be active while the transient window is visible, such as when the pointer
+is not grabbed while the window is popped up. If other windows must be
+frozen, use <B>override_redirect</B> and grab the pointer while the window
+is mapped.
+
+<P>Temporary windows that are popped up frequently should
+also set the <B>save_under</B> window attribute so that windows beneath
+the window may not need to redraw themselves quite so often.
+
+<P>To summarize, clients wishing to pop up a window should
+do one of three things:
+<UL>
+<LI>
+They can create and map another normal top-level window,
+which will get decorated and managed as a separate client by the window
+manager. See the discussion of window groups in Section 12.3.1.4.5, "Window
+Group Field."</LI>
+
+<LI>
+If the window will be visible for a relatively short time
+and deserves a somewhat lighter treatment, they can set the <B>XA_WM_TRANSIENT_FOR</B>
+property. They can expect less decoration but should set all the normal
+window manager properties on the window. An example of an appropriate case
+would be a dialog box.</LI>
+
+<LI>
+If the window will be visible for a very short time and should
+not be decorated at all, the client can set the <B>override_redirect</B>
+window attribute. In general, this should be done only if the pointer is
+grabbed while the window is mapped. The window manager will never interfere
+with these windows, which should be used with caution. An example of an
+appropriate use is a pop-up menu.</LI>
+</UL>
+
+<H4>
+Application Class Name and Instance Name - XA_WM_CLASS</H4>
+The <B>XA_WM_CLASS</B> property is a string containing two
+null-separated fields, <B>res_class</B> and <B>res_name</B>. <B>res_class</B>
+is meant to be used by the window manager to look up resources applicable
+to this application in the resource database. The window manager uses <B>res_name</B>
+for the titlebar of the window.
+
+<P>The application should normally specify <B>res_class</B>
+as the application name with an initial capital.
+
+<P>If the <B>res_name</B> field is <B>NULL</B>, then the
+following is used:
+<OL>
+<LI>
+If "-name NAME" is given on the command line, NAME is used
+as the instance name.</LI>
+
+<LI>
+Otherwise, if the environment variable RESOURCE_NAME is set,
+its value will be used as the instance name.</LI>
+
+<LI>
+Otherwise, <B>argv[0]</B> stripped of any directory names
+is used as the instance name.</LI>
+</OL>
+Note that WM_CLASS strings, being null-terminated, differ
+from the general conventions that text properties are null-separated. This
+inconsistency is necessary for backwards compatibility.
+
+<P>An application should look up its own resources in the
+resource database using <B>XGetDefault()</B> or with the resource manager
+routines described in Chapter 13, "Managing User Preferences." If the user
+defaults are not found under <B>res_name</B>, the application should use
+<B>res_class</B>.
+
+<P>The <B>XA_WM_CLASS</B> property should only be written
+once and must be present when the window is mapped; window managers will
+ignore changes to it while the window is mapped.
+
+<P>The <B>XA_WM_CLASS</B> property contains a structure of
+type <B>XClassHint</B>. Example 12-4 shows the <B>XClassHint</B> structure.
+
+<P><B>The XClassHint structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; char *res_name;
+&nbsp;&nbsp; char *res_class;
+} XClassHint;</TT></PRE>
+</BLOCKQUOTE>
+The <B>XAllocClassHint()</B> function should be used to allocate
+and zero the <B>XClassHint</B> structure. An example of doing this is presented
+in Chapter 3.
+
+<P><B>XA_WM_CLASS</B> can be set by the client with <B>XSetClassHint()</B>
+and read by the window manager with <B>XGetClassHint()</B>.
+<H3>
+Standard Properties for Session Manager</H3>
+A session manager is in charge of starting and stopping applications
+in a controlled manner, so that a session made up of several running applications
+can be halted and restarted in its original state. This is useful, for
+example, when the user wants to log out without having to start from scratch
+when logging back in.
+
+<P>Note that session managers are rare or nonexistent at
+the present time. Nonetheless, these conventions should be honored because
+it is only a matter of time before session managers become available. And
+the session manager does not necessarily need to be a separate client from
+the window manager. A window manager may have session-management capabilities.
+
+<P>There are two properties that need setting for the benefit
+of session managers, WM_COMMAND and WM_CLIENT_MACHINE. These supply the
+command and arguments needed to invoke an application in its current state
+and the machine on which it should be run. Together they supply enough
+information to restart the application. These are described in the following
+sections.
+<H4>
+Application Command and Arguments</H4>
+The <B>XA_WM_COMMAND</B> property stores the shell command
+and arguments used to invoke the application, separated by <B>NULL</B>
+characters.
+
+<P>Applications use <B>XSetCommand()</B> function to set
+the command property. Window managers use <B>XGetCommand()</B> to read
+it.
+
+<P>Clients should ensure, by resetting this property as often
+as necessary, that it always reflects a command that will restart them
+in their current state.
+<H4>
+Client Machine</H4>
+To restart a client, the session manager needs to know not
+only the command and arguments but also the machine on which the client
+was running. The application sets the WM_CLIENT_MACHINE property to contain
+this information, using <B>XSetWMClientMachine()</B>.
+
+<P>This property should be set to a string forming the name
+of the machine running the client as seen from the machine running the
+server.
+<H3>
+Optional Properties for Window and Session Manager</H3>
+The client will need to set one or more of the following
+properties if it uses multiple colormaps, if it takes the keyboard focus,
+if it has data that must be saved before the session manager kills it,
+or if it has multiple top-level windows and it would like to survive when
+the user deletes one of them.
+<H4>
+Using Created Colormaps - WM_COLORMAP_WINDOWS</H4>
+An application should never install its own colormap. The
+window manager needs certain information from the application to be able
+to install colormaps at the appropriate times. An application that uses
+colormaps other than the default must do two things to make sure that the
+window manager knows which colormaps to install for each window:
+<UL>
+<LI>
+Set the <B>colormap</B> window attribute of each window that
+is to use a colormap other than the default.</LI>
+
+<LI>
+Set the WM_COLORMAP_WINDOWS property on the application's
+top-level window to tell the window manager which windows use colormaps
+different from the top-level window's colormap. In other words, you do
+not need to set WM_COLORMAP_WINDOWS unless your application uses more than
+one colormap.</LI>
+</UL>
+The top-level window is always assumed to need its colormap
+installed. Applications set the WM_COLORMAP_WINDOWS property with <B>XSetWMColormapWindows()</B>,
+and the window manager reads it with <B>XGetWMColormapWindows()</B>.
+<H4>
+Window Manager Protocols - WM_PROTOCOLS</H4>
+Setting the WM_PROTOCOLS property is optional. It is for
+applications that can benefit from being notified by the window manager
+or session manager of certain conditions.
+
+<P>The WM_PROTOCOLS property contains a list of atoms, each
+identifying a communication protocol between the application and the window
+manager in which the application wants to participate. Atoms can identify
+both standard protocols and private protocols specific to individual window
+managers. All the protocols in which a client can volunteer to take part
+involve the window manager sending the client a <B>ClientMessage</B> event.
+The <B>message_type</B> field of the event will be the atom for WM_PROTOCOLS,
+and the <B>data</B> field will contain the atom for one of the protocols
+listed in Table 12-5.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 12-5 : </B>Current Standard WM_PROTOCOLS</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Protocol</TH>
+
+<TH>Purpose</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>WM_TAKE_FOCUS</TD>
+
+<TD>Assignment of keyboard focus.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>WM_SAVE_YOURSELF</TD>
+
+<TD>Save client state warning.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>WM_DELETE_WINDOW</TD>
+
+<TD>Request to delete top-level window.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><I>More to come...</I></TD>
+
+<TD></TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>Note that none of the above properties are represented
+by predefined atoms. Therefore, you will need to call <B>XInternAtom()</B>
+once for each one that you intend to use.
+
+<P>An application sets the WM_PROTOCOLS property using <B>XSetWMProtocols()</B>,
+and the window or session manager reads it with <B>XGetWMProtocols()</B>.
+<H5>
+WM_TAKE_FOCUS</H5>
+Applications that use the Locally Active and Globally Active
+focus models should specify that they want to participate in this protocol.
+Under both these focus models, the application explicitly sets the keyboard
+focus to one of its windows. Any application that does not set the keyboard
+focus to any of its windows does not need to participate in this protocol.
+
+<P>To applications that specify WM_TAKE_FOCUS, the window
+manager may send a <B>ClientMessage</B> event with the atom corresponding
+to WM_TAKE_FOCUS in their <B>data[0]</B> field. If the application wants
+the keyboard focus, it should respond by calling <B>XSetInputFocus()</B>
+with its window argument set to the window of theirs that last had the
+keyboard focus or to their default input window and with the time argument
+set to the timestamp in the message. The revert_to argument should be set
+to <B>RevertToParent</B>.
+
+<P>A client could receive WM_TAKE_FOCUS when opening from
+an icon or when the user has clicked outside the top-level window in an
+area that indicates to the window manager that it should assign the focus
+(for example, clicking in the headline bar can be used to assign the focus).
+
+<P>The goal of WM_TAKE_FOCUS is to support window managers
+that want to assign the keyboard focus to a top-level window in such a
+way that the top-level window can either assign it to one of its subwindows
+or decline the offer of the focus. A clock, for example, or a text editor
+with no currently open frames might not want to take focus even though
+the window manager generally believes that clients should take the keyboard
+focus after being deiconified or raised.
+
+<P>Clients that call <B>XSetInputFocus()</B> must set the
+time argument to the timestamp of the event that caused them to make the
+attempt. Note that this cannot be a <B>FocusIn</B> event, since they do
+not have timestamps, and that clients may acquire the focus without a corresponding
+<B>EnterNotify</B>. Clients must not use <B>CurrentTime</B> in the time
+field.
+
+<P>Clients using the Globally Active model can only use <B>XSetInputFocus()</B>
+to acquire the input focus when they do not already have it on receipt
+of one of the following events: <B>ButtonPress</B>, <B>ButtonRelease</B>,
+passive-grabbed <B>KeyPress</B>, and passive-grabbed <B>KeyRelease</B>.
+
+<P>In general, clients should avoid using passive-grabbed
+key events for this purpose except when they are unavoidable (as, for example,
+a selection tool that establishes a passive grab on the keys that cut,
+copy, or paste).
+
+<P>Clients that set the input focus should set the revert_to
+argument of the <B>XSetInputFocus()</B> request to the parent of the window
+that is to be the new focus window. This determines the behavior of the
+input focus if the window the focus has been set to becomes not viewable.
+All other settings lead to problems, as described in Appendix L, <I>Interclient
+Communcation Conventions</I>, of <I>Volume Zero, X Protocol Reference Manual</I>
+(as of the second printing).
+
+<P>Clients should not give up the input focus of their own
+volition. They should ignore input that they receive instead.
+<H5>
+WM_SAVE_YOURSELF</H5>
+This protocol is for applications that would like to be notified
+before the window or session manager terminates them, so that they can
+save their state and place themselves in a state from which they can be
+restarted. Such termination, from the application's perspective, would
+otherwise bypass all the application's internal safety measures (such as
+when an editor reminds you to save before exiting).
+
+<P>Applications that express interest in this protocol may
+receive a <B>ClientMessage</B> event the atom for WM_SAVE_YOURSELF in its
+<B>data[0]</B> field.
+
+<P>Clients receiving WM_SAVE_YOURSELF should place themselves
+in a state from which they can be restarted and should update <B>XA_WM_COMMAND</B>
+(by calling <B>XSetCommand()</B>) to be a command that will restart them
+in this state. The session manager will be waiting for a <B>PropertyNotify</B>
+event on <B>XA_WM_COMMAND</B> as a confirmation that the client has saved
+its state, so that <B>XA_WM_COMMAND</B> should be updated (perhaps with
+a zero-length append) even if its contents are correct. No interactions
+with the user are permitted during this process.
+
+<P>After receiving the WM_SAVE_YOURSELF message through the
+event, saving its state, and updating <B>XA_WM_COMMAND</B>, the client
+should not change its state (in the sense of doing anything that would
+require a change to <B>XA_WM_COMMAND</B>) until it receives a mouse or
+keyboard event. Once it does so, it can assume that the danger is over.
+The session manager will ensure that these events do not reach clients
+until the danger is over or until the clients have been killed.
+
+<P>Clients with multiple top-level windows should ensure
+that only one of their top-level windows has a nonzero-length <B>XA_WM_COMMAND</B>
+property. They should also respond to a WM_SAVE_YOURSELF message by (in
+this order):
+<OL>
+<LI>
+Updating the nonzero length <B>XA_WM_COMMAND</B> property
+if necessary.</LI>
+
+<LI>
+Updating the <B>XA_WM_COMMAND</B> property on the window
+for which they received the WM_SAVE_YOURSELF message if it was not updated
+in step 1.</LI>
+</OL>
+
+<H5>
+WM_DELETE_WINDOW</H5>
+This protocol prevents the possibility of an application
+with multiple top-level windows being terminated unexpectedly by the session
+manager. It should be selected by applications whose server connection
+must survive the deletion of some of their top-level windows. Clients which
+choose not to include WM_DELETE_WINDOW in the WM_PROTOCOLS property will
+be disconnected from the server if the user asks for one of the client's
+top-level windows to be deleted.
+
+<P>Once an application has expressed interest in this protocol,
+if one of the top-level windows is deleted, the application will receive
+a <B>ClientMessage</B> event whose <B>data[0]</B> field is the atom for
+WM_DELETE_WINDOW.
+
+<P>Clients receiving a WM_DELETE_WINDOW message should behave
+as if the user selected "delete window" from a (hypothetical) menu. They
+should perform any confirmation dialogue with the user, and if they decide
+to complete the deletion, either:
+<UL>
+<LI>
+Change the window's state to Withdrawn (as described in Section
+12.3.6.1, "Changing Application State") and release all associated state
+(backing store, for example), or</LI>
+
+<LI>
+Destroy the window.</LI>
+</UL>
+If the user aborts the deletion during the confirmation dialogue,
+the client should continue as if it never received the <B>ClientMessage</B>
+event that began the dialogue.
+
+<P>If the client aborts a destroy and the user then attempts
+to delete the window again, the window manager should start the WM_DELETE_WINDOW
+protocol again. Window managers should not use <B>XDestroyWindow()</B>
+on a window that has WM_DELETE_WINDOW in its WM_PROTOCOLS property.
+
+<P>Note that the WM_SAVE_YOURSELF and WM_DELETE_WINDOW protocols
+are orthogonal to each other and may be selected independently.
+<H3>
+Properties Set by the Window Manager</H3>
+The properties described above are those which the client
+is responsible for maintaining on its top-level windows. This section describes
+what the client can do with the properties that the window manager sets
+to give information to the client. There are currently two such properties.
+<B>XA_WM_ICON_SIZE</B> stores information about the sizes of icons that
+the window manager prefers. The application should use this information
+to create an icon pixmap or window of one of the right sizes.
+
+<P>The other property, WM_STATE, stores the current state
+(normal, iconic, or withdrawn) of the application. This is mostly for communication
+between the window manager and session manager but may also be used by
+some applications.
+<H4>
+XA_WM_ICON_SIZE</H4>
+The window manager may set the <B>XA_WM_ICON_SIZE</B> property
+on the root window to specify the icon sizes it allows. Clients should
+read this property using <B>XGetIconSizes()</B> and provide an icon window
+or pixmap of an appropriate size as part of the <B>XWMHints</B> described
+in Section 12.3.1.4.4, "Icon Hints Fields." This property is an <B>XIconSize</B>
+structure shown in Example 12-5.
+
+<P><B>The XIconSize structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int min_width, min_height;
+&nbsp;&nbsp; int max_width, max_height;
+&nbsp;&nbsp; int width_inc, height_inc;
+} XIconSize;</TT></PRE>
+</BLOCKQUOTE>
+The <B>width_inc</B> and <B>height_inc</B> members define
+an arithmetic progression of sizes, from the minimum size to the maximum
+size, representing the supported icon sizes. <B>XGetIconSizes()</B> actually
+returns a list of these structures, in case the window manager needs more
+than one to specify all of its accepted icon sizes.
+
+<P>Some commercial window managers set this property. Clients
+should be prepared to create an icon pixmap to fit the hint of each of
+the standard window managers and can even use the hint to determine which
+window manager is in operation.
+
+<P>Window managers use <B>XSetIconSize</B> to set this property
+for clients.
+
+<P><B>XAllocIconSize()</B> function should be used to allocate
+and zero the <B>XIconSize</B> structure.
+<H4>
+WM_STATE</H4>
+According to the ICCCM adopted as of Release 4, the window
+manager sets this property on top-level windows. The contents of this property
+is for communication between window managers and session managers. However,
+the existence of the property set on a window may be used to identify the
+top-level windows of other applications, for applications that need this
+information.
+
+<P>Xlib currently provides no routines for reading or writing
+this property, but of course, you can use <B>XChangeProperty()</B> or <B>XGetWindowProperty()</B>.
+
+<P>This property does not have a predefined atom--to read
+or write this property you will need to call <B>XInternAtom()</B> to get
+the atom for this property.
+<H3>
+Text Properties</H3>
+There are functions to set and read text properties that
+support encodings suitable for non-Western languages.
+
+<P>You will need to convert strings into <B>XTextProperty</B>
+structures before you can call <B>XSetWMProperties()</B>, <B>XGetWMClientMachine()</B>,
+<B>XGetWMIconName()</B>, <B>XGetWMName()</B>, <B>XSetWMClientMachine()</B>,
+<B>XSetWMIconName()</B>, or <B>XSetWMName()</B>.
+
+<P>These routines use the <B>XTextProperty</B> structure,
+which contains enough information to read and write the property in any
+format (8-bit, 16-bit, or 32-bit). The <B>XTextProperty</B> structure is
+shown in Example 12-6.
+
+<P><B>The XTextProperty structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp;&nbsp; unsigned char *value;&nbsp;&nbsp; /* Property data */
+&nbsp;&nbsp;&nbsp; Atom encoding;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Type of property */
+&nbsp;&nbsp;&nbsp; int format;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* 8, 16, or 32 */
+&nbsp;&nbsp;&nbsp; unsigned long nitems;&nbsp;&nbsp; /* Number of items in value */
+} XTextProperty;</TT></PRE>
+</BLOCKQUOTE>
+You need to set the fields in two copies of this structure
+before calling <B>XSetWMProperties()</B>, in order to set the window name
+and icon name properties, as was done in <I>basicwin</I> in Chapter 3,
+"Basic Window Program." There are two ways to do this: one is to set the
+fields directly one at a time, and the other is to use <B>XStringListToTextProperty()</B>.
+The latter is easier and better, because it does not require hardcoding
+the format or encoding. See Example 3-9 for a demonstration of how to do
+this.
+
+<P>Four more routines are provided to manipulate the <B>XTextProperty</B>
+structure:
+<DL>
+<DT>
+<B>XTextPropertyToStringList()</B></DT>
+
+<DD>
+Creates a list of strings from an <B>XTextProperty</B> structure.
+This is used internally by <B>XGetCommand()</B>--it is useful for reading
+properties composed of multiple strings. This is rarely used in normal
+application code.</DD>
+
+<DT>
+<B>XFreeStringList()</B></DT>
+
+<DD>
+Frees memory allocated by <B>XTextPropertyToStringList()</B>.</DD>
+
+<DT>
+<B>XSetTextProperty()</B></DT>
+
+<DD>
+Convenience routine for <B>XChangeProperty()</B> that sets
+a property according to the information in an <B>XTextProperty</B> structure.</DD>
+
+<DT>
+<B>XGetTextProperty()</B></DT>
+
+<DD>
+Convenience routine for <B>XGetWindowProperty()</B> that
+reads a property into an <B>XTextProperty</B> structure. This helps because
+<B>XGetWindowProperty()</B> is complicated.</DD>
+</DL>
+
+<H3>
+Constraints on Client Actions</H3>
+The window manager is allowed to change the border width,
+color, or pattern of an application's top-level window's border (usually
+to indicate which window has the keyboard focus), so this window must be
+an <B>InputOutput</B> window. This also means that the application should
+not try to use the border to indicate any application state.
+
+<P>The client may receive notification that its window has
+been reparented, moved, resized, raised, or lowered or that its border
+width has been changed by selecting <B>StructureNotifyMask</B> on its top-level
+window. It should not respond to these events by trying to change any of
+these characteristics, however.
+<H4>
+Changing Application State</H4>
+Some applications may need to tell the window manager that
+they wish to be iconified, deiconified, or taken completely off the screen.
+There are right and wrong ways to do this.
+
+<P>An application can call <B>XIconifyWindow()</B> to have
+one of its top-level windows iconified. This function sends a <B>ClientMessage</B>
+event to the window manager, telling it to iconify this application. There
+is no equivalent routine to have the window manager return the application
+to normal state.
+
+<P>It is also possible to tell the window manager to unmap
+both the top-level window and its icon. This is done by calling <B>XWithdrawWindow()</B>.
+This is useful because the window manager rereads all the standard properties
+when the window returns from withdrawn to normal state.
+
+<P>There is no routine to tell the window manager to change
+a withdrawn application back into normal state. The technique under version
+1 conventions is for client to set the <B>initial_state</B> field of the
+<B>XWMHints</B> structure to <B>NormalState</B>, then call <B>XSetWMHints()</B>
+to reset this property, and then map the top-level window.
+
+<P>To change from withdrawn state to iconic state, the application
+should follow the same procedure but set the <B>initial_state</B> field
+to <B>IconicState</B>.
+
+<P>To change from iconic state to normal state, the client
+needs only to map the window--it need not reset the property.
+
+<P>If a client selects <B>StructureNotifyMask</B> on the
+top-level window, it will receive an <B>UnmapNotify</B> event when it moves
+to iconic state and a <B>MapNotify</B> when it moves to normal state.
+
+<P>Clients can also select <B>VisibilityChangeMask</B> on
+their top-level or icon windows. They will then receive a <B>VisibilityNotify</B>
+event (with the <B>state</B> field set to <B>VisibilityFullyObscured</B>)
+when the window concerned becomes completely obscured even though mapped
+(and thus perhaps a waste of time to update) and a <B>VisibilityNotify</B>
+event (with <B>state</B> field not set to <B>VisibilityFullyObscured</B>)
+when it becomes even partly viewable.
+<H4>
+Reconfiguring the Top-level Window</H4>
+Clients can resize, reposition, and restack their top-level
+windows using <B>XReconfigureWMWindow()</B>. This routine is the same as
+<B>XConfigureWindow()</B>, except that it takes care of an error condition
+possible when running under a reparenting window manager. <B>XReconfigureWMWindow()</B>
+lets you specify a sibling window relative to which your top-level window
+should be stacked, and this will work even if the window manager has reparented
+your top-level window so that what once was a sibling is no longer a sibling.
+
+<P>Even when the client is not attempting to change the stacking
+order, the entire reconfigure request is sent by the server to the window
+manager for approval, and the window manager has the opportunity to honor,
+modify, or deny the request. The client finds out the window manager's
+decision through <B>ConfigureNotify</B> events.
+
+<P>Most applications do not need to specify or even suggest
+the position of their top-level windows. However, when doing so, the position
+the client specifies should be relative to the root window regardless of
+reparenting.
+
+<P>Client requests to reconfigure the top-level window are
+interpreted by the window manager in the same manner as the initial window
+geometry mapped from withdrawn state. There is no guarantee that the window
+manager will allocate the requested size or location, and clients must
+be prepared to deal with <I>any</I> size and location.
+
+<P>The window manager has several options in deciding how
+to respond to a request by the application to reconfigure a top-level window:
+<UL>
+<LI>
+Not changing the size or location of the window at all, a
+client will receive a synthetic <B>ConfigureNotify</B> event describing
+the (unchanged) state of the window. The (x,y) coordinates will be in the
+root coordinate system, adjusted for the border width the client requested,
+irrespective of any reparenting that has taken place. The <B>border_width</B>
+will be the border width the client requested. The client will not receive
+a real <B>ConfigureNotify</B>, since no change has actually taken place.</LI>
+
+<LI>
+Moving the window without resizing it, a client will receive
+a synthetic <B>ConfigureNotify</B> event following the move describing
+the new state of the window, whose (x,y) coordinates will be in the root
+coordinate system adjusted for the border width the client requested. The
+<B>border_width</B> will be the border width the client requested. The
+client may not receive a real <B>ConfigureNotify</B> event describing this
+change, since the window manager may have reparented the top-level window.
+If it does receive a real event, the synthetic event will follow the real
+one.</LI>
+
+<LI>
+Resizing the window (whether or not it is moved), a client
+which has selected <B>StructureNotifyMask</B> will receive a <B>ConfigureNotify</B>
+event. Note that the coordinates in this event are relative to the parent,
+which may not be the root if the window has been reparented, and will reflect
+the actual border width of the window, which the window manager may have
+changed. <B>XTranslateCoordinates()</B> can be used to convert the coordinates
+if required.</LI>
+</UL>
+The general rule is that coordinates in real <B>ConfigureNotify</B>
+events are in the parent's space, whereas in synthetic events, they are
+in the root space.
+
+<P>Clients should be aware that their borders may not be
+visible. Most window managers use reparenting techniques to decorate client's
+top-level windows with titles, controls, and other details. Ones that do
+are likely to override the client's attempts to set the border width and
+set it to zero. Clients should, therefore, not depend on the top-level
+window's border being visible nor use it to display any critical information.
+Other window managers will allow the top-level windows' borders to be visible.
+
+<P>Clients should ignore the <B>above</B> field of all <B>ConfigureNotify</B>
+events that they receive on their top-level windows, since they cannot
+be guaranteed to contain useful information.
+<BR>
+<HR>
+<H2>
+Selections</H2>
+Selections are the primary mechanism X11 defines for clients
+that want to exchange information with other clients. A selection transfers
+arbitrary information between two clients. You can think of a selection
+as a piece of text or graphics that is highlighted in one application and
+can be pasted into another, though the information transferred can be almost
+anything. Clients are strongly encouraged to use this mechanism so that
+there is a uniform procedure in use by all applications.
+
+<P>The user may want to transfer information from an application
+and, at other times, to the application. Many applications need to be able
+to assume either role. In particular, clients should not display text in
+a permanent window without allowing the user to select it and convert it
+into a string, and any application that requires the user to type extensively
+should allow the user to paste in text from other applications.
+
+<P>Selections communicate between an <I>owner</I> client
+and a <I>requestor</I> client. The owner has the data representing the
+value of a selection, and the requestor wants it. The selection mechanism
+provides a way to notify other clients when useful data is placed in a
+property and to allow the owner of the data to convert it to a type asked
+for by the requestor.
+
+<P>Note that in the X11 environment, <I>all</I> data transferred
+between clients must go via the server (unless they are running on the
+same host, but that is a special case). An X11 client can neither assume
+that another client can open the same files nor communicate directly through
+IPC channels. The other client may be talking to the server via a completely
+different networking mechanism (for example, one client might be DECnet
+and the other TCP/IP). Thus, passing indirect references to data such as
+file names, hostnames, port numbers, and so on is permitted only if both
+clients specifically agree.
+<H3>
+The Selection Mechanism</H3>
+Let's look how a typical selection transaction occurs and
+then go into all the details of how to make it happen. From the user's
+point of view, it works like this:
+<OL>
+<LI>
+The user highlights a selection of text or graphics in one
+application. For example, in <I>xterm</I>, selections are highlighted with
+the foreground and background colors reversed.</LI>
+
+<LI>
+The user moves the pointer into another application and presses
+the key or button that indicates that the selection should be pasted. The
+keys or buttons used for this purpose in all applications probably should
+be the ones used by <I>xterm</I>, since most users use the cutting and
+pasting feature of <I>xterm</I> frequently.</LI>
+</OL>
+The desired result is that the text or graphics should appear
+in the application in which it was pasted. Now how do two applications
+actually make this happen?
+
+<P>The application in which the text or graphics is being
+selected must first of all figure out what information is being selected
+and be able to convert it into a format that can be transferred to other
+applications. If the selection is text (usually the selection is a string)
+and the selected area is highlighted, by having the user drag the pointer
+over the area, then this application has to become the owner of a selection
+atom.
+
+<P>There are two built-in selection atoms: <B>XA_PRIMARY</B>
+and <B>XA_SECONDARY</B>. Unless the client foresees needing two simultaneous
+selections, it should use <B>XA_PRIMARY</B>. It calls <B>XSetSelectionOwner()</B>,
+specifying the selection atom, any window that it created (this window
+is used by other applications to identify the owner), and the time. The
+time used should be from the event that triggered the bid to own the selection
+(not <B>CurrentTime</B>) because of race conditions that can otherwise
+occur. If the client does not already own the selection atom, then this
+call will generate a <B>SelectionClear</B> event for the old owner, telling
+it to unhighlight the old selection.
+
+<P>Each client that wants to be able to have a selection
+pasted into it must set aside a key or button combination to indicate that
+the user wishes to paste in the current selection. In response to the event
+that occurs when that key or button combination is pressed, the client
+calls <B>XConvertSelection()</B>. This call specifies which selection the
+application wants (<B>XA_PRIMARY</B> until other conventions are established),
+the property to place the data in, the window on which to set this property,
+and the time. These arguments are quite clear. But the <B>XConvertSelection()</B>
+call also specifies a target type that the application wants the data in.
+You need to understand what happens after the <B>XConvertSelection()</B>
+call to understand the purpose of the target type property.
+
+<P>The server places all the arguments of the <B>XConvertSelection()</B>
+call into an <B>XSelectionRequestEvent</B> and sends the event to the selection
+owner. The owner then tries to convert the selection data into the format
+specified in the target type property. If the selection owner knows how
+to convert the data into the requested type, it puts the data in the property
+specified in the event and returns the atom of this property in the <B>property</B>
+member of a <B>SelectionNotify</B> event. If the selection owner cannot
+convert the selection into the requested type, it returns <B>None</B> as
+the <B>property</B> member in the <B>SelectionNotify</B> event. The owner
+sends this <B>SelectionNotify</B> event using <B>XSendEvent()</B>.
+
+<P>When the requestor receives the <B>SelectionNotify</B>
+event, it either reads the property if it is set, repeats the request with
+a different target type if the owner returned <B>None</B>, or gives up
+on pasting data from that selection owner. It could be that the user is
+trying to do something like paste graphics into a text-only application.
+
+<P>Now you should understand the selection mechanism in general,
+so let's look at a more tangible example of how it takes place.
+<H3>
+An Example of Selection</H3>
+Let's say a text editor is the owner of the selection <B>XA_PRIMARY</B>.
+The user is editing a C program and debugging the same C program in another
+window. The user would like to select a line in the source code and instruct
+the debugger to stop at that same line without having to type in the line
+number. Perhaps the debugger would have a button labeled "stop at," which,
+when pressed, would tell the debugger to request a value for the primary
+selection. The text editor would allow the user to select text on a line
+and would be able to convert that selection into a string if it were pasted
+into another text editor or into a line number if it were pasted into the
+debugger. Which type the text editor would choose would depend on the target
+type of the selection request.
+
+<P>Assuming the text editor already uses the selection mechanism
+to transfer text to other applications, adding the line number capability
+should be easy. It would simply need to look for a new target type that
+indicated to it to figure out what line number the selected text is on.
+It might choose the first line, if more than one line were selected, or
+simply display an error message telling the user to select a single line.
+
+<P>The debugger application would then make the call shown
+in Example 12-7.
+
+<P><B>Setting the primary selection to a line number</B>
+<BLOCKQUOTE>
+<PRE><TT>Display display;
+Atom target;
+Window debugger_window;
+Time time;
+Bool only_if_exists;
+Atom data_prop;
+/* We create atom for data to be put into */
+data_prop = XInternAtom(display, "STOP_LINE_NUM",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; only_if_exists = False);
+/* Target type atom must have been created by owner */
+target_type = XInternAtom(display, "LINE_NUMBER",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; only_if_exists = True);
+if (target_type == None) {
+&nbsp;&nbsp; fprintf(stderr, "%s: selection owner did not create \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LINE_NUMBER atom", argv[0]);
+&nbsp;&nbsp; return(False);
+}
+XConvertSelection(display, XA_PRIMARY, target_type,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; data_prop, debugger_window, time = triggering_event_time)
+/* Wait for a SelectionNotify event and, if the property
+&nbsp;* member is the same as data_prop, the conversion went fine;
+&nbsp;* if the property member is None, the conversion failed */</TT></PRE>
+</BLOCKQUOTE>
+The server sends all of the above information in a <B>SelectionRequest</B>
+event to the text editor client (which had previously made itself the owner
+of the selection with <B>XSetSelectionOwner()</B>).
+
+<P>The text editor stores the data in the property specified
+in the <B>SelectionRequest</B> event on <B>debugger_window</B>, then sends
+a <B>SelectionNotify</B> event (using <B>XSendEvent()</B>) to the requesting
+application. Upon receiving this event, the debugger reads this property
+and uses its value to place a break point in the C program.
+
+<P>Now that you have seen a more practical application of
+selections, we'll move on to a more precise description of each step in
+the selection transfer process.
+<H3>
+Acquiring Selection Ownership</H3>
+When the user decides to select something in an application,
+the application needs to become the selection owner. Being the selection
+owner means that when any other application requests the value of the selection
+with <B>XConvertSelection()</B>, the owner gets the resulting <B>XSelectionRequest</B>
+event. The transfer of selection ownership also makes sure that only one
+application at a time is attempting to set the properties. The previous
+application to call <B>XSetSelectionOwner()</B>, if it was another application,
+receives a <B>SelectionClear</B> event, which indicates to it that it should
+clear any area it has highlighted.
+
+<P>Note that if the time in the <B>XSetSelectionOwner()</B>
+request is in the future relative to the server's current time or if it
+is in the past relative to the last time the selection concerned changed
+hands, the <B>XSetSelectionOwner()</B> request appears to the client to
+succeed, but ownership is <I>not</I> actually transferred. To ensure that
+ownership has been transferred, a client must perform the sequence shown
+in Example 12-8.
+
+<P><B>Code to ensure transfer of selection ownership</B>
+<BLOCKQUOTE>
+<PRE><TT><B>XSetSelectionOwner</B>(display, selection_atom, owner, time);
+if (XGetSelectionOwner(display, selection_atom) != owner) {
+&nbsp;&nbsp;&nbsp; /* We didn't get the selection */
+}</TT></PRE>
+</BLOCKQUOTE>
+If <B>XGetSelectionOwner()</B> returns a window ID rather
+than <B>None</B>, then the selection ownership was successfully transferred.
+<H3>
+Responsibilities of the Selection Owner</H3>
+When a requestor wants the value of a selection, the owner
+receives a <B>SelectionRequest</B> event. Example 12-9 shows the <B>XSelectionRequestEvent</B>
+structure.
+
+<P><B>The XSelectionRequestEvent structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp; /* # of last request processed by
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window owner;
+&nbsp;&nbsp; Window requestor;
+&nbsp;&nbsp; Atom selection;
+&nbsp;&nbsp; Atom target;
+&nbsp;&nbsp; Atom property;
+&nbsp;&nbsp; Time time;
+} XSelectionRequestEvent;</TT></PRE>
+</BLOCKQUOTE>
+The <B>owner</B> and the <B>selection</B> members will be
+the values specified in the <B>XSetSelectionOwner()</B> request, and therefore,
+the selection owner is interested in them only if it owns more than one
+selection.
+
+<P>The owner should convert the selection into the type specified
+by the <B>target</B> member and set the property specified by the <B>property</B>
+member of the <B>SelectionRequest</B> event. Current conventions hold that
+all properties used to reply to <B>SelectionRequest</B> events should be
+placed on the requestor window. If the data comprising the selection cannot
+be stored on the requestor window (for example, because the server cannot
+provide sufficient memory), the owner must refuse the selection request
+as above.
+
+<P>The owner should also send the requestor a <B>SelectionNotify</B>
+event using <B>XSendEvent()</B> with an event_mask of <B>0</B>. The members
+of the <B>SelectionNotify</B> event should be set to the same values received
+in the <B>SelectionRequest</B> event, except that if the selection could
+not be converted to the requested type, the <B>property</B> member should
+be set to <B>None</B>. Example 12-10 shows the <B>XSelectionEvent</B> structure
+which is used for <B>SelectionNotify</B> events.
+
+<P><B>The XSelectionEvent structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp; /* # of last request processed by
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window requestor;
+&nbsp;&nbsp; Atom selection;
+&nbsp;&nbsp; Atom target;
+&nbsp;&nbsp; Atom property;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Atom or None */
+&nbsp;&nbsp; Time time;
+} XSelectionEvent;</TT></PRE>
+</BLOCKQUOTE>
+The <B>selection</B>, <B>target</B>, and <B>property</B>
+members should be set to the values received in the <B>SelectionRequest</B>
+event. Setting the <B>property</B> member to <B>None</B> indicates that
+the conversion requested could not be made.
+
+<P>The data stored in the property must eventually be deleted.
+According to the current conventions, selection requestors are responsible
+for deleting the converted properties whose names they receive in <B>SelectionNotify</B>
+events. Owners are responsible for deleting all other properties involved
+in communicating selections.
+
+<P>A selection owner may need confirmation that the data
+comprising the selection has actually been transferred. They should express
+interest in <B>PropertyNotify</B> events for the requestor window and wait
+until the property in the <B>SelectionNotify</B> event has been deleted
+before assuming that the selection data has been transferred.
+<H3>
+Giving Up Selection Ownership</H3>
+When some other client becomes the owner of a particular
+selection, the previous owner receives a <B>SelectionClear</B> event. The
+<B>XSelectionClearEvent</B> structure is shown in Example 12-11.
+
+<P><B>The XSelectionClearEvent structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp; /* # of last request processed by
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if from a SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; Atom selection;
+&nbsp;&nbsp; Time time;
+} XSelectionClearEvent;</TT></PRE>
+</BLOCKQUOTE>
+The <B>time</B> member is the time at which the ownership
+changed hands, and the <B>owner</B> member is the window the new owner
+specified in its <B>XSetSelectionOwner()</B> request.
+
+<P>If an owner loses ownership while it has a transfer in
+progress, that is to say before it receives notification that the requestor
+has received all the data, it must continue to service the ongoing transfer
+to completion.
+
+<P>To relinquish ownership of a selection voluntarily, a
+client should execute a <B>XSetSelectionOwner()</B> call for that selection
+atom, with owner specified as <B>None</B> and time specified as <B>CurrentTime</B>.
+Alternatively, the client may destroy the window used as the owner argument
+of the <B>XSetSelectionOwner()</B> call, or it may exit. In both cases,
+the ownership of the selection involved will revert to <B>None</B>.
+<H3>
+Requesting a Selection</H3>
+A client wishing to obtain the value of a selection in a
+particular form issues an <B>XConvertSelection()</B> call. The arguments
+of the call are three atoms, a window, and the time. The first atom is
+the selection, usually <B>XA_PRIMARY</B>. The second atom is the target
+type, the type in which the requestor wants the data. The conventions will
+specify a standard list of target type atoms. The third atom specifies
+the property that the owner should set to the converted data. The window
+argument is the window on which the property containing the data is to
+be set. The <B>time</B> member should be set to the timestamp on the event
+triggering the request for the selection value. Note that the requestor
+of a selection does not need to know the owner of the selection or the
+window it specified in the <B>XSetSelectionOwner()</B> call.
+
+<P>The client that calls <B>XConvertSelection()</B> call
+will get a <B>SelectionNotify</B> event sent to it from the selection owner.
+The requestor, selection, time, and target arguments of this event will
+be the same as those on the <B>XConvertSelection()</B> request.
+
+<P>If the <B>property</B> member is <B>None</B>, the conversion
+has been refused. This can mean that there is no owner for the selection,
+that the owner does not support the conversion implied by <B>target</B>,
+or that the server did not have sufficient space to accommodate the data.
+
+<P>If the <B>property</B> member is not <B>None</B>, then
+that property will exist on the requestor window. The value of the selection
+can be retrieved from this property using <B>XGetWindowProperty()</B>.
+When using <B>XGetWindowProperty()</B> to retrieve the value of a selection,
+the property argument should be set to the <B>property</B> member in the
+<B>SelectionNotify</B> event. The <B>type</B> member should be set to <B>AnyPropertyType</B>,
+because the requestor has no way of knowing beforehand what type the selection
+owner will use.
+
+<P>The property in the <B>SelectionNotify</B> should be deleted
+by invoking <B>XGetWindowProperty()</B> with the delete argument set to
+<B>True</B>. As discussed above, the owner has no way of knowing when the
+data has been transferred to the requestor unless the property is removed.
+<H3>
+Large Data Transfers</H3>
+Selections can get large, and this poses two problems:
+<UL>
+<LI>
+Transferring large amounts of data to the server is expensive,
+and it would be beneficial to be able to reuse the data once it has been
+sent to answer further <B>XConvertSelection()</B> requests.</LI>
+
+<LI>
+All servers will have limits on the amount of data that can
+be stored in a single property. Exceeding this limit will result in a <B>BadAlloc</B>
+error on the <B>XChangeProperty()</B> call that the selection owner uses
+to store the data.</LI>
+</UL>
+The proposed conventions for dealing with these problems
+are given in Appendix L, <I>Interclient Communcation Conventions</I>, of
+<I>Volume Zero, X Protocol Reference Manual</I> (as of the second printing).
+<H3>
+More on Selection Properties and Types</H3>
+A given selection has a <I>type</I> associated with it. Built-in
+property types that might apply to selections are <B>XA_BITMAP</B>, <B>XA_CARDINAL</B>,
+<B>XA_INTEGER</B>, <B>XA_PIXMAP</B>, <B>XA_POINT</B>, <B>XA_RECTANGLE</B>,
+and <B>XA_STRING</B>. Other types that clients could define might be <B>XA_FILE_NAME</B>
+or <B>XA_PICTURE</B> (a sequence of graphics primitives to reproduce a
+picture--the Macintosh uses this type of selection to cut and paste graphics
+into text applications and vice versa).
+
+<P>It is important to observe that defining a new atom consumes
+resources in the server, and they are not released until the server reinitializes.
+Thus, it must be a goal to reduce the need for newly minted atoms.
+
+<P>The selection named by <B>XA_PRIMARY</B> is used for all
+commands which take only a single argument. It is the principal means of
+communication between clients which use the selection mechanism.
+
+<P>It is suggested that the selection named by <B>XA_SECONDARY</B>
+be used:
+<UL>
+<LI>
+As the second argument to commands taking two arguments.
+For example, it might be used when exchanging the primary and secondary
+selections.</LI>
+
+<LI>
+As a means of obtaining data when there is a primary selection,
+and the user does not wish to disturb it.</LI>
+</UL>
+The CLIPBOARD selection can be used to hold deleted data
+(it has no predefined atom). There is a client called <I>xclipboard</I>
+that will display the contents of the CLIPBOARD, even if the client where
+the data was selected has already been killed.
+<H3>
+Target Atoms</H3>
+The atom that a requestor supplies as the target argument
+of <B>XConvertSelection()</B> determines the form of the data supplied.
+The set of such atoms is extensible, but a generally accepted base set
+of target atoms is needed. The set specified in the conventions is shown
+in Appendix L, <I>Interclient Communcation Conventions</I>, of <I>Volume
+Zero, X Protocol Reference Manual</I> (as of the second printing). However,
+some types are already predefined properties, and these can safely be used.
+
+<P>Target properties describe types of data. They contain
+the C language types of the structures that are used for many of the Xlib
+functions. The predefined target atoms are shown in Table 12-6.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 12-6 : </B>Predefined Target Type Atoms</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Type Atom</TH>
+
+<TH>C Language Type</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_ARC</B></TD>
+
+<TD><B>XArc</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_POINT</B></TD>
+
+<TD><B>XPoint</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_ATOM</B></TD>
+
+<TD><B>Atom</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_RGB_COLOR_MAP</B></TD>
+
+<TD><B>Atom</B> (standard colormap)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_BITMAP</B></TD>
+
+<TD><B>Pixmap</B> (of depth 1)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_RECTANGLE</B></TD>
+
+<TD><B>XRectangle</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_CARDINAL</B></TD>
+
+<TD><B>int</B> (dimensionless)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_STRING</B></TD>
+
+<TD><B>char *</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_COLORMAP</B></TD>
+
+<TD><B>Colormap</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_VISUALID</B></TD>
+
+<TD><B>VisualID</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_CURSOR</B></TD>
+
+<TD><B>Cursor</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_WINDOW</B></TD>
+
+<TD><B>Window</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_DRAWABLE</B></TD>
+
+<TD><B>Drawable</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_WM_HINTS</B></TD>
+
+<TD><B>XWMHints</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_FONT</B></TD>
+
+<TD><B>Font</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_INTEGER</B></TD>
+
+<TD><B>int</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_WM_SIZE_HINTS</B></TD>
+
+<TD><B>XSizeHints</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_PIXMAP</B></TD>
+
+<TD><B>Pixmap</B></TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>The owner should not translate the selection into some
+arbitrary fallback target type (such as <B>XA_STRING</B>) and return the
+fallback target to the requestor in the <B>SelectionNotify</B> event, because
+this might confuse the requestor. The conversion should simply fail. The
+requestor then has the option of requesting another type. The requestor
+can supply the target TARGETS to get a list of target types the owner supports.
+<BR>
+<HR>
+<H2>
+Cut Buffers</H2>
+Cut buffers are provided as a simple but limited method of
+communication between applications. Cut buffers are particularly good for
+editors, because they can act like a stack of buffers, recording the history
+of deletions.
+
+<P>The selection mechanism is superior for many applications,
+since it allows communication regarding the type of the data transferred.
+Selections are described in Section 12.4, "Selections." It is also possible
+for an application to use both cut buffers and selections.
+
+<P>The cut buffers are eight properties on the root window
+of screen 0 of a server. The buffers are numbered 0 to 7. Cut buffers rely
+on a prior agreement between the two clients regarding the format of the
+data to be placed in the cut buffers. The data that can be placed in a
+single cut buffer is limited to the maximum size of a single property,
+which is server-dependent.
+
+<P>Because the cut buffers are properties, it is possible
+to be notified when they have been written into. <B>PropertyNotify</B>
+events can assist applications in timing their communication. These are
+selected with <B>PropertyChangeMask</B>.
+
+<P>The functions that are used to read and write to cut buffers
+are <B>XFetchBuffer()</B>, <B>XFetchBytes()</B>, <B>XStoreBuffer()</B>,
+and <B>XStoreBytes()</B>. The routines with <B>Bytes</B> in the name use
+cut buffer 0 only, while the others may use any of the eight. <B>XRotateBuffers()</B>
+moves the contents of the eight buffers any number of positions.
+
+<P>The cut buffer properties are named by the predefined
+atoms <B>XA_CUT_BUFFER0</B> to <B>XA_CUT_BUFFER7</B>.
+
+<P>The cut buffers can let applications implement a first-in,
+last-out stack of data. A client using this cut buffer mechanism must initially
+ensure that all eight buffer properties exist, using <B>XChangeProperty()</B>
+to append zero-length data to each. A client storing data in the cut buffers
+(an owner) must first rotate the ring of buffers by +1, using <B>XRotateWindowProperties</B>
+to rename <B>XA_CUT_BUFFER0</B> to <B>XA_CUT_BUFFER1</B> to .... to <B>XA_CUT_BUFFER7</B>
+to <B>XA_CUT_BUFFER0</B>. It must then store the data into <B>XA_CUT_BUFFER0</B>,
+using <B>XStoreBytes()</B>.
+
+<P>A client obtaining data from the cut buffers should use
+<B>XFetchBytes()</B> to retrieve the contents of <B>XA_CUT_BUFFER0</B>.
+
+<P>A client may, in response to a specific user request,
+rotate the cut buffers by -1, using <B>XRotateWindowProperties</B> to rename
+<B>XA_CUT_BUFFER7</B> to <B>XA_CUT_BUFFER6</B> .... and so on and <B>XA_CUT_BUFFER0</B>
+to <B>XA_CUT_BUFFER7</B>.
+
+<P>Data should be stored to the cut buffers and the ring
+rotated only when requested by explicit user action. Users depend on their
+mental model of cut buffer operation and need to be able to identify operations
+that transfer data to and from the buffers.
+
+<P>Note that there is nothing magic about the properties
+used by Xlib's cut buffer routines or those routines themselves. If an
+application needs more buffers, it can intern additional atoms for <B>CUT_BUFFER8</B>
+and so on and write its own equivalent of <B>XStoreBuffer()</B> and <B>XFetchBuffer()</B>
+that can write and read these properties.
+<BR>
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

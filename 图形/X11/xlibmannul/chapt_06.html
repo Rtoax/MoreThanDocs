@@ -1,0 +1,1879 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_05.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_07.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H1>
+Drawing Graphics and Text</H1>
+This chapter describes the routines used to draw lines, geometrical
+figures, and text. It also discusses the use of the pixmaps, images, and
+regions. You should be familiar with the use of the graphics context before
+attempting to use these routines.
+
+<P>Drawing with computers is a little like drawing by hand.
+Holding the pencil is not hard, but getting anything recognizable to appear
+on the page is a different matter. Similarly, drawing with X is quite easy,
+but designing what to draw and where can be a challenge. We can do little
+more in this chapter than tell you how to hold the pencil; the rest is
+up to you.
+
+<P>This chapter describes various techniques that have to
+do with drawing: drawing lines, rectangles, and arcs; using bitmaps; placing
+and drawing text; using regions; creating and using cursors; and using
+images.
+
+<P>The <B>draw_text</B> and <B>draw_graphics</B> routines
+called in the <I>basicwin</I> program in Chapter 3, "Basic Window Program,"
+are used as examples in this chapter. Also described here are various versions
+of the <B>draw_box</B> routine, which is called in the simple window manager
+<I>winman</I> described in Chapter 16, "Window Management."
+
+<P>Note that, before you draw anything, you must set up a
+graphics context to specify, at minimum, the foreground and background
+pixel values for drawing and the font if you are drawing text. For monochrome
+applications, you should set these values using the <B>BlackPixel()</B>
+and <B>WhitePixel()</B> macros described in Chapter 3, "Basic Window Program."
+For color applications, you should use one of the color allocation routines
+described in Chapter 7, "Color." While the default foreground and background
+values in a GC <I>may</I> work on some servers, they are hardcoded (0 and
+1) and should <I>not</I> be relied upon by any client, since they will
+give inconsistent results on color displays.
+<BR>
+<HR>
+<H2>
+Drawing</H2>
+The X drawing primitives are easy-to-use routines capable
+of drawing points, connected lines (polylines), disconnected lines (disjoint
+polylines), rectangles, and circles, ellipses, or arcs. Separate primitives
+are provided that fill rectangles, polygons, circles, ellipses, and arcs.
+
+<P>These primitives select the source pixels that will be
+operated on according to the graphics context. The GC is described in Chapter
+5, <I>The Graphics Context</I>. The most common error generated while drawing
+is <B>BadMatch</B>. If you get this error, it means the drawable and the
+GC specified in the drawing call are not the same depth. The safest way
+to prevent this is to always create the drawable first, and then use the
+drawable as an argument when creating the GC that will be used to draw
+into it.
+
+<P><B>XDrawPoint()</B> requires only the coordinates of the
+point to be drawn. <B>XDrawPoints()</B> requires a pointer to an array
+of coordinates for the points, the number of points, and a mode flag which
+controls whether the coordinates are interpreted relative to the origin
+of the drawable or relative to the previous point drawn.
+
+<P><B>XDrawLine()</B> is similar to <B>XDrawPoint()</B> but
+requires two points, a beginning and an end. <B>XDrawLines()</B> works
+just like <B>XDrawPoints()</B> but draws lines between consecutive points
+in the list. If the first and last points coincide, the lines will be joined
+properly according to the <B>join_style</B> in the GC.
+
+<P><B>XDrawSegments()</B> draws lines that are not necessarily
+connected end to end. It requires an array of pairs of endpoints. There
+is no mode flag for <B>XDrawSegments()</B>, so the coordinates are always
+relative to the origin of the drawable. If the end point of one segment
+and the beginning of the next coincide, the lines will be joined according
+to the <B>join_style</B> in the GC. The remaining end points will be drawn
+according to the <B>cap_style</B> in the GC.
+
+<P><B>XDrawRectangle()</B> draws the outline of a rectangle
+when given the upper-left corner and the height and width. <B>XDrawRectangles()</B>
+draws multiple rectangles from an array of corner coordinates and dimensions.
+The actual width and height of a rectangle is one pixel larger than the
+dimensions specified, according to the X protocol, as shown in Figure 6-2.
+These actual dimensions maintain consistency with the definition of a filled
+rectangle or a clipping region, which are exactly the size specified. The
+corners of rectangles are drawn according to the <B>join_style</B> in the
+GC.
+
+<P><B>XDrawArc()</B> is similar to <B>XDrawRectangle()</B>,
+except that it draws an arc that fits inside the rectangle. This function
+can draw circles and ellipses (or parts thereof) whose axes are parallel
+to the window coordinates. An elliptical arc occurs if the rectangle is
+not a square. The extent of the arc is specified by two angles: the first
+is the starting angle relative to the three-o'clock position, and the second
+is the angle relative to the starting position. The angles are signed integers
+in sixty-fourths of a degree (0 to 360 * 64 is a complete circle), with
+positive values drawing the arc counterclockwise. This scale factor is
+required so that angles can be specified more accurately than allowed by
+integral values between 0 and 360 degrees. Figure 6-1 demonstrates the
+arguments needed for <B>XDrawArc()</B>.
+
+<P><B>Angle measurement for XDrawArc or XDrawArcs()</B>
+
+<P><IMG SRC="imgs/fig.6.01.gif" ALT="fig.6.01.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;X Version 11 also supports the <B>XDraw()</B> and
+<B>XDrawFilled()</B> routines that were available in X Version 10, though
+the performance of these is low. These routines are described in Appendix
+B, <I>X10 Compatibility</I>.
+
+<P>Xlib does not provide routines for drawing Bezier or cubic
+spline curves.
+<H3>
+The Request Size Limit</H3>
+One caveat of all the Xlib routines that draw multiple objects
+is that there is a maximum number of objects that can be drawn with a single
+call, and this number varies according to the server your application is
+connected to. In Release 4, this affects the calls <B>XDrawArcs()</B>,
+<B>XDrawLines()</B>, <B>XDrawPoints()</B>, <B>XDrawRectangles()</B>, <B>XDrawSegments()</B>,
+<B>XDrawText()</B>, <B>XDrawText16()</B>, <B>XFillArcs()</B>, and <B>XFillRectangles()</B>.
+In Release 5 and later, it affects only <B>XDrawArcs()</B>, <B>XDrawLines()</B>,
+<B>XDrawText()</B>, and <B>XDrawText16()</B>, because the other calls are
+divided into multiple requests. (This cannot be done for <B>XDrawArcs()</B>
+or <B>XDrawLines()</B> because this would disturb the server's joining
+of the lines.)
+
+<P>To determine how many objects you can draw in a single
+call, you find out your server's maximum request size using <B>XMaxRequestSize()</B>.
+Subtract 3, and this is the maximum number of points you can draw in a
+single <B>XDrawPoints()</B> request. You can draw one-half this many lines,
+segments, or rectangles, and one-third this many arcs.
+
+<P>For <B>XDrawText()</B>, <B>XDrawText16()</B>, <B>XwcDrawText()</B>,
+and <B>XmbDrawText()</B>, which draw a series of strings as will be described
+later, the maximum number is based on the number and length of these strings.
+<H3>
+Scaling Graphics</H3>
+All drawing measurements in X are made in pixels. The positions
+you specify are relative to the origin (upper-left corner inside border)
+of the window specified in the drawing request. The width and height of
+a rectangle or bounding box for an arc are also specified in pixels.
+
+<P>Scaling based on pixels has a weakness caused by the fact
+that pixels are not always the same size on the screen. Imagine a desktop
+publishing application. Its goal is to make everything drawn on the screen
+as close as possible to what will appear on the printed page. People may
+run the application from a PC which has a 9.5" by 7.25" screen with an
+640 by 480 array of pixels or from a workstation which has a 13.5" by 10.5"
+screen with an array of, perhaps, 1152 by 900 pixels. The ruler lines drawn
+by the application would look much different on the two screens if their
+sizes were not adjusted accordingly. The application should calculate the
+ratio of the size in millimeters of the screen to its size in pixels, in
+both directions. The required information is returned by the <B>DisplayHeight()</B>,
+<B>DisplayHeightMM()</B>, <B>DisplayWidth()</B>, and <B>DisplayWidthMM()</B>
+macros.
+
+<P>This correction of size distortion also solves a second,
+smaller problem. The relative density of pixels in the <I>x</I> and <I>y</I>
+directions on the screen may vary. For example, a square drawn with equal
+width and height may appear rectangular on the screen, since some (but,
+fortunately, not many) screens have more space between rows of pixels than
+between columns. By correcting for size variation, this problem goes away.
+It is also possible to allow size variations but correct for the aspect
+ratio distortion by multiplying the height measurements in pixels by the
+ratio:
+<BLOCKQUOTE>
+<PRE><TT>&nbsp;&nbsp;&nbsp;&nbsp; DisplayHeight/DisplayHeightMM()
+&nbsp;&nbsp;&nbsp;&nbsp; _______________________________
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DisplayWidth/DisplayWidthMM()</TT></PRE>
+</BLOCKQUOTE>
+or by multiplying the width measurements in pixels by the
+inverse of this ratio. Do not multiply both the width and height measurements.
+<H3>
+Example of Drawing Graphics</H3>
+All drawing routines are used in essentially the same way:
+<UL>
+<LI>
+First, create and set the graphics context.</LI>
+
+<LI>
+Then calculate the dimensions and placement of what you want
+to draw.</LI>
+
+<LI>
+Finally, do the actual drawing.</LI>
+</UL>
+Example 6-1 shows a routine named <B>draw_graphics</B> that
+places and draws a rectangle. As you can tell from the brevity of the routine,
+most of the trouble goes into setting the GC properly and positioning the
+item to be drawn. The actual drawing is very simple.
+
+<P>This routine is called from the <I>basicwin</I> program
+described in Chapter 3, "Basic Window Program." By the time it is called,
+we have already done many things. The display is opened, windows and resources
+created (including the GC), and window manager hints set. Most importantly,
+<B>draw_graphics</B> is called only in response to <B>Expose</B> events.
+It is used to draw the window for the first time and to redraw the contents
+of areas exposed later.
+
+<P><B>The draw_graphics routine</B>
+<BLOCKQUOTE>
+<PRE><TT>draw_graphics(win, gc, window_width, window_height)
+Window win;
+GC gc;
+unsigned int window_width, window_height;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int x, y;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unsigned int width, height;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; height = window_height/2;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width = 3 * window_width/4;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x = window_width/2 - width/2;&nbsp; /* Center */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; y = window_height/2 - height/2;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XDrawRectangle(display, win, gc, x, y, width, height);
+}</TT></PRE>
+</BLOCKQUOTE>
+The calling routine gets the <B>window_width</B> and <B>window_height</B>
+arguments from <B>ConfigureNotify</B> events because the window being drawn
+into is a top-level window which might get resized by the window manager.
+Routines to draw into descendents of the top-level window may also require
+size arguments if the sizes of the windows will be adjusted in response
+to a resized top-level window.
+<H3>
+Filling</H3>
+The <B>XFillArc()</B>, <B>XFillArcs()</B>, <B>XFillPolygon()</B>,
+<B>XFillRectangle()</B>, and <B>XFillRectangles()</B> commands act much
+like the drawing routines described at the start of Section 6.1, "Drawing"
+except that they fill an area instead of drawing the outline.
+
+<P>Surprisingly, the filling and drawing versions of the
+rectangle routines do not draw the same outline if given the same arguments.
+The routine that fills a rectangle draws an outline one pixel shorter in
+width and height than the routine that just draws the outline, as shown
+in Figure 6-2. It is easy to adjust the arguments for the rectangle calls
+so that one draws the outline and another fills a completely different
+set of interior pixels. Simply add 1 to x and y and subtract 1 from width
+and height.
+
+<P>The <B>XFillPolygon()</B> routine is somewhat different
+from the other filling routines, since there is no directly analogous routine
+that draws a polygon with lines (though <B>XDrawLines()</B> can be used
+to draw a polygon). Like the other routines, <B>XFillPolygon()</B> uses
+an array of points to specify the nodes to be connected, but it connects
+the first and last points to form a closed figure and then fills the resulting
+shape. The <B>shape</B> flag (which can be one of the symbols <B>Complex</B>,
+<B>Convex</B>, or <B>Nonconvex</B>) is a hint that may enable the server
+to improve the performance of the filling operation. The mode argument
+indicates whether the coordinates of the vertices are interpreted relative
+to the origin of the drawable or relative to the previous point.
+
+<P>The <B>fill_rule</B> member of the GC controls how complex,
+self-intersecting polygons are filled. The <B>WindingRule</B> setting of
+the <B>fill_rule</B> specifies that overlapping areas of a polygon drawn
+in a single call are filled. With <B>EvenOddRule</B>, areas overlapping
+an odd number of times are not filled. See Section 5.3.3, "Fill Rule" for
+more information.
+
+<P><B>The pixels affected by XFillRectangle() vs. XDrawRectangle()
+with the same arguments</B>
+
+<P><IMG SRC="imgs/fig.6.02.gif" ALT="fig.6.02.gif" BORDER=0  ALIGN=ABSCENTER>
+<H3>
+Creating Bitmaps, Pixmaps, Tiles, and Stipples</H3>
+Bitmaps, tiles, and stipples are all forms of pixmaps, all
+of type <B>Pixmap</B>. Applications often need to create pixmaps for icon
+patterns, cursors, and tiles.
+
+<P>The data used to create a pixmap for any purpose can be
+included in a program at compile time or read in at run time. In both methods,
+you must have a bitmap file created with <B>XWriteBitmapFile()</B> or the
+<I>bitmap</I> application.
+
+<P>In the first method, you use an <B>#include</B> statement
+to read the bitmap file at run time and then call <B>XCreateBitmapFromData()</B>
+or <B>XCreatePixmapFromBitmapData()</B> if you want a pixmap with depth
+for a window background or a tile.
+
+<P>In the second method, you create a single-plane <B>Pixmap</B>
+with <B>XCreatePixmap()</B> and call <B>XReadBitmapFile()</B> to fill the
+<B>Pixmap</B> with the data from the file. Then if you want a pixmap with
+depth for the background of a window or for a tile, you can create another
+pixmap of the desired depth and call <B>XCopyPlane()</B> to copy the bitmap
+into the pixmap. Normally, an application would choose reading the data
+from a file if the user needs to be able to change the bitmap between invocations
+of the client.
+
+<P><B>XWriteBitmapFile()</B> can be used to write the contents
+of a bitmap into a file conforming to X Version 11 bitmap file format.
+
+<P>Example 6-2 shows some bitmap data in standard X11 bitmap
+file format and two subroutines, one that creates a stipple from included
+data and the other that reads the bitmap data from a file.
+
+<P><B>Creating a stipple from included data and from data
+read from a file</B>
+<BLOCKQUOTE>
+<PRE><TT>#define icon_bitmap_width 40
+#define icon_bitmap_height 40
+static char icon_bitmap_bits[] = {
+&nbsp;&nbsp; 0xc3, 0xc3, 0x7f, 0x00, 0x78, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x00, 0x00,
+&nbsp;&nbsp; 0x00, 0x00, 0x80, 0x38, 0x00, 0x40, 0x00, 0x80, 0x24, 0x00, 0x00, 0x00,
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; 0x0c, 0x30, 0x18, 0x00, 0x84, 0x04, 0x60, 0x0e, 0x00, 0xdc, 0x02, 0x80,
+&nbsp;&nbsp; 0x03, 0x00, 0x70, 0x00, 0x00, 0x00, 0x00, 0x00};
+void main(argc, argv)
+int argc;
+char **argv;
+{
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; Pixmap stipple;
+&nbsp;&nbsp; unsigned int stip_width, stip_height;
+&nbsp;&nbsp; char *filename = "bitmaps/icon_bitmap";
+&nbsp;&nbsp; if (create_included_stipple(&amp;stipple, &amp;stip_width,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;stip_height) == False)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "basic: couldn't create included bitmap\n");
+&nbsp;&nbsp; printf("stipple is %dx%d\n", stip_width, stip_height);
+&nbsp;&nbsp; if (create_read_stipple(&amp;stipple, filename, &amp;stip_width,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;stip_height) ! = BitmapSuccess)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "basic: can't read bitmap\n");
+&nbsp;&nbsp; printf("stipple is %dx%d\n", stip_width, stip_height);
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+}
+create_included_stipple(stip, width, height)
+Pixmap *stip;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Returned created stipple */
+unsigned int *width, *height;&nbsp; /* Returned */
+{
+&nbsp;&nbsp; if ((*stip = XCreateBitmapFromData(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; RootWindow(display, screen_num), icon_bitmap_bits,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon_bitmap_width, icon_bitmap_height))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; == False)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return(False);
+&nbsp;&nbsp; *width = name_width;
+&nbsp;&nbsp; *height = name_height;
+&nbsp;&nbsp; return(True);
+}
+create_read_stipple(stip, filename, width, height)
+Pixmap *stip;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Returned created stipple */
+char *filename;
+unsigned int *width, *height;&nbsp; /* Returned */
+{
+&nbsp;&nbsp; int value;
+&nbsp;&nbsp; int x_hot, y_hot;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Don't care about these unless for
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * cursor */
+&nbsp;&nbsp; value = XReadBitmapFile(display, RootWindow(display, screen_num),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; filename, width, height, stip, &amp;x_hot, &amp;y_hot);
+&nbsp;&nbsp; if (value == BitmapFileInvalid)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "Filename %s contains invalid bitmap data\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; filename);
+&nbsp;&nbsp; else if (value == BitmapOpenFailed)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "Filename %s could not be opened\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; filename);
+&nbsp;&nbsp; else if (value == BitmapNoMemory)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "Not enough memory to allocate pixmap\n");
+&nbsp;&nbsp; return(value);
+&nbsp;&nbsp; /* Returns BitmapSuccess if everything worked */
+}</TT></PRE>
+</BLOCKQUOTE>
+To create a pixmap with depth from included data, you can
+substitute <B>XCreatePixmapFromBitmapData()</B> for <B>XCreateBitmapFromData()</B>
+in the example above. However, to create a pixmap with depth from data
+read from a file, you must create a bitmap with <B>XReadBitmapFile()</B>
+as shown above, then create a pixmap with depth using <B>XCreatePixmap()</B>,
+then copy from the bitmap to the pixmap using <B>XCopyPlane()</B>.
+<H3>
+Copying and Clearing Areas</H3>
+<B>XClearWindow()</B> clears an entire window. If the window
+has a <B>background_ pixmap</B> attribute, then the window is redrawn with
+this tile. If the window has <B>background_pixmap</B> or <B>background_pixel</B>
+attribute <B>None</B>, then the contents of the window are not changed.
+No exposure events are generated by <B>XClearWindow()</B>, since the usual
+intent of this command is to clear the window, not to refresh the old contents
+(which would be the normal response to an exposure event). Conversely,
+<B>XClearWindow()</B> is not needed to clear a window before redrawing
+it due to an <B>Expose</B> event, because the server automatically draws
+the exposed area with the background pixel value or pixmap.
+
+<P><B>XClearArea()</B> is like <B>XClearWindow()</B> but
+acts on a particular area within a window defined by the call's x, y, height,
+and width arguments. If the height or width argument is 0, then some special
+rules take effect that clear an area to the right and/or the bottom of
+the window, as shown in Figure 6-3.
+
+<P><B>XClearArea() -- area cleared with various width and
+height arguments</B>
+
+<P><IMG SRC="imgs/fig.6.03.gif" ALT="fig.6.03.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;If the width argument is 0, the left edge of the
+cleared area is x and the right edge is the right border of the window.
+If the height is 0, the top is y and the bottom is the bottom of the window.
+If both height and width are 0, then the area between x and y and the bottom
+and right sides of the window are cleared. The exposures argument indicates
+whether an <B>Expose</B> event is generated on the cleared area.
+
+<P><B>XCopyArea()</B> is used for many purposes, including
+copying off-screen pixmaps to the screen and copying one screen area to
+another. You need to specify the source and destination drawables, the
+upper-left corner of the source and destination locations, and the width
+and height of the area. Note that the source and destination drawables
+must have the same depth, or an error occurs.
+
+<P>Areas of the source that are not visible, not preserved
+in the backing store, or outside the boundaries of the source drawable
+are not copied. If the destination has a background tile attribute other
+than <B>None</B>, the destination areas corresponding to the uncopyable
+areas of the source are filled or tiled according to the background attributes.
+
+<P>The operation of <B>XCopyPlane()</B> is quite different
+from <B>XCopyArea()</B>. A single plane of the source region is given "depth"
+by "coloring" it with the <B>foreground</B> and <B>background</B> pixel
+values from the GC, before being written into the destination drawable.
+In other words, set bits in the source plane are given the foreground pixel
+value in the destination drawable, while unset bits are given the background
+pixel value. Therefore, <B>XCopyPlane()</B> is useful for translating a
+pixmap of depth 1 (a bitmap) into a pixmap of the same depth as a window
+where it can be displayed. If the <B>graphics_exposures</B> member of the
+GC is <B>True</B>, then one or more <B>GraphicsExpose</B> events are generated
+on the destination region when part of the source region could not be copied
+or a single <B>NoExpose</B> event is generated if all the source region
+could be copied. This is the case for both <B>XCopyArea()</B> and <B>XCopyPlane()</B>
+requests.
+
+<P>That's about all there is to say about simple drawing,
+filling, copying, and clearing. Now we'll move on to drawing text.
+<BR>
+<HR>
+<H2>
+Fonts and Text</H2>
+A font in X is a set of bitmaps and may represent text, a
+set of cursor shapes, or perhaps some other set of shapes for some other
+purpose.
+
+<P>The following sections describe the character format,
+how to load fonts, character metrics, the <B>XFontStruct</B> and <B>XCharStruct</B>
+structures, placing text, font properties, and more.
+<H3>
+Character Format</H3>
+Every X function that draws text has two versions: one that
+handles single-byte (8-bit) fonts and one for two-byte (16-bit) fonts.
+The difference between these two is that a single-byte font is limited
+to 256 characters, while a two-byte font may have up to 256 rows each with
+256 characters, a total of 65,536 characters. Large numbers of characters
+are necessary for Oriental languages.
+
+<P>On many servers, only single-byte fonts can be used with
+the routines whose names do not end in 16 and only two-byte fonts may be
+used with the routines that do end in 16. However, some servers may handle
+either type in either routine. At the moment, there is only one two-byte
+font on the standard X distribution, the Kanji font used by the <I>kterm</I>
+program, a terminal emulator for Japanese.
+<H3>
+Loading Fonts</H3>
+A font must be loaded before being used. If one or more clients
+are using the same font, they share the same copy in the server, but each
+must request that the font be loaded, if only to get the font ID. The available
+fonts are stored in a database that is accessible with the <B>XListFonts()</B>
+and <B>XListFontsWithInfo()</B> commands.
+
+<P><B>XListFonts()</B> lists the fonts that match the specified
+pattern (with wildcards) that are available on the current server. The
+list of font names generated by <B>XListFonts()</B> can be freed when no
+longer needed using <B>XFreeFontNames()</B>. See the next section for how
+to specify font names.
+
+<P>Once the desired font name is found, it can be used as
+a string in <B>XLoadFont()</B>. Some fonts, such as "fixed" and "9x15,"
+are almost always available and should not require a search through the
+list of fonts. The <B>XLoadFont()</B> command loads a font and returns
+the font ID, which is used in all subsequent references to that font. The
+font ID is used in <B>XSetFont()</B> to associate the font with a GC to
+be used in drawing text. <B>XLoadFont()</B> returns a value that must be
+checked to make sure the loading succeeded.
+
+<P>If the font is constant width, then it is ready for use
+as soon as it is loaded. If the font is proportionally spaced and your
+program needs to calculate the extent of many strings in the same font,
+then you may want to get the table of the extents of the font characters
+and perform this calculation locally in order to save repeated round-trip
+requests to the server. This information is stored in an <B>XFontStruct</B>
+(described in Section 6.2.4.2, "The XFontStruct Structure"), which is filled
+by calling the <B>XQueryFont()</B> routine. Both the <B>XLoadFont()</B>
+and <B>XQueryFont()</B> operations may be done together with <B>XLoadQueryFont()</B>.
+
+<P>If the font ID passed to the <B>XQueryFont()</B> routines
+is of type <B>GContext</B>, the information about the font associated with
+the specified GC is returned. This is how you get information about the
+default font, which is always loaded. Pass the value returned by
+<BLOCKQUOTE>
+<PRE><TT>XGContextFromGC(DefaultGC(display, screen_num))</TT></PRE>
+</BLOCKQUOTE>
+to <B>XQueryFont()</B>.
+
+<P>The <B>load_font</B> routine shown in Example 6-3 is called
+in the <I>basicwin</I> program described in Chapter 3, "Basic Window Program."
+It loads a font and gets the font information structure for later use in
+the routines that actually draw the text.
+
+<P><B>The load_font routine</B>
+<BLOCKQUOTE>
+<PRE><TT>load_font(font_info)
+XFontStruct **font_info;
+{
+&nbsp;&nbsp; char *fontname = "9x15";
+&nbsp;&nbsp; /* Access font */
+&nbsp;&nbsp; if ((*font_info = XLoadQueryFont(display,fontname)) == NULL)
+&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf( stderr, "Basic: Cannot open 9x15 font\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit( -1 );
+&nbsp;&nbsp; }
+}</TT></PRE>
+</BLOCKQUOTE>
+In a more general client, the font name should be an argument
+to <B>load_font</B>, and provision should be made to read it from the command
+line or resource database.
+
+<P><B>XListFontsWithInfo()</B> returns a list of the loaded
+fonts matching a font name (with wildcards) and returns the information
+structure associated with each loaded font. The information returned is
+identical to that returned by <B>XQueryFont()</B> except that per-character
+metrics are not returned. Only the maximum metrics over the entire font
+are returned. If <B>XFontStruct.min_byte1</B> and <B>XFontStruct.max_byte1</B>
+are 0, the font is a single-byte font.
+
+<P><B>XFreeFontInfo()</B> should be used to free the font
+information structure when the font is no longer needed but before the
+font is unloaded using <B>XUnloadFont()</B>. <B>XFreeFont()</B> combines
+<B>XFreeFontInfo()</B> and <B>XUnloadFont()</B>.
+<H3>
+Font Naming</H3>
+Your application should allow font names to be specified
+by the user using resources. However, you do need to specify default fonts.
+Font naming is defined by the X Logical Font Description convention, known
+as XLFD. The complete XLFD is presented in <I>Volume Zero, X Protocol Reference
+Manual</I>. However, the basics are covered in Appendix A, <I>Specifying
+Fonts</I>.
+<H3>
+Character Metrics</H3>
+Before going on to the structures that specify characters
+and fonts, we should go over some terminology. The measurements shown in
+Figure 6-4 are some of the <I>font metrics</I> that are the measurements
+in pixels that describe both a font as a whole and each character in the
+font. The names shown for the metrics are members of the font information
+structures.
+
+<P>Notice that the origin is not at the upper-left corner
+of each character, as in most of the rest of X. The origin of each character
+is on the <I>baseline</I>, which is a row of pixels somewhere near the
+lower middle of a line of text. This part of X has been written to conform
+closely to the existing standards for fonts provided by companies like
+Adobe.
+
+<P>Notice that two structures are mentioned in Figure 6-4,
+<B>XFontStruct</B> and <B>XCharStruct</B>. <B>XFontStruct</B> holds information
+about the entire font, while <B>XCharStruct</B> (itself the type of several
+members of <B>XFontStruct</B>) holds information about a single character.
+These two structures have some common member names, but their meanings
+are different.
+
+<P>There is a difference between the font <B>ascent</B> and
+<B>descent</B> members in <B>XFontStruct</B> and the <B>ascent</B> and
+<B>descent</B> members in each individual <B>XCharStruct</B>. The former
+specifies the largest of each measurement in any character in the font,
+and the latter specifies the measurements of single characters.
+<H4>
+The XCharStruct Structure</H4>
+One <B>XCharStruct</B> structure contains the metrics of
+a single character in a font. <B>XCharStruct</B> is shown in Example 6-4.
+Refer to Figure 6-4 for the meaning of each of its members.
+
+<P><B>The XCharStruct structure</B>
+<BLOCKQUOTE>
+<PRE><TT>/* Per character font metric information */
+typedef struct {
+&nbsp;&nbsp; short lbearing;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Origin to left edge of character */
+&nbsp;&nbsp; short rbearing;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Origin to right edge of character */
+&nbsp;&nbsp; short width;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Advance to next char's origin */
+&nbsp;&nbsp; short ascent;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Baseline to top edge of character */
+&nbsp;&nbsp; short descent;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Baseline to bottom edge of
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * character */
+&nbsp;&nbsp; unsigned short attributes;&nbsp;&nbsp; /* Per char flags (not predefined) */
+} XCharStruct;</TT></PRE>
+</BLOCKQUOTE>
+<B>The metrics of two characters</B>
+
+<P><IMG SRC="imgs/fig.6.04.gif" ALT="fig.6.04.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;The <B>attributes</B> member is for font-specific
+information. It does not have any standard use or meaning.
+<H4>
+The XFontStruct Structure</H4>
+Example 6-5 shows the <B>XFontStruct</B> structure. This
+structure contains information about the font as a whole.
+
+<P><B>The XFontStruct structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; XExtData *ext_data;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Hook for extension to hang data */
+&nbsp;&nbsp; Font fid;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Font ID for this font */
+&nbsp;&nbsp; unsigned direction;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Direction the font is painted */
+&nbsp;&nbsp; unsigned min_char_or_byte2;&nbsp;&nbsp; /* First character */
+&nbsp;&nbsp; unsigned max_char_or_byte2;&nbsp;&nbsp; /* Last character */
+&nbsp;&nbsp; unsigned min_byte1;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* First row that exists (for two-byte
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * fonts) */
+&nbsp;&nbsp; unsigned max_byte1;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Last row that exists (for two-byte
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * fonts) */
+&nbsp;&nbsp; Bool all_chars_exist;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Flag if all characters have nonzero
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * size */
+&nbsp;&nbsp; unsigned default_char;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Char to print for undefined character */
+&nbsp;&nbsp; int n_properties;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* How many properties there are */
+&nbsp;&nbsp; XFontProp *properties;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Pointer to array of additional
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * properties*/
+&nbsp;&nbsp; XCharStruct min_bounds;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Minimum bounds over all existing char*/
+&nbsp;&nbsp; XCharStruct max_bounds;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Maximum bounds over all existing char*/
+&nbsp;&nbsp; XCharStruct *per_char;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* first_char to last_char information */
+&nbsp;&nbsp; int ascent;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Max extent above baseline for spacing */
+&nbsp;&nbsp; int descent;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Max descent below baseline for spacing */
+} XFontStruct;</TT></PRE>
+</BLOCKQUOTE>
+<B>XFontStruct</B> includes three members of type <B>XCharStruct</B>:
+one describes the smallest measurement for each character metric among
+all the characters in the font; one describes the largest; and one points
+to a list of structures, one for every character in the font. Note that
+the minimum character metrics (<B>min_bounds</B>) do not describe the smallest
+character in the font, but the smallest of every measurement found anywhere
+in the font. The same goes for <B>max_bounds</B>.
+
+<P>The following list describes in detail each member of
+the <B>XFontStruct</B> structure. Only font developers need to learn all
+these members. In general, an application programmer will use only the
+<B>ascent</B> and <B>descent</B> members and occasionally the <B>min_bounds</B>,
+<B>max_bounds</B>, <B>min_byte1</B>, and <B>max_byte1</B> members. These
+members are placed first so you can just scan the rest if you are interested.
+Refer back to Figure 6-4 for a visual representation of <B>ascent</B> and
+<B>descent</B>.
+<UL>
+<LI>
+The <B>min_bounds</B> and <B>max_bounds</B> are structures
+containing the minimum and maximum extents of the characters in the font,
+ignoring nonexistent characters. The bounding box of the font (the smallest
+rectangle that could contain any character bitmap in the font), by superimposing
+all of the characters at the same origin (specified by <B>x</B>, <B>y</B>),
+has its upper-left coordinate at:</LI>
+
+<LI>
+[x + min_bounds.lbearing, y - max_bounds.ascent]</LI>
+
+<BR>The bounding box's width is:
+<LI>
+max_bounds.rbearing - min_bounds.lbearing</LI>
+
+<BR>Its height is:
+<LI>
+max_bounds.ascent + max_bounds.descent</LI>
+
+<LI>
+<B>ascent</B> is the logical extent of the font above the
+baseline and is used for determining line spacing. Specific character bitmaps
+may extend beyond this ascent.</LI>
+
+<LI>
+<B>descent</B> is the logical extent of the font below the
+baseline and is used for determining line spacing. Specific character bitmaps
+may extend beyond this descent. If the baseline is at absolute y coordinate
+<B>y</B>, then the logical extent of the font is between the y coordinates
+(<B>y-XFontStruct.ascent</B>) and (<B>y+XFontStruct.descent-1</B>), inclusive.</LI>
+
+<LI>
+<B>direction</B> can be either <B>FontLeftToRight</B> or
+<B>FontRightToLeft</B>. This member is a hint about whether most <B>XCharStruct</B>
+members have a positive (<B>FontLeftToRight</B>) or a negative (<B>FontRightToLeft</B>)
+character-width metric, indicating the preferred direction of drawing the
+font.</LI>
+
+<LI>
+<B>min_byte1</B> and <B>max_byte1</B> are both 0 for single-byte
+fonts, since the second byte is not used. These members can be tested to
+see if a font is single- or two-byte. If single-byte, <B>min_char_or_byte2</B>
+specifies the index of the first member of the <B>per_char</B> array and
+<B>max_char_or_byte2</B> specifies the index of the last member.<B>min_byte1</B>
+and <B>max_byte1</B> represent the first and last rows that exist in the
+font. There may be up to 256 rows in a font, but no normal font is likely
+to need all 256 rows (256 * 256 characters). For two-byte fonts, both <B>min_char_or_byte2</B>
+and <B>max_char_or_byte2</B> will be less than 256, and the two-byte character
+index values corresponding to <B>per_char</B> array member <I>N</I> (counting
+from 0) are:</LI>
+
+<LI>
+<I>byte1 = N/D </I>min_byte1 /* Row offset */ <I>byte2 =
+N%D </I>min_char_or_byte2 /* Column offset */</LI>
+
+<BR>where: <I>D</I> = number of characters per row (<B>max_char_or_byte2</B>
+- <B>min_char_or_byte2 + 1</B>) / = integer division % = integer modulus
+<LI>
+If the <B>per_char</B> pointer is <B>NULL</B>, then all glyphs
+(characters in the font) between the first and last character, inclusive,
+have the same extent and other information, as given by both <B>min_bounds</B>
+and <B>max_bounds</B>.</LI>
+
+<LI>
+If <B>all_chars_exist</B> is <B>True</B>, then all characters
+in the <B>per_char</B> array have nonzero bounding boxes.</LI>
+
+<LI>
+<B>default_char</B> specifies the index that will be used
+when an undefined or nonexistent index is used. <B>default_char</B> is
+a single-byte character. For a font using two-byte matrix format, <B>default_char</B>
+has <B>byte1</B> in the most significant byte and <B>byte2</B> in the least
+significant byte. If <B>default_char</B> itself specifies an undefined
+or nonexistent character, then no printing is performed for undefined or
+nonexistent index values.</LI>
+</UL>
+The <B>XFontProp</B> member of <B>XFontStruct</B> is provided
+to allow additional properties (over and above the predefined properties)
+to be associated with a font. See Section 6.2.9, "Font Properties" for
+a description of predefined and additional font properties.
+<H3>
+Positioning of Text</H3>
+All the routines that draw text require the same basic techniques
+for positioning text on the screen.
+
+<P>Let's consider a string drawn with <B>XDrawImageString()</B>.
+<B>XDrawImageString()</B> draws the entire rectangle described by the <B>max_bounds</B>
+of the font, with the character drawn in the <B>foreground</B> pixel value
+and the rest drawn in the <B>background</B> pixel value (both from the
+GC). Figure 6-5 demonstrates the drawing of three strings. The origin of
+the baseline of each text line is specified in the <B>XDrawImageString()</B>
+call. The offset of the first line of text in Figure 6-5 is (<B>20 + ascent</B>).
+Subsequent lines are placed (<B>ascent + descent</B>) below the origin
+of the first line. For routines other than <B>XDrawImageString()*</B>,&nbsp;
+these coordinates still position the background rectangle even though that
+rectangle is not filled.
+<UL>
+<LI>
+If you want the upper-left corner of the background rectangle
+to be at pixel coordinate (<B>x</B>,<B>y</B>), then pass (<B>x</B>, <B>y+ascent</B>)
+as the baseline origin coordinates to the text drawing routines, where
+<B>ascent</B> is the font ascent as given in <B>XFontStruct</B>.</LI>
+
+<LI>
+If you want the lower-left corner of the background rectangle
+to be at pixel coordinate (<B>x</B>,<B>y</B>), then pass (<B>x</B>, <B>y-descent+1</B>)
+as the baseline origin coordinates to the text routines, where <B>descent</B>
+is the font descent as given in <B>XFontStruct</B>.</LI>
+</UL>
+<B>The vertical positioning of strings</B>
+
+<P><IMG SRC="imgs/fig.6.05.gif" ALT="fig.6.05.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;It is important to find out how wide a given string
+is going to be in the chosen font. This width must be smaller than the
+width of the drawable if you want to be able to read the end of the text!
+
+<P>Listed below are several routines that return either a
+string width or its extent (both width and height). Both types of routines
+return the width of the specified string in pixels. The routines that return
+an extent also provide vertical size information in the form of ascent
+and descent measurements for the particular string in question and for
+the font as a whole.
+<DL>
+<DT>
+<B>XTextWidth()</B> and <B>XTextWidth16()</B></DT>
+
+<DD>
+Return the width in pixels of a string in a particular font.</DD>
+
+<DT>
+<B>XTextExtents()</B> and <B>XTextExtents16()</B></DT>
+
+<DD>
+Return string and font metrics, which include the width and
+height of the bounding box containing the string in the specified font.
+Use these routines if making repeated calls with the same <B>XFontStruct</B>.</DD>
+
+<DT>
+<B>XQueryTextExtents()</B> and <B>XQueryTextExtents16()</B></DT>
+
+<DD>
+Perform the same function as <B>XTextExtents()</B> and <B>XTextExtents16()</B>,
+but they query the server instead of requiring a filled <B>XFontStruct</B>
+and performing the computation locally. Use these routines if you only
+need to calculate metrics once (or so) for a given font.</DD>
+</DL>
+To position text vertically using the returned extents, normally
+you should use the font <B>ascent</B> and <B>descent</B> (rather than the
+string <B>ascent</B> and <B>descent</B>) if you will be drawing other strings
+that you want lined up. If you are seriously pressed for space, it is possible
+to save a few pixel rows with certain strings by using the string <B>ascent</B>
+and <B>descent</B> measurements.
+
+<P>Whether you center, left justify, or right justify text
+is completely up to you. The only crucial test is to see that there is
+enough room for the height and width of the string at the chosen position.
+<H3>
+Text-drawing Routines</H3>
+The following routines draw text into a drawable:
+<DL>
+<DT>
+<B>XDrawString()</B> and <B>XDrawString16()</B></DT>
+
+<DD>
+Draw a string into a drawable. They require only the string,
+its length, and the position of the baseline origin. The font in the GC
+is used both as a source for the graphics operation and as a clip mask,
+so that pixels in the destination drawable that are not in each font character
+are not drawn.</DD>
+
+<DD>
+The internationalized versions of these functions are <B>XmbDrawString()</B>
+and <B>XwcDrawString()</B> (new in R5).</DD>
+
+<DT>
+<B>XDrawImageString()</B> and <B>XDrawImageString16()</B></DT>
+
+<DD>
+Act just like <B>XDrawString()</B> and <B>XDrawString16()</B>
+except that the bounding box around the text string is filled with the
+<B>background</B> pixel value defined in the GC. This avoids annoying flicker
+on many screens in clients that do a lot of redrawing, such as editors
+and terminal emulators. These routines are very useful when you need to
+be able to highlight the text for selections or to indicate that a menu
+choice has been made, because the foreground and background of the GC can
+be swapped to redraw the text highlighted. Using the other text routines
+to do this requires changing the background attribute of the window or
+copying the entire area to itself with a logical function of <B>GXinvert</B>.
+The <B>function</B> and <B>fill_style</B> in the GC are ignored for this
+request, but they are effectively <B>GXcopy</B> and <B>FillSolid</B>.</DD>
+
+<DD>
+The internationalized versions of these functions are <B>XmbDrawImageString()</B>
+and <B>XwcDrawImageString()</B> (new in R5).</DD>
+
+<DT>
+<B>XDrawText()</B> and <B>XDrawText16()</B></DT>
+
+<DD>
+Can draw one or more strings to the screen using one <B>XTextItem</B>
+structure for each string. Each structure contains the string of text to
+be drawn, specifies what font to use, and provides a horizontal offset
+(the <B>delta</B> member) from the end of the last item of text. A font
+member other than <B>None</B> causes the font to be stored in the specified
+GC; otherwise, the font in that GC is used.</DD>
+
+<DD>
+Accented or overstruck characters can be drawn in this manner.
+These functions can also be used to draw complex arrangements of text in
+one call instead of having to call <B>XDrawString()</B> several times,
+changing the position, text, and font in between each call.</DD>
+
+<DD>
+The internationalized versions of these functions are <B>XmbDrawText()</B>
+and <B>XwcDrawText()</B> (new in R5).</DD>
+</DL>
+Example 6-6 displays the <B>XTextItem</B> structures used
+by <B>XDrawText()</B> and <B>XDrawText16()</B>.
+
+<P><B>The XTextItem and XChar2b structures</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; char *chars;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Pointer to string */
+&nbsp;&nbsp; int nchars;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Number of characters */
+&nbsp;&nbsp; int delta;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Delta between strings */
+&nbsp;&nbsp; Font font;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Font to print it in, None don't change */
+} XTextItem;
+typedef struct {
+&nbsp;&nbsp; XChar2b *chars;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Two-byte characters */
+&nbsp;&nbsp; int nchars;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Number of characters */
+&nbsp;&nbsp; int delta;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Delta between strings */
+&nbsp;&nbsp; Font font;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Font to print it in, None don't change */
+} XTextItem16;
+typedef struct {&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Normal 16-bit characters are two bytes */
+&nbsp;&nbsp; unsigned char byte1;
+&nbsp;&nbsp; unsigned char byte2;
+} XChar2b;</TT></PRE>
+</BLOCKQUOTE>
+The <B>font</B> member of <B>XTextItem</B> specifies the
+font to be used to draw the string in the <B>chars</B> member and is stored
+in the GC for use in subsequent text requests.
+
+<P>The <B>delta</B> member specifies a change in horizontal
+position before the string is drawn. The delta is always added to the character
+origin and is not dependent on the draw direction of the font. For example,
+if <B>x = 40</B>, <B>y = 20</B>, and <B>items[0].delta = 8</B>, then the
+string specified by <B>items[0].chars</B> would be drawn starting at <B>x
+= 48</B>, <B>y = 20</B>. If <B>items[0].chars</B> pointed to two characters
+with a combined width of 16 pixels, the next delta, <B>items[1].delta</B>,
+would begin at <B>x = 64</B>. The next text item would begin at the end
+of this delta. The <B>delta</B> member can also be used to backspace for
+overstriking characters.
+<H3>
+The draw_text Routine</H3>
+Example 6-7 shows the <B>draw_text</B> routine, called from
+the <I>basicwin</I> program described in Chapter 3, "Basic Window Program."<B>draw_text</B>
+draws three strings in different locations in the window. It demonstrates
+how to calculate the vertical position of a string using the font ascent.
+
+<P><B>The draw_text routine</B>
+<BLOCKQUOTE>
+<PRE><TT>draw_text(win, gc, font_info, win_width, win_height)
+Window win;
+GC gc;
+XFontStruct *font_info;
+unsigned int win_width, win_height;
+{
+&nbsp;&nbsp; char *string1 = "Hi! I'm a window, who are you?";
+&nbsp;&nbsp; char *string2 = "To terminate program, press any key";
+&nbsp;&nbsp; char *string3 = "or button while in this window.";
+&nbsp;&nbsp; char *string4 = "Screen Dimensions:";
+&nbsp;&nbsp; int len1, len2, len3, len4;
+&nbsp;&nbsp; int width1, width2, width3;
+&nbsp;&nbsp; char cd_height[50], cd_width[50], cd_depth[50];
+&nbsp;&nbsp; int font_height;
+&nbsp;&nbsp; int initial_y_offset, x_offset;
+&nbsp;&nbsp; /* Need length for both XTextWidth and XDrawString */
+&nbsp;&nbsp; len1 = strlen(string1);
+&nbsp;&nbsp; len2 = strlen(string2);
+&nbsp;&nbsp; len3 = strlen(string3);
+&nbsp;&nbsp; /* Get string widths for centering */
+&nbsp;&nbsp; width1 = XTextWidth(font_info, string1, len1);
+&nbsp;&nbsp; width2 = XTextWidth(font_info, string2, len2);
+&nbsp;&nbsp; width3 = XTextWidth(font_info, string3, len3);
+&nbsp;&nbsp; /* Output text, centered on each line */
+&nbsp;&nbsp; font_height = font_info->ascent + font_info->descent;
+&nbsp;&nbsp; /* Output text, centered on each line */
+&nbsp;&nbsp; XDrawString(display, win, gc, (win_width - width1)/2,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font_height, string1, len1);
+&nbsp;&nbsp; XDrawString(display, win, gc, (win_width - width2)/2,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (int)(win_height - (2 * font_height)),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string2, len2);
+&nbsp;&nbsp; XDrawString(display, win, gc, (win_width - width3)/2,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (int)(win_height - font_height),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string3, len3);
+&nbsp;&nbsp; /* Copy numbers into string variables */
+&nbsp;&nbsp; (void) sprintf(cd_height, " Height - %d pixels",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DisplayHeight(display,screen_num));
+&nbsp;&nbsp; (void) sprintf(cd_width, " Width&nbsp; - %d pixels",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DisplayWidth(display,screen_num));
+&nbsp;&nbsp; (void) sprintf(cd_depth, " Depth&nbsp; - %d plane(s)",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DefaultDepth(display, screen_num));
+&nbsp;&nbsp; /* Reuse these for same purpose */
+&nbsp;&nbsp; len4 = strlen(string4);
+&nbsp;&nbsp; len1 = strlen(cd_height);
+&nbsp;&nbsp; len2 = strlen(cd_width);
+&nbsp;&nbsp; len3 = strlen(cd_depth);
+&nbsp;&nbsp; /* To center strings vertically, we place the first string
+&nbsp;&nbsp;&nbsp; * so that the top of it is two font_heights above the center
+&nbsp;&nbsp;&nbsp; * of the window; since the baseline of the string is what
+&nbsp;&nbsp;&nbsp; * we need to locate for XDrawString and the baseline is
+&nbsp;&nbsp;&nbsp; * one font_info->ascent below the top of the character,
+&nbsp;&nbsp;&nbsp; * the final offset of the origin up from the center of
+&nbsp;&nbsp;&nbsp; * the window is one font_height + one descent */
+&nbsp;&nbsp; initial_y_offset = win_height/2 - font_height -
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font_info->descent;
+&nbsp;&nbsp; x_offset = (int) win_width/4;
+&nbsp;&nbsp; XDrawString(display, win, gc, x_offset, (int) initial_y_offset,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string4,len4);
+&nbsp;&nbsp; XDrawString(display, win, gc, x_offset, (int) initial_y_offset +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font_height,cd_height,len1);
+&nbsp;&nbsp; XDrawString(display, win, gc, x_offset, (int) initial_y_offset +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2 * font_height,cd_width,len2);
+&nbsp;&nbsp; XDrawString(display, win, gc, x_offset, (int) initial_y_offset +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3 * font_height,cd_depth,len3);
+}</TT></PRE>
+</BLOCKQUOTE>
+Note that this routine may be called repeatedly in response
+to <B>Expose</B> events. That is why the font is loaded, a GC is created,
+and its font member is set to the loaded font in separate routines before
+the event loop. The font information structure (containing the font ID)
+and GC resource ID are passed to <B>draw_text</B> as arguments.
+<H3>
+Vertical Text and Rotated Text</H3>
+Xlib provides routines that draw horizontal strings, but
+not vertical ones. If you want to draw strings vertically that read normally,
+you need to use a separate text drawing call for each character. You use
+a baseline with the same x coordinate but a different y coordinate for
+each character.
+
+<P>Drawing strings vertically that read sideways is even
+more of a problem. The core X protocol and font server provides no way
+to rotate text, and the XLFD provides no way to name such font variations.&nbsp;
+One possibility is to use fonts that have their characters sideways. There
+is only one of these in the distribution from MIT, called <I>rot-s16</I>.
+
+<P>Hewlett Packard has developed enhancements to the R5 font
+server that support rotated and anamorphically scaled text. They come in
+the form of patches to the source code for the font server in MIT's X distribution.
+These patches have been donated to the X Consortium so they are freely
+available for ftp on <I>export.lcs.mit.edu</I>. See <I>The X Resource</I>,
+Issue 3, Summer 1992, for a complete description.
+<H3>
+Font Properties</H3>
+Font properties give detailed information about a font, usually
+for use only in desktop publishing applications. A font is not guaranteed
+to have any properties. When possible, fonts should have at least the properties
+represented by the atoms listed in Table 6-1. These atoms are defined in
+&lt;<I>X11/Xatom.h</I>>. <B>XGetFontProperty()</B> returns the value of
+a property given the atom for that property. In the descriptions in Table
+6-1, the data associated with a property is referred to with the same name
+as the property, but in mixed case. For example, the property atom <B>XA_SUPERSCRIPT_X</B>
+contains a value that is referred to as <B>SuperscriptX</B> in the description.
+
+<P>Applications that make heavy use of proportionally spaced
+text may use these properties to space various characters properly.
+
+<P>For a further description of font properties and associated
+conventions, see Appendix M, <I>Logical Font Description Conventions</I>,
+of Volume Zero, <I>X Protocol Reference Manual</I> (as of the second printing).
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 6-1 : </B>Font Properties</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Property Name</TH>
+
+<TH>Type</TH>
+
+<TH>Description</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_MIN_SPACE</B></TD>
+
+<TD><B>unsigned int</B></TD>
+
+<TD>The minimum interword spacing.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_NORM_SPACE</B></TD>
+
+<TD><B>unsigned int</B></TD>
+
+<TD>The normal interword spacing.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_MAX_SPACE</B></TD>
+
+<TD><B>unsigned int</B></TD>
+
+<TD>The maximum interword spacing.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_END_SPACE</B></TD>
+
+<TD><B>unsigned int</B></TD>
+
+<TD>The additional spacing at the end of sentences.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_SUPERSCRIPT_X</B></TD>
+
+<TD><B>int</B></TD>
+
+<TD>Offset (in pixels) from the character origin where superscripts
+should begin. If the origin is at <B>[x,y]</B> , then superscripts should
+begin at: <B>[x + SuperscriptX, y - SuperscriptY]</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_SUPERSCRIPT_Y</B></TD>
+
+<TD><B>int</B></TD>
+
+<TD>Offset (in pixels) from the character origin where superscripts
+should begin. If the origin is at <B>[x,y]</B> , then superscripts should
+begin at: <B>[x + SuperscriptX, y - SuperscriptY]</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_SUBSCRIPT_X</B></TD>
+
+<TD><B>int</B></TD>
+
+<TD>Offset (in pixels) from the character where subscripts
+should begin. If the origin is at <B>[x,y]</B> , then subscripts should
+begin at: <B>[x + SubscriptX, y + SubscriptY]</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_SUBSCRIPT_Y</B></TD>
+
+<TD><B>int</B></TD>
+
+<TD>Offset (in pixels) from the character where subscripts
+should begin. If the origin is at <B>[x,y]</B> , then subscripts should
+begin at: <B>[x + SubscriptX, y + SubscriptY]</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_UNDERLINE_POSITION</B></TD>
+
+<TD><B>int</B></TD>
+
+<TD>Y offset (in pixels) from the baseline to the top of
+an underline. If the baseline is y-coordinate y, then the top of the underline
+is at: <B>[y + UnderlinePosition]</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_UNDERLINE_THICKNESS</B></TD>
+
+<TD><B>unsigned int</B></TD>
+
+<TD>Thickness in pixels of an underline.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_STRIKEOUT_ASCENT</B></TD>
+
+<TD><B>int</B></TD>
+
+<TD>Vertical extents (in pixels) for boxing or voiding characters.
+If the baseline is at y-coordinate y, then the top of the strikeout box
+is at: <B>[y - StrikeoutAscent]</B> and the height of the box is: <B>[StrikeoutAscent
++ StrikeoutDescent]</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_STRIKEOUT_ DESCENT</B></TD>
+
+<TD><B>int</B></TD>
+
+<TD>Vertical extents (in pixels) for boxing or voiding characters.
+If the baseline is at y-coordinate y, then the top of the strikeout box
+is at: <B>[y - StrikeoutAscent]</B> and the height of the box is: <B>[StrikeoutAscent
++ StrikeoutDescent]</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_ITALIC_ANGLE</B></TD>
+
+<TD><B>int</B></TD>
+
+<TD>The angle of the dominant staffs of characters in the
+font, in degrees scaled by 64, relative to the three-o'clock position from
+the character origin, with positive indicating counterclockwise motion
+(as in <B>XDrawArc</B> ).</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_X_HEIGHT</B></TD>
+
+<TD><B>int</B></TD>
+
+<TD>"1 ex" as in TeX, but expressed in units of pixels. Often
+the height of lowercase <I>x</I> .</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_QUAD_WIDTH</B></TD>
+
+<TD><B>int</B></TD>
+
+<TD>"1 em" as in TeX, but expressed in units of pixels. The
+width of an <I>m</I> in the current font and point size.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_CAP_HEIGHT</B></TD>
+
+<TD><B>int</B></TD>
+
+<TD>Y offset from the baseline to the top of the capital
+letters, ignoring accents, in pixels. If the baseline is at y-coordinate
+y, then the top of the capitals is at: <B>(y - CAP_HEIGHT)</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_WEIGHT</B></TD>
+
+<TD><B>unsigned</B></TD>
+
+<TD>The weight or boldness of the font, expressed as a value
+between 0 and 1000.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_POINT_SIZE</B></TD>
+
+<TD><B>unsigned</B></TD>
+
+<TD>The point size, expressed in tenths of a point, of this
+font at the ideal resolution. There are 72.27 points to the inch.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XA_RESOLUTION</B></TD>
+
+<TD><B>unsigned</B></TD>
+
+<TD>The number of pixels per point, expressed in hundredths,
+at which this font was created.</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>It is also possible for fonts to have properties not in
+this predefined list. If there are such properties, they will be stored
+in a list of <B>XFontProp</B> structures in the <B>XFontStruct</B> for
+the font. Example 6-8 shows the <B>XFontProp</B> structure. The documentation
+for each font must describe these additional properties if they are defined.
+
+<P><B>The additional font property structure</B>
+<BLOCKQUOTE>
+<PRE><TT>/* Additional properties to allow arbitrary information with fonts */
+typedef struct {
+&nbsp;&nbsp;&nbsp; Atom name;
+&nbsp;&nbsp;&nbsp; unsigned long card32;
+} XFontProp;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Setting the Font Path</H3>
+<B>XFreeFontPath()</B>, <B>XGetFontPath()</B>, and <B>XSetFontPath()</B>
+are available to get or set the current search path for fonts. These functions
+are very rarely needed, but you should know that they exist. Their purpose
+is to allow for additional directories of fonts besides the default, which
+is <I>/usr/lib/X11/fonts</I> on UNIX-based systems. The font path is common
+to all clients of the server, so it should be modified with care. If the
+directory that contains the standard fonts is removed from the path, neither
+any client nor the server can access fonts.
+
+<P>In Release 5, font servers need to be added to the font
+path so the X server can access them.
+<BR>
+<HR>
+<H2>
+Regions</H2>
+An X <I>region</I> is an arbitrary set of pixels on the screen.
+But usually a region is either a rectangular area, several overlapping
+or adjacent rectangular areas, or a general polygon. Regions are chiefly
+used to set the <B>clip_mask</B> member of the GC. <B>XSetRegion()</B>
+sets the <B>clip_mask</B> to a region so that output will occur only within
+the region. Using <B>XSetRegion()</B> is a lot easier than defining a single-plane
+pixmap with the desired size and shape and then using that bitmap to set
+the <B>clip_mask</B> with <B>XSetClipMask()</B>, and it is more flexible
+than the <B>clip_mask</B> you can set with <B>XSetClipRectangles()</B>.
+
+<P>The most common use of setting the <B>clip_mask</B> to
+a region is to combine the rectangle from each of multiple contiguous <B>Expose</B>
+events on a single window into a single region and clip the redrawing to
+that region. This provides a performance improvement in some situations.
+See Section 3.2.13.1, "Repainting the Window" for more information and
+an example.
+
+<P>A region has an x and y offset, which is used internally
+when making calculations with regions (offsets for all regions have a common
+origin). The offset has an effect if the region is used as a <B>clip_mask</B>.
+When making a graphics request with the <B>clip_mask</B> of the GC set
+with <B>XSetRegion()</B>, the offset of the region is added to <B>clip_x_origin</B>
+and <B>clip_y_origin</B> to determine the placement of the region relative
+to the destination drawable.
+
+<P>Regions can be created with <B>XCreateRegion()</B> or
+<B>XPolygonRegion()</B>. <B>XCreateRegion()</B> creates an empty region
+to which rectangles can be added with <B>XUnionRectWithRegion()</B> and
+various other functions that perform mathematical operations on regions.
+<B>XCreateRegion()</B> and <B>XPolygonRegion()</B> return a pointer to
+the opaque type <B>Region</B>, whose definition a program does not need
+to know. Just the pointer is used to refer to the region. <B>XPolygonRegion()</B>
+creates a region of the same shape as <B>XDrawLines()</B> would draw given
+the same arguments (except that <B>XPolygonRegion()</B> does not require
+a drawable or a GC and therefore interprets the lines as thin lines). It
+specifies a list of points and has a flag that indicates whether areas
+overlapping an odd number of times should be included or not included in
+the region (just like the <B>fill_rule</B> in the GC).
+
+<P>Each region is implemented as a group of nonoverlapping
+rectangles. Therefore, performance will be best if the regions you use
+have sides parallel to the coordinate axes. Nonetheless, nonrectangular
+regions can be created with <B>XPolygonRegion()</B>.
+
+<P>A region is destroyed with <B>XDestroyRegion()</B>. The
+best way to clear a region is to destroy it and create a new one.
+
+<P><B>XClipBox()</B> returns the size and position of the
+smallest rectangle that completely encloses the given region. This function
+returns an <B>XRectangle</B> structure that contains the coordinates of
+the upper-left corner and the width and height of the rectangle enclosing
+a region.
+<H3>
+Moving and Resizing Regions</H3>
+<B>XOffsetRegion()</B> changes the offset of the specified
+region by the number of pixels specified by its arguments dx and dy. <B>XShrinkRegion()</B>
+reduces the size of the given region by the number of pixels specified
+by dx and dy, with positive values indicating that the region is to be
+increased in size. <B>XShrinkRegion()</B> also modifies the offset of the
+region to keep the center of the region near its original position.
+<H3>
+Computations with Regions</H3>
+Several functions are available to combine two regions in
+various ways. Each function takes three regions as arguments: two operands
+and a region in which to place the result.
+<DL>
+<DT>
+<B>XIntersectRegion()</B></DT>
+
+<DD>
+Computes the intersection (overlapping area) of two regions.</DD>
+
+<DT>
+<B>XUnionRegion()</B></DT>
+
+<DD>
+Computes the union (total of both areas) of two regions.</DD>
+
+<DT>
+<B>XSubtractRegion()</B></DT>
+
+<DD>
+Subtracts two regions. The result is the region listed first
+minus the intersection of the two regions.</DD>
+
+<DT>
+<B>XXorRegion()</B></DT>
+
+<DD>
+Computes the difference between the union and the intersection
+of two regions.</DD>
+
+<DT>
+<B>XUnionRectWithRegion()</B></DT>
+
+<DD>
+Computes the union of a rectangle and region and sets the
+region to the result.</DD>
+</DL>
+
+<H3>
+Returning Region Information</H3>
+This group of region functions makes logical determinations
+about regions. All of these routines return nonzero if their conditions
+are satisfied.
+<DL>
+<DT>
+<B>XEmptyRegion()</B></DT>
+
+<DD>
+Determines whether there is any area in the specified region.</DD>
+
+<DT>
+<B>XEqualRegion()</B></DT>
+
+<DD>
+Determines whether two regions have the same offset, size,
+and shape.</DD>
+
+<DT>
+<B>XPointInRegion()</B></DT>
+
+<DD>
+Determines whether a specified point resides in a region.</DD>
+
+<DT>
+<B>XRectInRegion()</B></DT>
+
+<DD>
+Determines whether a rectangle specified by x, y, width,
+and height occurs completely inside, completely outside, or overlapping
+a given region. It returns <B>RectangleIn</B> if the rectangle is completely
+inside the region, <B>RectanglePart</B> if the rectangle overlaps the edge
+of a region, and <B>RectangleOut</B> if the rectangle and the region are
+nonintersecting.</DD>
+</DL>
+
+<HR>
+<H2>
+Images</H2>
+Xlib provides an image structure that is capable of storing
+all the data corresponding to a screen area or pixmap. The major difference
+between an image and a pixmap is that an image is a structure on the client
+side, so its contents can be manipulated directly by the client, instead
+of solely through X protocol requests. Xlib provides the routines <B>XGetImage()</B>
+and <B>XPutImage()</B> that use the X protocol to transfer the contents
+of a window or pixmap into an image structure and to write the contents
+of an image structure back into a window or pixmap.
+
+<P>Xlib provides a few minimal routines for manipulating
+image structures, including routines to create and initialize an empty
+image structure, destroy an image structure, get a pixel, set a pixel,
+extract a subimage of an image, and add a constant value to all pixels
+in an image. These routines can be relatively slow, because they change
+the byte- and bit-order of the image before performing the operation and
+then change it back before placing it back in the image. However, in some
+implementations of Xlib, optimized versions of these routines will automatically
+be used when the byte- and bit-order used by the server happens to be the
+same as that used by the machine running the client. This should be quite
+fast but is not always available.
+
+<P>The image-processing routines provided by Xlib are minimal--they
+do not provide a complete image manipulation package. However, the image
+structure does contain all the information necessary to implement a complete
+package. An application can implement its own routines to manipulate the
+image data directly. However, this code is difficult to write in a portable
+and efficient fashion because of the large number of data formats that
+are possible.&nbsp; returns data that uses the byte- and bit-order of the
+server. The application will need to swap this into the native byte- and
+bit-order before doing image processing. <B>XPutImage()</B> takes care
+of swapping it back before sending it to the server, so that the application
+need not convert the data back to the server-native byte- and bit-order.
+However, <B>XPutImage()</B> does not convert images of different depths.
+
+<P>The <B>XImage</B> data structure is shown in Example 6-9.
+
+<P><B>The XImage structure</B>
+<BLOCKQUOTE>
+<PRE><TT>&nbsp;&nbsp; struct _XImage {
+&nbsp;&nbsp; int width, height;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Size of image */
+&nbsp;&nbsp; int xoffset;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Number of pixels offset in
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * x direction */
+&nbsp;&nbsp; int format;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* XYBitmap, XYPixmap, ZPixmap */
+&nbsp;&nbsp; char *data;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Pointer to image data */
+&nbsp;&nbsp; int byte_order;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Data byte order, LSBFirst,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * MSBFirst */
+&nbsp;&nbsp; int bitmap_unit;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Quantity of scan line 8, 16, 32 */
+&nbsp;&nbsp; int bitmap_bit_order;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* LSBFirst, MSBFirst */
+&nbsp;&nbsp; int bitmap_pad;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* 8, 16, 32 either XY or Z format */
+&nbsp;&nbsp; int depth;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Depth of image */
+&nbsp;&nbsp; int bytes_per_line;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Accelerator to next line */
+&nbsp;&nbsp; int bits_per_pixel;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Bits per pixel (ZPixmap format) */
+&nbsp;&nbsp; unsigned long red_mask;&nbsp;&nbsp;&nbsp;&nbsp; /* Bits in z arrangement */
+&nbsp;&nbsp; unsigned long green_mask;
+&nbsp;&nbsp; unsigned long blue_mask;
+&nbsp;&nbsp; char *obdata;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Hook for the object routines to
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * hang on */
+&nbsp;&nbsp; struct funcs {&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Image manipulation routines */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; struct _XImage *(*create_image)();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int (*destroy_image)();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unsigned long (*get_pixel)();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int (*put_pixel)();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; struct _XImage *(*sub_image)();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int (*add_pixel)();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } f;
+} XImage;</TT></PRE>
+</BLOCKQUOTE>
+The function pointers in the image object allow Xlib implementors
+to replace MIT's generic functions with functions optimized for the byte-
+and bit-order used in the machine that is running Xlib.
+<UL>
+<LI>
+The <B>height</B>, <B>width</B>, and <B>xoffset</B> are set
+when an image is created. The offset is used to align an image to even-addressable
+boundaries.</LI>
+
+<LI>
+The <B>format</B> member may be <B>XYBitmap</B>, <B>XYPixmap</B>,
+or <B>ZPixmap</B>.In <B>XYBitmap</B>, the bitmap is represented in scan
+line order, with each scan line made up of multiples of the <B>bitmap_unit</B>
+and padded with meaningless bits. Within each <B>bitmap_unit</B>, the bit
+order depends on <B>bitmap_bit_order</B>.In <B>XYPixmap</B>, each plane
+is represented as a bitmap, and the planes appear in most significant to
+least significant bit order, with no padding between planes.In <B>ZPixmap</B>,
+the pixels (instead of bits) are listed in scan line order. Each pixel
+has <B>bits_per_pixel</B> bits, and the bits in the pixel that are allocated
+to red, green, and blue for <B>DirectColor</B> and <B>TrueColor</B> are
+specified by <B>red_mask</B>, <B>blue_mask</B>, and <B>green_mask</B>.
+See Chapter 7, "Color," for more information on these masks. At the end
+of each scan line, a pad is used as for <B>XYBitmap</B>.</LI>
+
+<LI>
+The <B>byte_order</B> is the data byte order, either <B>LSBFirst</B>
+or <B>MSBFirst</B>. The <B>bitmap_bit_order</B> is the bit order within
+each byte, again either <B>LSBFirst</B> or <B>MSBFirst</B>. The <B>bitmap_unit</B>
+specifies how many bits make up a unit of image data (usually the same
+as the word size), and it can be <B>8</B>, <B>16</B>, or <B>32</B>. Together,
+these members determine the exact arrangement of bits in memory. Figure
+6-6 shows the effect of the various <B>byte_order</B> and <B>bit_order</B>
+combinations assuming a <B>bitmap_unit</B> of <B>16</B>. VAXes and 80*86
+systems use <B>byte_order</B> of <B>LSBFirst</B>, while 68000-family systems
+use <B>MSBFirst</B>. Note that with these three variables alone there are
+12 different data formats. The <B>ImageByteOrder()</B> and <B>BitmapBitOrder()</B>
+macros return which byte order and bit order is used by the server.</LI>
+
+<LI>
+The <B>bitmap_pad</B> member can be <B>8</B>, <B>16</B>,
+or <B>32</B>, and it specifies the quantum of the scan line. In other words,
+the start of one scan line and the start of the next are separated by an
+integer multiple of this number.</LI>
+
+<LI>
+The <B>depth</B> of an image is assigned as the image is
+created. The depth of a window from which image data is read must match
+this depth.</LI>
+
+<LI>
+The <B>bytes_per_line</B> member specifies how many bytes
+make up a scan line.</LI>
+
+<LI>
+The <B>bits_per_pixel</B> member is for <B>ZPixmap</B> images
+only. This member of the <B>XImage</B> structure must match the member
+of the same name in the <B>ScreenFormat</B> structure (itself a member
+of <B>Display</B>).</LI>
+
+<LI>
+The <B>red_mask</B>, <B>green_mask</B>, and <B>blue_mask</B>
+members are for <B>ZPixmap</B> only and specify the number of bits in the
+pixel that are allocated to red, green, and blue. This implies that the
+visual is <B>DirectColor</B> or <B>TrueColor</B>. See Chapter 7, "Color
+"for more information.</LI>
+</UL>
+<B>Bit and byte order possibilities for images when bitmap_unit
+= 16</B>
+
+<P><IMG SRC="imgs/fig.6.06.gif" ALT="fig.6.06.gif" BORDER=0  ALIGN=ABSCENTER>
+<H3>
+Manipulating Images</H3>
+These are the available functions that operate on images:
+<DL>
+<DT>
+<B>XCreateImage()</B></DT>
+
+<DD>
+Allocates memory for an <B>XImage</B> structure and sets
+various members. Note that it uses the server's data format, which is often
+not appropriate. The byte- and bit-order fields should usually be changed
+directly to the client-native format. However, then the call <B>_XInitImageFuncPtrs(image)</B>
+should be issued to reset the mapping to the appropriate versions of the
+functions for manipulating the image. This call is supposed to be private
+to Xlib and, therefore, should be watched for changes in later releases,
+but this is currently the accepted method.</DD>
+
+<DT>
+<B>XGetImage()</B></DT>
+
+<DD>
+Fills an <B>XImage</B> structure with data corresponding
+to a visible area of the screen or a pixmap.</DD>
+
+<DT>
+<B>XPutImage()</B></DT>
+
+<DD>
+Dumps an <B>XImage</B> structure with data into an area of
+a window or a pixmap.</DD>
+
+<DT>
+<B>XDestroyImage()</B></DT>
+
+<DD>
+Frees the data field in an image structure if the image structure
+was allocated in the application. If the image was created using <B>XCreateImage()</B>,
+<B>XGetImage()</B>, or <B>XGetSubImage()</B>, <B>XDestroyImage()</B> frees
+both the data and the image structure. Note that if the image data is stored
+in static memory in the application, it cannot be freed--to free an image
+created with <B>XCreateImage()</B> that has statically allocated data,
+you must set <B>NULL</B> into the <B>data</B> field before calling <B>XDestroyImage()</B>.</DD>
+
+<DT>
+<B>XGetPixel()</B></DT>
+
+<DD>
+Gets a single pixel value specified by an x,y location from
+an image.</DD>
+
+<DT>
+<B>XPutPixel()</B></DT>
+
+<DD>
+Puts a single pixel value into an image in a specified location.</DD>
+
+<DT>
+<B>XAddPixel()</B></DT>
+
+<DD>
+Increments each pixel in a pixmap by a constant value.</DD>
+
+<DT>
+<B>XSubImage()</B></DT>
+
+<DD>
+Creates a new image that is a subset of an existing image.
+It executes <B>XCreateImage()</B> and then performs multiple executions
+of <B>XGetPixel()</B> and <B>XPutPixel()</B>, so it may be slow.</DD>
+
+<DT>
+<B>XGetSubImage()</B></DT>
+
+<DD>
+Creates an image from a subsection of a drawable.</DD>
+</DL>
+Functions to read and write images to and from disk files
+have not yet been defined by the X Consortium.
+
+<P>Example 6-10 demonstrates the use of images. See <I>Volume
+Two, Xlib Reference Manual</I>, for more information on the image-handling
+functions.
+<H3>
+Examples Using Images</H3>
+Images are one of the areas of X that has not yet been extensively
+used. Therefore, there are few examples available that use images to their
+potential.
+
+<P>The unique feature of images is that all the data is stored
+and is directly accessible in Xlib, rather than in the server like <B>Pixmap</B>
+and <B>Window</B> resources. Since images completely represent a screen
+area, you can do anything you want to any of the pixel values in the image.
+Applications like image processing and machine vision would probably use
+images.
+
+<P>Example 6-10 shows a routine using images. This routine
+reads an image from the screen, manipulates it, and puts a reflected version
+of the contents in a new window of the same size. It uses <B>XGetImage()</B>,
+<B>XPutImage()</B>, and <B>XPutPixel()</B>.
+
+<P><B>Example using images -- reflect_window</B>
+<BLOCKQUOTE>
+<PRE><TT>/* Window and newwindow must have the same size and depth,
+&nbsp;* and window must be visible */
+reflect_window (window, newwindow, gc, width, height)
+Window window, newwindow;
+GC gc;
+unsigned int width, height;
+{
+XImage *xi;
+unsigned long pixelvalue1, pixelvalue2;
+int y;
+int left_x, right_x;
+xi = XGetImage(display, window, 0,0, width, height, AllPlanes,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XYPixmap);
+printf("calculating reflection -- this may take awhile...\n");
+for (left_x=0 ; left_x&lt;width/2 ; left_x++)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (y=0 ; y&lt;height ; y++)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pixelvalue1 = XGetPixel(xi, left_x, y);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; right_x = width - left_x;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (left_x != right_x)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pixelvalue2 = XGetPixel(xi, right_x, y);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XPutPixel(xi, left_x, y, pixelvalue2);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XPutPixel(xi, right_x, y, pixelvalue1);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+printf("putting image\n");
+XPutImage(display, newwindow, gc, xi, 0, 0, 0, 0, width, height);
+}</TT></PRE>
+</BLOCKQUOTE>
+With sufficient understanding of the format of image data,
+this routine could be rewritten without <B>XGetPixel()</B> and <B>XPutPixel()</B>,
+which would speed it up substantially. However, there would have to be
+separate code for the many different image formats to make the code as
+portable as the version shown.
+<BR>
+<HR>
+<H2>
+Cursors</H2>
+The cursor is different from other types of output to the
+screen since it is transient, passing over the screen without permanently
+changing it. The cursor is drawn where the pointer is pointing and removed
+as soon as the pointer moves.
+
+<P>Each window can have a different cursor defined in its
+window attributes (using <B>XDefineCursor()</B>). Whenever the pointer
+is in a visible window, the cursor is set to the cursor defined for that
+window. If no cursor was defined for that window, the cursor will be the
+one that was defined for the parent window unless otherwise specified in
+the attributes.
+
+<P>From X's perspective, a cursor consists of a cursor shape,
+mask, foreground and background colors, and hotspot (defined in a moment):
+<UL>
+<LI>
+The cursor bitmap determines the shape of the cursor.</LI>
+
+<LI>
+The mask bitmap determines the pixels on the screen that
+will be modified by the cursor.</LI>
+
+<LI>
+The pixel values determine the foreground color (the 1 bits
+in the cursor bitmap) and the background color (the 0 bits in the cursor
+bitmap).</LI>
+
+<LI>
+The <I>hotspot</I> defines the point on the cursor that will
+be reported when a pointer event occurs. The hotspot is the actual tracking
+position--for example, the center for a crosshair cursor or the point of
+an arrow.</LI>
+</UL>
+There usually are limitations imposed by the hardware on
+cursors as to size, shape, and whether a mask is implemented. <B>XQueryBestCursor()</B>
+is used to find out what sizes are possible.
+
+<P>You need to create a <B>Cursor</B> resource to call <B>XDefineCursor()</B>.
+Read on for a description of the various ways to create cursors.
+<H3>
+The Standard Cursor Font</H3>
+Many popular cursor shapes are provided in the standard cursor
+font, &lt;<I>X11/cursorfont.h</I>>. Each of these cursor shapes can be
+turned into a <B>Cursor</B> resource using <B>XCreateFontCursor()</B>.
+Example 6-11 demonstrates this process.
+
+<P>The cursor font is shown in Appendix I, <I>The Cursor
+Font</I>, of <I>Volume Two, Xlib Reference Manual</I>, and on the reference
+page for <B>XCreateFontCursor()</B> in Volume Two. Each of these cursors
+uses two characters in the cursor font, only one of which is shown. One
+determines the shape of the cursor, and the other is a mask which selects
+which pixels on the screen are disturbed by the cursor. The mask for each
+standard cursor is very similar to the shape for that cursor but one pixel
+wider in all directions. This means that when the cursor is black and over
+a black background, this one pixel outline of the cursor will appear in
+white around the cursor, making the cursor visible over any background.
+
+<P><B>Creating a Cursor from the standard cursor font</B>
+<BLOCKQUOTE>
+<PRE><TT>#include &lt;X11/cursorfont.h>
+int cursor_shape = XC_arrow;
+Window window;
+Cursor cursor;
+cursor = XCreateFontCursor(display, cursor_shape);
+XDefineCursor(display, window, cursor);
+/* Now cursor will appear when pointer is in window */</TT></PRE>
+</BLOCKQUOTE>
+If your client is operating on a color screen and it allows
+the user to specify window background colors, it may also allow the user
+to specify cursor colors, since this could improve contrast between the
+window background and cursor. These pixel values may be specified in the
+calls to <B>XCreateGlyphCursor()</B> and <B>XCreatePixmapCursor()</B>,
+or <B>XRecolorCursor()</B> may be called for an existing cursor.
+
+<P><B>XCreateGlyphCursor()</B> allows you to do the same
+thing as is done with the standard cursors but using font characters you
+specify from any font. The hotspot of these cursors and those created by
+<B>XCreateFontCursor()</B> is the origin of each font character (just as
+if it were text). Usually the hotspot is placed in a logical location,
+but it is not possible to determine where the hotspot is from within the
+program or to change its location.
+
+<P><B>XCreatePixmapCursor()</B> allows you to create a cursor
+from shape and mask pixmaps and foreground and background pixel values,
+with an explicit hotspot. <B>XQueryBestCursor()</B> should be called to
+determine the allowed cursor sizes before preparing the pixmaps.
+
+<P>You can free the cursor with <B>XFreeCursor()</B> right
+after the <B>XDefineCursor()</B> call if no further explicit references
+to it are made.
+<H3>
+Creating a Pixmap Cursor</H3>
+If no cursor in the standard cursor font meets your needs,
+you can design one of your own. It should be 16 by 16 pixels since some
+servers may not be able to handle other sizes efficiently. You can design
+the shape of the cursor with any bitmap editing tool such as the <I>bitmap</I>
+program. You will also have to design a mask. To see the purpose of the
+mask, move the cursor on your X screen over various backgrounds (highlight
+some text if necessary to get a different background). The mask provides
+an outline around the cursor so that the cursor is visible over any background.
+Therefore, the design of the mask is typically similar to the cursor shape
+but simpler and more dense. The outline of the mask usually extends one
+pixel more in every direction than the cursor shape. Figure 6-7 shows a
+shape and its corresponding mask, as an example of their relationship.
+
+<P><B>A cursor shape pixmap and corresponding mask</B>
+
+<P><IMG SRC="imgs/fig.6.07.gif" ALT="fig.6.07.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;Example 6-12 demonstrates the code for creating
+your own cursor.
+
+<P><B>Creating a Pixmap Cursor</B>
+<BLOCKQUOTE>
+<PRE><TT>#include "bill"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* shape bits */
+#include "mask"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* mask bits */
+Pixmap shape, mask;
+XColor magenta_def, bviolet_def;
+/* shape and mask are single plane pixmaps */
+shape = XCreatePixmapFromBitmapData(display, root_window,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; bill_bits, bill_width, bill_height, 1, 0, 1 );
+mask = XCreatePixmapFromBitmapData(display, root_window,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mask_bits, mask_width, mask_height, 1, 0, 1 );
+XParseColor(display, colormap, "magenta", &amp;magenta_def );
+XParseColor(display, colormap, "BlueViolet", &amp;bviolet_def );
+/* colors are applied when making the cursor, not when making
+&nbsp;* the shape and mask pixmaps */
+cursor = XCreatePixmapCursor(display, shape, mask, &amp;magenta_def,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;bviolet_def, bill_x_hot, bill_y_hot );
+XDefineCursor(display, window, cursor);</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Loading and Changing Cursors</H3>
+The following routines are used to manipulate cursors:
+<DL>
+<DT>
+<B>XCreateFontCursor()</B></DT>
+
+<DD>
+Creates a cursor from the font of standard cursors. This
+is the easiest way to create a cursor.</DD>
+
+<DT>
+<B>XCreateGlyphCursor()</B></DT>
+
+<DD>
+Creates a cursor from a font character (glyph) and a mask.</DD>
+
+<DT>
+<B>XCreatePixmapCursor()</B></DT>
+
+<DD>
+Creates a cursor from pixmap data.</DD>
+
+<DT>
+<B>XDefineCursor()</B></DT>
+
+<DD>
+Associates a cursor with a window, so that the specified
+cursor is displayed in the window whenever the pointer is in the window.</DD>
+
+<DT>
+<B>XUndefineCursor()</B></DT>
+
+<DD>
+Reverses <B>XDefineCursor()</B>, so that the window uses
+the cursor assigned to its parent.</DD>
+
+<DT>
+<B>XFreeCursor()</B></DT>
+
+<DD>
+Frees memory associated with a cursor.</DD>
+
+<DT>
+<B>XQueryBestCursor()</B></DT>
+
+<DD>
+Returns the supported cursor sizes on the given display.</DD>
+
+<DT>
+<B>XRecolorCursor()</B></DT>
+
+<DD>
+Changes the foreground and background color of a cursor.</DD>
+</DL>
+See <I>Volume Two, Xlib Reference Manual</I>, for more information
+on these routines.
+<BR>
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

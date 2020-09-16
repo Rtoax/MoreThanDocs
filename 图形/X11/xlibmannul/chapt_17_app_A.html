@@ -1,0 +1,983 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_16.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_18_app_B.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H2>
+Specifying Fonts</H2>
+This appendix describes how to define the names of the default
+fonts your application will use if the user does not override them. This
+chapter explains the font service architecture and the use of the scalable
+fonts. Font service is entirely transparent to the X programmer--it is
+impossible for the programmer to tell whether a given font came from a
+font server or from a font file read by the X server. Although there are
+no new functions or datatypes related to font service, the architecture
+overview and font server configuration information may be of interest.
+
+<P>This appendix describes how to specify fonts in application
+code or in resource files. For all the details on the conventions for font
+naming, see Appendix M, <I>Logical Font Description Conventions</I>, of
+Volume Zero, <I>X Protocol Reference Manual</I> (as of the second printing).
+<BR>
+<HR>
+<H2>
+Font Specification</H2>
+Most applications that display text allow the user to specify
+the font via either the <B>font</B> resource or the <B>-fn</B> and <B>-font</B>
+command line options.
+
+<P>The X Window System supports many different display fonts
+with different sizes and type styles. (These are <I>screen</I> fonts and
+are not to be confused with <I>printer</I> fonts.)
+
+<P>Since Release 3, Adobe Systems, Inc. and Digital Equipment
+Corporation have jointly contributed several families of screen fonts (Courier,
+Helvetica, New Century Schoolbook, Symbol, and Times) in a variety of sizes,
+styles, and weights for 75-dots-per-inch (dpi) monitors. Bitstream, Inc.
+contributed its Charter font family in the same sizes, styles, and weights
+for both 75- and 100-dpi monitors. Since Release 4, Bigelow and Holmes,
+Inc. and Sun Microsystems, Inc. have contributed the Lucida font family
+and DEC contributed a new terminal emulator font. Since Release 5, Bitstream
+has contributed several outline fonts to match their contributed bitmap
+fonts.
+
+<P>Fonts are stored in three directories:
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table A-1 :&nbsp;</B></CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Directory</TH>
+
+<TH>Contents</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>/usr/lib/X11/fonts/misc</TD>
+
+<TD>Several fixed-width fonts, the cursor font</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>/usr/lib/X11/fonts/75dpi</TD>
+
+<TD>Fixed- and variable-width fonts, 75 dots per inch</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>/usr/lib/X11/fonts/100dpi</TD>
+
+<TD>Fixed- and variable-width fonts, 100 dots per inch</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>These three directories (in this order) comprise X's default
+font path. The font path can be changed with the <B>fp</B> option to the
+<I>xset</I> client, as described in <I>Volume Three, X Window System User's
+Guide</I>. The font path, together with a great deal of other information
+about the server defaults, can be listed with <I>xset query</I>. All fonts
+in the font path can be listed with <I>xlsfonts</I>, and the characters
+in a font can be displayed on the screen with <I>xfd</I>.
+
+<P>In R5 and later, the font path can include font servers.
+
+<P>An application can modify the font path using <B>XSetFontPath()</B>,
+to add font directories or font servers. This should be done carefully
+to make sure the existing font directories are still searched.
+
+<P>The name of each font file in the font directories has
+a filename extension of <I>.snf</I>, which stands for <I>server natural
+format</I>. In R4, fonts were distributed in <I>binary distribution format</I>
+(<I>bdf</I>), which needs to be compiled (with a special font compiler)
+for every different architecture. In R5, fonts are distributed in <I>portable
+compiled format</I> which can be used directly on any architecture. To
+find out more about the various font file formats, see <I>The X Resource</I>,
+Issue 2.
+<H3>
+Font Naming Conventions</H3>
+Font names are not determined by the names of the files in
+which they are stored. Instead a font's name is determined by the contents
+of the font property named FONT*. A font can be referred to by this name
+or by any of the aliases specified in an alias file in the directory containing
+the font file.
+
+<P>The syntax of font names is defined in the X Logical Font
+Description convention, or XLFD. The complete XLFD is reprinted in <I>Volume
+Zero, X Protocol Reference Manual</I>. This appendix tells you the essential
+information, however.
+
+<P>If you run <I>xlsfonts</I>, you will get an intimidating
+list of names similar to the one shown in Figure A-1 which, upon closer
+examination, contains a great deal of useful information:
+
+<P><B>A fully specified font name</B>
+
+<P><IMG SRC="imgs/App.A.1.gif" ALT="App.A.1.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;This rather verbose line is actually the name of
+the font stored in the file <I>courBO10</I> (in the <I>75dpi</I> directory).
+This font name specifies the foundry (Adobe), font family (Courier), weight
+(bold) slant (Oblique), set width (normal), size of the font in pixels
+(10), size of the font in tenths of a point (100, measured in tenths of
+a point, thus equals 10 points), horizontal resolution (75 dpi), vertical
+resolution (75 dpi), spacing (m, for monospace), average width in tenths
+of a pixel (60, measured in tenths of a pixel, thus equals 6 pixels) and
+character set (iso8859-1).
+
+<P>The meaning of many of these statistics is obvious. Some
+of the less obvious information is explained below:
+<DL>
+<DT>
+foundry</DT>
+
+<DD>
+The type foundry (in this case, Adobe) that digitized and
+supplied the font.</DD>
+
+<DT>
+set width</DT>
+
+<DD>
+A value describing a font's proportionate width, according
+to the foundry. Typical set widths include: normal, condensed, narrow,
+double width. All of the non-misc fonts have the set width <I>normal</I>.</DD>
+
+<DT>
+pixels and points</DT>
+
+<DD>
+Type is normally measured in points, a printer's unit equal
+to 1/72 of an inch. The size of a font in pixels depends on the resolution
+of the display font in pixels. For example, if the display font has 100-dpi
+resolution, a 12-point font will have a pixel size of 17, while with 75-dpi
+resolution, a 12-point font will have a pixel size of 12. If both these
+fields and average width are all zero, the X server or a font server may
+supply a scalable font, as described in Section A.3, "Scalable Fonts."</DD>
+
+<DT>
+spacing</DT>
+
+<DD>
+Either m (monospace, i.e., fixed-width) or p (proportional,
+i.e., variable-width).</DD>
+
+<DT>
+horizontal and vertical resolution</DT>
+
+<DD>
+The resolution in dots per inch for which a font is designed.
+Horizontal and vertical figures are required because a screen may have
+different capacities for horizontal and vertical resolution.</DD>
+
+<DT>
+average width</DT>
+
+<DD>
+Mean width of all characters in the font, measured in tenths
+of a pixel; in this case, 6 pixels. If this field and pixels and points
+are all zero, the X server or a font server may supply a scalable font,
+as described in Section A.3, "Scalable Fonts."</DD>
+
+<DT>
+character set</DT>
+
+<DD>
+ISO, the International Standards Organization, has defined
+character set standards for various languages. The iso8859-1 in Figure
+A-1 represents the ISO Latin-1 character set, which is used by all of the
+fonts in the <I>75dpi</I> and <I>100dpi</I> directories. The ISO Latin-1
+character set is a superset of the standard ASCII character set, which
+includes various special characters used in European languages other than
+English. See Appendix H, <I>Keysym Reference</I>, of <I>Volume Two, Xlib
+Reference Manual</I>, for a complete listing and example glyphs of the
+characters in the ISO Latin-1 character set.</DD>
+</DL>
+This font naming convention is intended to allow for the
+unique naming of fonts of any style, resolution, and size. It is powerful
+but unwieldy.
+
+<P>To display text using the font stored in the file <I>courBO10</I>,
+you could use the resource setting:
+<BLOCKQUOTE>
+<PRE><TT>.yourapp*font:&nbsp; -adobe-courier-bold-o-normal--10-100-75-75-m-60-iso8859-1</TT></PRE>
+</BLOCKQUOTE>
+Since typing a font name of this length is neither desirable
+nor practical, the X Window System developers have provided two alternatives:
+wildcarding and aliasing.
+<H3>
+Font Name Wildcarding</H3>
+Any unnecessary part of a font name can be "wildcarded" by
+specifying ? for any single character and * for any group of characters.
+
+<P>For example, using a wildcarded font name, the resource
+specification above could be written:
+<BLOCKQUOTE>
+<PRE><TT>*label:&nbsp; *courier-bold-o-*-100*</TT></PRE>
+</BLOCKQUOTE>
+(Note that when using wildcards with the <B>-fn</B> command
+line option, you must take care to quote the font names, since the UNIX
+shell has special meanings for the wildcard characters * and ?. This can
+be done by enclosing the entire font name in quotes or by escaping each
+wildcard character by typing a backslash before it.)
+
+<P>If more than one font in a given directory matches a wildcarded
+font name, the server chooses the font to use. If fonts from <I>more than
+one directory</I> match the wildcarded name, the server will always choose
+a font from the directory that is earlier in the font path. Thus, if a
+wildcarded font name matches a font from both the <I>75dpi</I> and the
+<I>100dpi</I> directories and the <I>75dpi</I> directory comes first in
+the font path, the server chooses the font from that directory.
+
+<P>In creating a wildcarded font name, you need to decide
+which parts of the standard font name must be explicit and which parts
+can be replaced with wildcards. As the previous example illustrates, you
+can use a single wildcard character for multiple parts of the font name.
+For instance, the final asterisk in the example stands for the sequence:
+<BLOCKQUOTE>
+<PRE><TT>-75-75-m-60-iso8859-1</TT></PRE>
+</BLOCKQUOTE>
+in the explicit font name. The idea is to specify enough
+parts of the font name explicitly so that the server gives you the font
+you have in mind.
+
+<P>It is helpful to familiarize yourself with the available
+font families, weights, slants, and point sizes. The following list gives
+these statistics for the fonts in the directories <I>75dpi</I> and <I>100dpi</I>
+in the standard X distribution from MIT.&nbsp; (The fonts in the <I>misc</I>
+directory are holdovers from Release 2 and have short, manageable names
+that should not require wildcarding.)
+<DL>
+<DT>
+Font families</DT>
+
+<DD>
+Charter, Courier, Helvetica, New Century Schoolbook, Symbol,
+Times</DD>
+
+<DT>
+Weights</DT>
+
+<DD>
+Medium, bold</DD>
+
+<DT>
+Slants</DT>
+
+<DD>
+Roman (r), an upright design Italic (i), an italic design,
+slanted clockwise from vertical Oblique (o), an obliqued upright design,
+slanted clockwise from vertical</DD>
+
+<DT>
+Point sizes</DT>
+
+<DD>
+8, 10, 12, 14, 18, 24</DD>
+</DL>
+If you are unfamiliar with general appearance of a particular
+font family, try displaying one of the fonts with <I>xfd</I>, as described
+in <I>Volume Three, X Window System User's Guide</I>.
+
+<P>As a general rule, we suggest you type the following parts
+of a font name explicitly:
+<UL>
+<LI>
+Font family</LI>
+
+<LI>
+Weight</LI>
+
+<LI>
+Slant</LI>
+
+<LI>
+Point size</LI>
+</UL>
+Note that it is better to match the point size field, which
+is measured in tenths of a point (the 100 in the previous example, equal
+to 10 points), than the pixel field (the 10). This allows your wildcarded
+font name to work properly with monitors of different resolutions. For
+example, say you use the following name to specify a 24-point (size), medium
+(weight), Italic (slant), Charter (family) font:
+<BLOCKQUOTE>
+<PRE><TT>*charter-medium-i-*-240-*</TT></PRE>
+</BLOCKQUOTE>
+This will match either of the following two font names (the
+first for 75-dpi monitors and the second for 100-dpi monitors):
+<BLOCKQUOTE>
+<PRE><TT>-bitstream-charter-medium-i-normal--25-240-75-75-p-136-iso8859-1
+-bitstream-charter-medium-i-normal--33-240-100-100-p-136-iso8859-1</TT></PRE>
+</BLOCKQUOTE>
+depending on which directory comes first in your font path.
+Specifying font size explicitly in pixels (25 for the first or 33 for the
+second) rather than in points would limit you to matching only one of these
+fonts.
+
+<P>Given the complexity of font names and the rules of precedence
+used by the server, you should use wildcards carefully.
+<H3>
+Font Name Aliasing</H3>
+Another way to abbreviate font names is by aliasing--that
+is, by associating them with alternative names. You can create a file (or
+files) called <I>fonts.alias</I> in any directory in the font search path
+to set aliases for the fonts in that directory. The X server uses both
+<I>fonts.dir</I> files (see Section A.2.5) and <I>fonts.alias</I> files
+to locate fonts in the font path.
+
+<P>Be aware that when you create or edit a <I>fonts.alias</I>
+file, the server does not <I>automatically</I> recognize the aliases in
+question. You must make the server aware of newly created or edited alias
+files by resetting the font path with <I>xset</I> as described in Section
+A.2.4.
+
+<P>The <I>fonts.alias</I> file has a two-column format similar
+to the <I>fonts.dir</I> file: the first column contains aliases, the second
+contains the actual font names. If you want to specify an alias that contains
+spaces, enclose the alias in double quotes. If you want to include double
+quotes or other special characters as part of an alias, precede each special
+symbol with a backslash.
+
+<P>When you use an alias to specify a font in a command line,
+the server searches for the font associated with that alias in every directory
+in the font path. Therefore, a <I>fonts.alias</I> file in one directory
+can set aliases for fonts in other directories as well. You might choose
+to create a single aliases file in one directory of the font path to set
+aliases for the most commonly used fonts in all the directories. Example
+A-1 shows a sample <I>fonts.alias</I> file.
+
+<P><B>Sample fonts.alias file</B>
+<BLOCKQUOTE>
+<PRE><TT>xterm12&nbsp;&nbsp; -adobe-courier-medium-r-normal--12-120-75-75-m-70-iso8859-1
+xterm14&nbsp;&nbsp; -adobe-courier-medium-r-normal--14-140-75-75-m-90-iso8859-1
+xterm18&nbsp;&nbsp; -adobe-courier-medium-r-normal--18-180-75-75-m-110-iso8859-1</TT></PRE>
+</BLOCKQUOTE>
+As the names of the aliases suggest, this sample file contains
+aliases for three fonts (of different point sizes) that are easily readable
+in <I>xterm</I> windows.
+
+<P>You can also use wildcards within the font names in the
+right-hand column of an alias file. For instance, the alias file above
+might also be written:
+<BLOCKQUOTE>
+<PRE><TT>xterm12&nbsp;&nbsp; *courier-medium-r-*-120*
+xterm14&nbsp;&nbsp; *courier-medium-r-*-140*
+xterm18&nbsp;&nbsp; *courier-medium-r-*-180*</TT></PRE>
+</BLOCKQUOTE>
+Once the server is made aware of aliases, you can specify
+an alias in resource specifications or on the command line:
+<BLOCKQUOTE>
+<PRE><TT>xterm.font: xterm12</TT></PRE>
+</BLOCKQUOTE>
+or:
+<BLOCKQUOTE>
+<PRE><TT>xterm -fn xterm12</TT></PRE>
+</BLOCKQUOTE>
+If you want each font name to be equivalent to the name of
+the file in which it is stored, without the <I>.snf</I> extension, you
+can use alias files. In each directory in the font path, create a <I>fonts.alias</I>
+file containing only the following line:
+<BLOCKQUOTE>
+<PRE><TT>FILE_NAMES_ALIASES</TT></PRE>
+</BLOCKQUOTE>
+Each filename (without the <I>.snf</I> extension) will then
+serve as an alias for the font the file contains. Note that an alias file
+containing this line applies only to the directory in which it is found.
+To make every font name equivalent to the name of the file in which it
+is stored, you need to create a <I>fonts.alias</I> file such as this in
+every font directory.
+
+<P>If you have specified FILE_NAMES_ALIASES in an alias file,
+you can choose the fonts in that directory by means of their filenames,
+as we did in the resource example at the end of Chapter 2, "X Concepts."
+<H3>
+Making the Server Aware of Aliases</H3>
+After you create (or update) an alias file, the server does
+not automatically recognize the aliases in question. You must make the
+server aware of newly created or edited alias files by "rehashing" the
+font path with <I>xset</I>. Enter:
+<BLOCKQUOTE>
+<PRE><TT>xset fp rehash</TT></PRE>
+</BLOCKQUOTE>
+on the command line. The <I>xset</I> option <B>fp</B> (font
+path) with the <B>rehash</B> argument causes the server to reread the <I>fonts.dir</I>
+and <I>fonts.alias</I> files in the current font path. You need to do this
+every time you edit an alias file. (You also need to use <I>xset</I> if
+you add or remove fonts. See <I>Volume Three, X Window System User's Guide</I>,
+for details.)
+<H3>
+The fonts.dir Files</H3>
+In addition to font files, each font directory contains a
+file called <I>fonts.dir</I>. The <I>fonts.dir</I> files serve, in effect,
+as databases for the X server. When the X server searches the directories
+in the default font path, it uses the <I>fonts.dir</I> files to locate
+the font(s) it needs.
+
+<P>Each <I>fonts.dir</I> file contains a list of all the
+font files in the directory with their associated font names in two-column
+form. (The first column lists the font file and the second column lists
+the actual font name associated with the file.) The first line in <I>fonts.dir</I>
+lists the number of entries in the file (i.e., the number of fonts in the
+directory).
+
+<P>Example A-2 shows the <I>fonts.dir</I> file from the directory
+<I>/usr/lib/X11/fonts/100dpi</I>. As the first line indicates, the directory
+contains 24 fonts.
+
+<P><B>fonts.dir file in /usr/lib/X11/fonts/100dpi</B>
+<BLOCKQUOTE>
+<PRE><TT>24
+charBI08.snf&nbsp;&nbsp; -bitstream-charter-bold-i-normal--11-80-100-100-p-68-iso8859-1
+charBI10.snf&nbsp;&nbsp; -bitstream-charter-bold-i-normal--14-100-100-100-p-86-iso8859-1
+charBI12.snf&nbsp;&nbsp; -bitstream-charter-bold-i-normal--17-120-100-100-p-105-iso8859-1
+charBI14.snf&nbsp;&nbsp; -bitstream-charter-bold-i-normal--19-140-100-100-p-117-iso8859-1
+charBI18.snf&nbsp;&nbsp; -bitstream-charter-bold-i-normal--25-180-100-100-p-154-iso8859-1
+charBI24.snf&nbsp;&nbsp; -bitstream-charter-bold-i-normal--33-240-100-100-p-203-iso8859-1
+charB08.snf&nbsp;&nbsp; -bitstream-charter-bold-r-normal--11-80-100-100-p-69-iso8859-1
+charB10.snf&nbsp;&nbsp; -bitstream-charter-bold-r-normal--14-100-100-100-p-88-iso8859-1
+charB12.snf&nbsp;&nbsp; -bitstream-charter-bold-r-normal--17-120-100-100-p-107-iso8859-1
+charB14.snf&nbsp;&nbsp; -bitstream-charter-bold-r-normal--19-140-100-100-p-119-iso8859-1
+charB18.snf&nbsp;&nbsp; -bitstream-charter-bold-r-normal--25-180-100-100-p-157-iso8859-1
+charB24.snf&nbsp;&nbsp; -bitstream-charter-bold-r-normal--33-240-100-100-p-206-iso8859-1
+charI08.snf&nbsp;&nbsp; -bitstream-charter-medium-i-normal--11-80-100-100-p-60-iso8859-1
+charI10.snf&nbsp;&nbsp; -bitstream-charter-medium-i-normal--14-100-100-100-p-76-iso8859-1
+charI12.snf&nbsp;&nbsp; -bitstream-charter-medium-i-normal--17-120-100-100-p-92-iso8859-1
+charI14.snf&nbsp;&nbsp; -bitstream-charter-medium-i-normal--19-140-100-100-p-103-iso8859-1
+charI18.snf&nbsp;&nbsp; -bitstream-charter-medium-i-normal--25-180-100-100-p-136-iso8859-1
+charI24.snf&nbsp;&nbsp; -bitstream-charter-medium-i-normal--33-240-100-100-p-179-iso8859-1
+charR08.snf&nbsp;&nbsp; -bitstream-charter-medium-r-normal--11-80-100-100-p-61-iso8859-1
+charR10.snf&nbsp;&nbsp; -bitstream-charter-medium-r-normal--14-100-100-100-p-78-iso8859-1
+charR12.snf&nbsp;&nbsp; -bitstream-charter-medium-r-normal--17-120-100-100-p-95-iso8859-1
+charR14.snf&nbsp;&nbsp; -bitstream-charter-medium-r-normal--19-140-100-100-p-106-iso8859-1
+charR18.snf&nbsp;&nbsp; -bitstream-charter-medium-r-normal--25-180-100-100-p-139-iso8859-1
+charR24.snf&nbsp;&nbsp; -bitstream-charter-medium-r-normal--33-240-100-100-p-183-iso8859-1</TT></PRE>
+</BLOCKQUOTE>
+The <I>fonts.dir</I> files are created by the <I>mkfontdir</I>
+client when X is installed. <I>mkfontdir</I> reads the font files in directories
+in the font path, extracts the font names, and creates a <I>fonts.dir</I>
+file in each directory. If <I>fonts.dir</I> files are present on your system,
+you probably will not have to deal with them or with <I>mkfontdir</I> at
+all. If the files are not present or if you have to load new fonts or remove
+existing ones, you will have to create files with <I>mkfontdir</I>. See
+<I>Volume Three, X Window System User's Guide</I>, for details.
+<BR>
+<HR>
+<H2>
+Font Service</H2>
+If you have worked with X at a site with workstations from
+several vendors, you may have encountered frustrating problems with the
+use of fonts. If fonts have different names on one host than they do on
+another, an application that performs normally on one display will abort
+with a "Can't load font" error on another. Or you may have had to maintain
+separate defaults files for use on different displays.
+
+<P>Ideally, the site administrator could simply place fonts
+in a directory of a networked file system that is accessible to all hosts
+at the site. Unfortunately, no binary format for font data has been standardized,
+and the X servers supplied by different vendors expect data in mutually
+incompatible formats. If a vendor wishes to support several font formats,
+the server must include code to parse each one.
+
+<P>R5 provides an elegant solution to these problems in the
+form of a networked font service. Under this new model, an X server can
+obtain font data in a simple bitmap format from a <I>font server</I> process
+running somewhere on the network. The font server does the work of parsing
+font files for any supported format and exports font data in a bitmap format
+standardized by the X Font Service Protocol (reprinted in <I>Volume Zero,
+X Protocol Reference Manual</I> as of late 1992). X servers that take advantage
+of font service no longer need to do the work of parsing fonts themselves.
+In the near future, however, it is likely that workstation-based X servers
+and X terminals will continue to support file-based fonts along with their
+support for font servers.
+
+<P>The Font Service Protocol was designed by Jim Fulton of
+Network Computing Devices. The font server in the MIT distribution was
+implemented primarily by Dave Lemke, also of NCD. In addition, Apple Computer
+has donated a font server (which runs only on the Apple Macintosh computer)
+to export the Apple bitmap fonts, and, if available, the Apple TrueType
+fonts as well.
+
+<P>Typically, a font server will run on one host per site
+and will export all the fonts available at the site, but there are a variety
+of other ways that font service can be configured. A large site may choose
+to have multiple font servers to prevent overloading of a single server
+or to protect against service outages caused by network trouble or server
+crashes. A font server could export fonts parsed from a variety of formats,
+or a separate server could be used for each format. A vendor of fonts with
+a custom format might provide a special font server to export those fonts,
+and might use the special server to implement licensing policies--restricting
+the maximum number of simultaneous users of a font, for example. Finally,
+note that in the terminology of X font service, the X server is a <I>font
+client</I>, and that it is perfectly legal to have other font clients such
+as printer drivers. Figure A-2 shows a font server providing service to
+a workstation, an X terminal, and a printer driver.
+
+<P><B>A typical font server configuration</B>
+
+<P><IMG SRC="imgs/App.A.2.gif" ALT="App.A.2.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;R5 font service and scalable font support consists
+of the following components:
+<UL>
+<LI>
+The X Font Service Protocol, a standardized, extensible protocol
+for communication between a font server and font clients, such as an X
+display server. This protocol also standardizes the format used for the
+communication of font data between font server and font client.</LI>
+
+<LI>
+Additions to the X server to allow it to participate in the
+font service protocol.</LI>
+
+<LI>
+A convention for the naming and inclusion of font servers
+in the X server font path.</LI>
+
+<LI>
+A bitmap and outline font-scaling algorithm in the X server.</LI>
+
+<LI>
+A set of scalable outline fonts (in Charter and Courier typefaces)
+from Bitstream, Inc.</LI>
+
+<LI>
+A font server capable of scaling and exporting the new outline
+fonts as well as the standard X bitmap fonts.</LI>
+
+<LI>
+A font server that runs on an Apple Macintosh computer to
+export the Apple bitmap fonts and, if available, scaled Apple TrueType
+fonts to any X servers on the network.</LI>
+
+<LI>
+A respecification of the X server's handling of <B>XListFonts</B>,
+<B>XLoadFont()</B>, and <B>XLoadQueryFont()</B> to allow pattern matching
+for scalable fonts.</LI>
+
+<LI>
+An addition to the <I>X Logical Font Description Conventions</I>
+(XLFD) to handle pattern matching for scalable fonts.</LI>
+</UL>
+There are no new or changed Xlib functions for the support
+of font service or scalable fonts. There are new conventions for naming
+and listing scalable fonts, however, and applications that want to make
+explicit use of scalable fonts will have to follow these conventions. Note
+that R5 defines a new abstraction, the <B>XFontSet</B>, which is used in
+internationalized applications, but that this has nothing whatsoever to
+do with font service.
+<H3>
+Font Server Naming</H3>
+To the X server, a font server is just another element in
+a font path--a place to look when searching for fonts. If a font server
+is running at your site, you can use it by adding its name (if it is not
+already there) to your font path with <B>xsetfp</B>. A font server that
+runs on a TCP/IP network is named as follows:
+<BLOCKQUOTE>
+<PRE><TT>tcp/<I>hostname</I>:<I>port-number</I>[/<I>catalogue-list</I>]</TT></PRE>
+</BLOCKQUOTE>
+where the optional <I>catalogue-list</I> is a list of catalogue
+names separated with plus signs.
+
+<P>A font server that runs on a DECnet network is named as
+follows:
+<BLOCKQUOTE>
+<PRE><TT>decnet/<I>nodename</I>::font$<I>objname</I>[/<I>catalogue-list</I>]</TT></PRE>
+</BLOCKQUOTE>
+Example A-3 shows various font paths that might be set in
+order to use a font server running on the host "ora-server."
+
+<P><B>X font paths containing font servers</B>
+<BLOCKQUOTE>
+<PRE><TT>tcp/ora-server:7000
+tcp/ora-server:7000/75dpi, /usr/lib/X11/fonts/misc
+tcp/ora-server:7000/100dpi+misc, /usr/lib/X11/fonts/misc
+tcp/ora-server:7000/100dpi+misc, tcp/ora-server:7001/new-fonts</TT></PRE>
+</BLOCKQUOTE>
+Naming a font server is conceptually the same as naming an
+X display, but obviously the naming schemes used are very different. When
+naming an X server, a TCP/IP connection is distinguished from a DECnet
+connection solely by the number of colons that separate the hostname from
+the display number, and this scheme is not elegantly extensible to other
+network technologies in the future. Furthermore, an X server communicates
+over a port which is a relative offset (the display number) from a "hardcoded"
+base port number, but base port numbers cannot simply be allocated; they
+must be assigned by the powers that be in the network world. Font server
+names specify an absolute port number, rather than a relative number. The
+default is 7000 as in Example A-3, but this can easily be overridden (it
+is a command-line option) if it conflicts with other services or even other
+font servers. If X were rewritten today, display names would probably be
+just like font server names: they would explicitly specify the network
+type and absolute port number.
+<H3>
+Font Server Configuration</H3>
+The font server shipped as part of the MIT R5 distribution
+is named <B>fs</B>. Generally it is started up automatically on reboot
+of whatever server machine it is running on. For standalone machines, it
+may be appropriate to have <B>xdm</B> start up the font server when a user
+logs in. On startup, <B>fs</B> reads a configuration file named on the
+command line, or the default file <I>/usr/lib/X11/fs/config</I>. This configuration
+file lists the directories of fonts that the server should export, and
+controls such things as the maximum number of clients allowed to connect
+to the server, and the default point size the server should return when
+a font name does not specify a size. The format of this file is documented
+in the <B>fs</B> man page in the reference section of this book, and the
+default config file is a good example. Note that this configuration file
+is not installed by default when R5 is built. Unless you plan to always
+use the command-line configuration option to <B>fs</B>, you should install
+the configuration file by hand, or add this line at the end of <I>mit/config/site.def</I>
+to have it installed automatically by the build process:
+<BLOCKQUOTE>
+<PRE><TT>#define InstallFSConfig YES</TT></PRE>
+</BLOCKQUOTE>
+The forthcoming O'Reilly &amp; Associates book on X administration
+will cover font server configuration in more detail.
+
+<P>The R5 distribution from MIT also includes a font server
+for the Apple Macintosh which will export Apple bitmap fonts (and Apple
+TrueType fonts if they are available) to X servers on the network. The
+source code for this server is in <I>mit/fonts/server/MacFS</I> and will
+only build on a Macintosh running A/UX. The <I>README</I> file in this
+directory provides minimal documentation on building and configuring the
+server. Note that the fonts themselves are not part of the R5 distribution;
+these must exist on the Macintosh that will be exporting them.
+<BR>
+<HR>
+<H2>
+Scalable Fonts</H2>
+Another new feature in R5 is font scaling. In previous releases,
+each font was available only in a limited number of standard point sizes
+and resolutions. In the MIT distribution of R5, both the X server and the
+font server implement a simple bitmap font-scaling algorithm that allows
+fonts to be obtained at any desired point size and resolution. Bitmap fonts
+are easily scalable, but the resulting scaled font is generally jagged
+and difficult to read. Fortunately, R5 also provides a set of outline fonts.
+Outline fonts scale nicely, but the scaling process requires significant
+computation, so an X server might freeze for several seconds while scaling
+a large Asian font. This is one of the problems that font servers are intended
+to address. The fonts and the scaling code were donated by Bitstream, Inc.
+
+<P>Until Release 5, X relied exclusively on non-scalable
+bitmap fonts. If there was no installed font in the point size and resolution
+you wanted, then you were out of luck--it is obviously not feasible to
+provide every font in every point size and for every possible resolution.
+Bitmap fonts do not scale well, because their pixel-by-pixel specification
+can only be made smaller by omitting pixels or made larger by making pixels
+bigger, resulting in a jagged, low-resolution font. The fonts shipped by
+MIT for Release 5 include several "outline fonts" which describe characters
+by their component curves rather than by individual pixels. This description
+allows for successful scaling to any desired point size and resolution.
+The font server shipped by MIT in Release 5 has the capability to read
+and scale these outline fonts, and therefore the number of fonts available
+to the user is greatly increased. (Note, however, that a good bitmap font
+that is "hand-tuned" to a particular point size and screen resolution will
+generally be better looking than an outline font scaled to that size and
+resolution. Font design is an art, and the human touch is still important.)
+
+<P>The following two sections apply equally to all scalable
+and scaled fonts, whether outline or bitmap, from the X server or the font
+server.
+<H3>
+Finding Scalable Fonts</H3>
+Supporting scalable fonts raises some important questions
+about the behavior of the Xlib function <B>XListFonts()</B>. First, since
+there are (theoretically) an infinite number of point sizes and resolutions
+that a font could be scaled to, it is no longer possible to list all available
+fonts in <I>all</I> available sizes. So some special syntax is needed to
+indicate that a font is scalable and is available in any desired size,
+even if that size is not listed. But backwards compatibility is also an
+issue--the new point sizes provided by scalable fonts should not be hidden
+from existing pre-R5 applications.
+
+<P>These seemingly contradictory goals are resolved by changing
+the semantics of the call to <B>XListFonts()</B> and by extending the <I>X
+Logical Font Description Conventions</I> slightly.&nbsp; In R5, scalable
+fonts are returned by <B>XListFonts()</B> with the string "0" in the PIXEL_SIZE,
+POINT_SIZE, and AVERAGE_WIDTH fields (the seventh, eighth, and twelfth
+fields of the 14-field XLFD font name). Non-scalable fonts will never have
+these three fields zero, and therefore these fields are sufficient to distinguish
+scalable from non-scalable fonts. Most font servers will list a few specific
+<I>derived instances</I> of each scalable font at standard sizes and resolutions
+for the benefit of older X applications that expect to find font names
+in this form.
+
+<P>The X server and font server are only required to match
+scalable fonts when the font name pattern they are passed is a <I>well-formed</I>
+one. A well-formed font name is one that contains all 14 hyphens specified
+in the XLFD convention. Wildcards are permitted for any field, but may
+not replace multiple fields--all fields must be present in the name. For
+example,
+<BLOCKQUOTE>
+<PRE><TT>&nbsp;&nbsp; *-helvetica-bold-o-*-*-*-120-*</TT></PRE>
+</BLOCKQUOTE>
+is not a well-formed name, but
+<BLOCKQUOTE>
+<PRE><TT>&nbsp;&nbsp; -*-helvetica-bold-o-*-*-*-120-75-75-*-*-iso8859-1</TT></PRE>
+</BLOCKQUOTE>
+is well-formed. Shortcut names specified as in the first
+example have come into common use, but with the increasing variety of display
+resolutions and fonts with non-standard charsets, it is good practice to
+specify these extra fields, even if you are not interested in using scaled
+fonts. If <B>XListFonts()</B> is passed a pattern that is not well-formed,
+it may not include scalable fonts in the search at all.
+
+<P>To list scalable fonts, call <B>XListFonts()</B> with
+a well-formed pattern with "0" or "*" in its PIXEL_SIZE, POINT_SIZE, and
+AVERAGE_WIDTH fields. Example A-4 shows some queries that will return scalable
+fonts. You can quickly try them out by replacing the call to <B>XListFonts()</B>
+with the client <B>xlsfonts</B>.
+
+<P><B>Listing scalable fonts</B>
+<BLOCKQUOTE>
+<PRE><TT>/* List all Latin-1 fonts.&nbsp; Returned names of scalable fonts will have
+&nbsp;* "0" for pixel size, point size, and average width
+&nbsp;*/
+fonts = XListFonts(dpy, "-*-*-*-*-*-*-*-*-*-*-*-*-iso8859-1", 1000, &amp;count);
+/* List all scalable courier fonts.&nbsp; Non-scalable fonts will
+&nbsp;* not be listed.
+&nbsp;*/
+list = XListFonts(dpy,"-*-courier-*-*-*-*-0-0-*-*-*-0-*-*", 200, &amp;count);</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Finding Derived Instances of Scalable Fonts</H3>
+A scalable font name with a point size (and pixel size and
+average width) of zero is not very useful by itself. If you call <B>XLoadFont()</B>
+on this font name without a size, you will get some implementation-defined
+default size. Instead of listing scalable Helvetica fonts, for example,
+you will more often want to list all Helvetica fonts at some particular
+point size. The list you get may contain non-scaled bitmap fonts as well
+as derived instances of scalable fonts. In order to include derived instances
+of scalable fonts in a search, it is necessary to specify some of the size
+fields explicitly. There are five <I>scalable fields</I> in an XLFD font
+name: PIXEL_SIZE, POINT_SIZE, RESOLUTION_X, RESOLUTION_Y, and AVERAGE_WIDTH
+(fields 7, 8, 9, 10, and 12.) In order for <B>XListFonts()</B> to list
+a particular scaled size of a scalable font, enough of these scalable fields
+must be specified so that the font name pattern matches exactly one derived
+instance of the font. If too few of the scalable fields are specified,
+there will be no unique match, and if too many are specified, there may
+not be any possible scaling that meets all of those specified criteria.
+
+<P>When searching for fonts at a particular size, you will
+typically wildcard the pixel size and average width by setting those fields
+to "*" and explicitly specify the point size you want along with the x-
+and y-resolutions of your screen. (You can calculate screen resolutions
+with macros like <B>DisplayWidth()</B> and <B>DisplayWidthMM()</B>, as
+shown in a later example.) These three fields specify all that is needed
+to correctly scale the font. You need not (and should not) specify the
+pixel size, because the point size and y-resolution of the screen determine
+the desired pixel size. You need not specify the average width because
+the point size and x-resolution of the screen, together with the height
+to width ratio implicit to the font, determine the desired width. It is
+also possible to name a single derived instance of a scalable font by specifying
+a pixel size plus x- and y-resolutions. There are also other combinations
+of fields that will work, but none are particularly useful in practice.
+Example A-5 shows font name patterns that will match derived instances
+of scalable fonts.
+
+<P><B>Finding derived instances of scalable fonts</B>
+<BLOCKQUOTE>
+<PRE><TT>/* Load a 12-point bold helvetica font defined at a 100x100 dpi
+&nbsp;* resolution.&nbsp; The actual font loaded might be a derived instance of a
+&nbsp;* scalable font, or it might be a bitmap font--there is no way to
+&nbsp;* distinguish them.
+&nbsp;*/
+font = XLoadFont(dpy, "-*-helvetica-bold-r-*-*-*-120-100-100-*-*-iso8859-1");
+/* Load a 20 pixel high helvetica font defined at 100x100 dpi */
+font2 = XLoadFont(dpy, "-*-helvetica-medium-r-*-*-20-*-100-100-*-*-iso8859-1");
+/* List all 13-point Latin-1 helvetica fonts defined at a 106x97 dpi
+&nbsp;* resolution.&nbsp; This pattern will match derived instances of scalable
+&nbsp;* fonts, and will probably only match derived instances of scalable
+&nbsp;* fonts, because there are not likely to be bitmap fonts defined at this
+&nbsp;* particular size and resolution.
+&nbsp;*/
+list = XListFonts(dpy,"-*-helvetica-*-*-*-*-*-130-106-97-*-*-iso8859-1",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 50, &amp;count);</TT></PRE>
+</BLOCKQUOTE>
+There are a number of reasons that a font name pattern could
+fail to match derived instances of scalable fonts. It is difficult to devise
+an algorithm that will correctly match scalable fonts against any font
+name pattern. For this reason, the X server or font server is not required
+to include scalable fonts in its search if the pattern it is given is not
+well-formed. A well-formed pattern must contain 14 hyphens. Note in particular
+that the first character in a well-formed name must be a hyphen.
+
+<P>An underspecified font name will not match any derived
+instances of scalable fonts. This is because your font name could match
+any number of derived instances, and it is not possible to list them all.
+When only the point size and pixel size are specified, for example, they
+are enough together to determine the desired y-resolution for the font,
+but any x-resolution (and therefore any average width) is still possible.
+To uniquely match a derived instance, you'd have to specify the x-resolution
+of your screen or a desired average width for the font. The MIT implementation,
+however, makes reasonable guesses for unspecified resolution values, so
+underspecified font names do not occur. If only point size is specified,
+then default resolutions (75 or 100 dpi) are used. If both point and pixel
+size are specified as above, then the y-resolution they specify is used
+for both x- and y-resolution fields.
+
+<P>Similarly, an overspecified font name, one with point
+size, pixel size, and x- and y-resolutions, for example, may not match
+any derived instances of scalable fonts: if the specified y-resolution
+is different from the y-resolution implicitly defined by the combination
+of point size and pixel size, then there is no way that the font can be
+scaled to satisfy your request. Example A-6 shows font name patterns that
+will fail to match any derived instances of scalable fonts.
+
+<P><B>Font name patterns that don't match scaled fonts.</B>
+<BLOCKQUOTE>
+<PRE><TT>/* List 15-point bold oblique helvetica fonts.&nbsp; Derived instances of
+&nbsp;* scalable fonts will probably not be included in the list because the
+&nbsp;* pattern does not have all 14 fields.
+&nbsp;*/
+helvbold15 = XListFonts(dpy,"*-helvetica-bold-o-*-*-*-150-*", 50, &amp;count);
+/* List all 17-point, 17-pixel bold oblique helvetica fonts defined at
+&nbsp;* 100dpi x- and y-resolutions.&nbsp; This pattern will not match any derived
+&nbsp;* instances of scalable fonts (nor any font) because a 17 point font
+&nbsp;* at 100dpi is not 17 pixels high.
+&nbsp;*/
+helvbold17 = XListFonts(dpy,"-*-helvetica-bold-o-*-*-17-170-100-100-*-*-
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iso8859-1",50, &amp;count);</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Using Scalable Fonts</H3>
+Many applications use only a small number of fonts, that
+are opened at startup and never changed. These applications may leave the
+choice of fonts to the user. If the user overrides the default with a font
+that doesn't exist, the application may simply print an error message and
+exit. Applications such as this need no modification to work with scalable
+fonts. Users who want to take advantage of scalable fonts, must provide
+a well-formed and correctly specified font name. Other applications, such
+as word processors or presentation graphics packages, may allow the user
+to select fonts from a menu or list at runtime. This kind of application
+will have to be modified to recognize and make use of scalable fonts. Example
+A-7 and Example A-8 demonstrate one approach.
+
+<P>Example A-7 shows a procedure that determines whether
+or not a given font name represents a scalable font. This procedure is
+intended to be called once for each font returned by <B>XListFonts()</B>.
+
+<P><B>Determining if a font is scalable</B>
+<BLOCKQUOTE>
+<PRE><TT>/*
+&nbsp;* This routine returns True if the passed name is a well-formed
+&nbsp;* XLFD style font name with a pixel size, point size, and average
+&nbsp;* width (fields 7,8, and 12) of "0".
+&nbsp;*/
+Bool IsScalableFont(name)
+char *name;
+{
+&nbsp;&nbsp;&nbsp; int i, field;
+&nbsp;&nbsp;&nbsp; if ((name == NULL) || (name[0] != '-')) return False;
+&nbsp;&nbsp;&nbsp; for(i = field = 0; name[i] != '\0'; i++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (name[i] == '-') {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; field++;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((field == 7) || (field == 8) || (field == 12))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((name[i+1] != '0') || (name[i+2] != '-'))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return False;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if (field != 14) return False;
+&nbsp;&nbsp;&nbsp; else return True;
+}</TT></PRE>
+</BLOCKQUOTE>
+Example A-8 shows a procedure that takes a scalable font
+name and a desired point size and loads the derived instance of that font
+at the requested size and at the precise resolution of the screen. It is
+intended to be called with a scalable font name as returned by <B>XListFonts()</B>.
+
+<P><B>Loading a derived instance of a scalable font</B>
+<BLOCKQUOTE>
+<PRE><TT>/*
+&nbsp;* This routine is passed a scalable font name and a point size.&nbsp; It returns
+&nbsp;* an XFontStruct for the given font scaled to the specified size and the
+&nbsp;* exact resolution of the screen.&nbsp; The font name is assumed to be a
+&nbsp;* well-formed XLFD name, and to have pixel size, point size, and average
+&nbsp;* width fields of "0" and arbitrary x-resolution and y-resolution fields.
+&nbsp;* Size is specified in tenths of points.&nbsp; Returns NULL if the name is
+&nbsp;* malformed or no such font exists.
+&nbsp;*/
+XFontStruct *LoadQueryScalableFont(dpy, screen, name, size)
+Display *dpy;
+int screen;
+char *name;
+int size;
+{
+&nbsp;&nbsp;&nbsp; int i,j, field;
+&nbsp;&nbsp;&nbsp; char newname[500];&nbsp;&nbsp;&nbsp; /* big enough for a long font name */
+&nbsp;&nbsp;&nbsp; int res_x, res_y;&nbsp;&nbsp;&nbsp;&nbsp; /* resolution values for this screen */
+&nbsp;&nbsp;&nbsp; /* catch obvious errors */
+&nbsp;&nbsp;&nbsp; if ((name == NULL) || (name[0] != '-')) return NULL;
+&nbsp;&nbsp;&nbsp; /* calculate our screen resolution in dots per inch. 25.4mm = 1 inch */
+&nbsp;&nbsp;&nbsp; res_x = DisplayWidth(dpy, screen)/(DisplayWidthMM(dpy, screen)/25.4);
+&nbsp;&nbsp;&nbsp; res_y = DisplayHeight(dpy, screen)/(DisplayHeightMM(dpy, screen)/25.4);
+&nbsp;&nbsp;&nbsp; /* copy the font name, changing the scalable fields as we do so */
+&nbsp;&nbsp;&nbsp; for(i = j = field = 0; name[i] != '\0' &amp;&amp; field &lt;= 14; i++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; newname[j++] = name[i];
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (name[i] == '-') {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; field++;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch(field) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 7:&nbsp; /* pixel size */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 12: /* average width */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* change from "-0-" to "-*-" */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; newname[j] = '*';
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; j++;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (name[i+1] != '\0') i++;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 8:&nbsp; /* point size */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* change from "-0-" to "-&lt;size>-" */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sprintf(&amp;newname[j], "%d", size);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; while (newname[j] != '\0') j++;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (name[i+1] != '\0') i++;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 9:&nbsp; /* x-resolution */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 10: /* y-resolution */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* change from an unspecified resolution to res_x or res_y */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sprintf(&amp;newname[j], "%d", (field == 9) ? res_x : res_y);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; while(newname[j] != '\0') j++;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; while((name[i+1] != '-') &amp;&amp; (name[i+1] != '\0')) i++;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; newname[j] = '\0';
+&nbsp;&nbsp;&nbsp; /* if there aren't 14 hyphens, it isn't a well formed name */
+&nbsp;&nbsp;&nbsp; if (field != 14) return NULL;
+&nbsp;&nbsp;&nbsp; return XLoadQueryFont(dpy, newname);
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

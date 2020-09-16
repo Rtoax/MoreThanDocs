@@ -1,0 +1,608 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_23_G.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_25_glos.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H2>
+Release Notes</H2>
+This appendix describes the changes between recent releases
+of X Version 11. It begins with the changes in the most recent version
+and works back. There were no changes in the underlying X protocol.
+<BR>
+<HR>
+<H2>
+Changes from Release 4 to Release 5</H2>
+The major additions in Release 5 were support for internationalization
+and support for device-independent color (the X Color Management System).
+There were also a few new resource management functions added mainly to
+support the R5 changes in the Xt Intrinsics.
+<H3>
+Internationalization</H3>
+The largest new part of X11R5 is the support for writing
+<I>internationalized</I> programs. An internationalized application is
+one that runs, without changes to the binary, in any given "locale." Among
+other things, this means that a program must display all text in the user's
+language, accept input of all text in that same language, and display times,
+dates, and numbers in the user's accustomed format.
+
+<P>The internationalization of terminal-based programs is
+a problem that has been satisfactorily solved where terminals exist that
+can display and accept input for a particular language. The ANSI-C library
+contains mechanisms for this terminal-based internationalization, and X11R5
+internationalization is based on these mechanisms. Internationalized text
+input is based on the concept of an "input method," which is a specialized
+program that allows user input of a particular language. Input methods
+are essential for Asian languages where there are more symbols than can
+appear on a keyboard.
+
+<P>Before beginning, note that the internationalization features
+of X11R5 are not self contained, and therefore may not work on all systems.
+If your system does not have the ANSI-C internationalization features,
+you may be able to make do with alternatives provided with the Xlib sample
+distribution and by contributed libraries, but these have not been thoroughly
+tested and you may encounter difficulties. In ANSI-C internationalization,
+the C library reads a "localization database" customized for each locale.
+Many systems (systems sold in the U.S., at least) support ANSI-C internationalization,
+but do not ship databases for any but a default locale.
+
+<P>Xlib now provides:
+<UL>
+<LI>
+Simple locale management functions.</LI>
+
+<LI>
+Routines for internationalized text-drawing.</LI>
+
+<UL>
+<LI>
+Font set handling functions.</LI>
+
+<LI>
+Font set metric and string measuring functions.</LI>
+
+<LI>
+String drawing functions.</LI>
+</UL>
+
+<LI>
+Respecification of many Xlib functions to clarify their handling
+of strings in internationalized applications.</LI>
+
+<LI>
+New functions to support internationalized window manager
+and text properties for interclient communication.</LI>
+
+<LI>
+New resource manager functions to support localized databases.</LI>
+
+<LI>
+Respecifications of many resource manager functions to make
+their behavior in internationalized applications clear.</LI>
+
+<LI>
+New support for internationalized text input through input
+methods.</LI>
+
+<LI>
+Two sample implementations of all the new Xlib internationalization
+functions.</LI>
+</UL>
+The X11R5 distribution provides two different implementations
+of the new internationalization functions. The default implementation is
+named "Xsi" and is from the OMRON Corporation; the MIT distribution builds
+Xsi by default on all but Sony machines. Sony systems build the "Ximp"
+implementation from Fujitsu, Sony, and others. Both "Xsi" and "Ximp" implement
+the same specification,&nbsp; but are mutually incompatible. In particular,
+the localization files they read are in very different formats.
+<H3>
+X Color Management System</H3>
+Xcms defines a new syntax for the color strings used throughout
+Xlib, and provides a programming interface that allows extremely precise
+control over the allocation of colors. One feature of Xcms is the provision
+for a database that maps color names to device-independent color specifications.
+This database is read by Xlib rather than by the X server. No sample Xlib-side
+database is provided in the MIT distribution. There is also a new part
+of the ICCCM, the X Device Color Characterization Conventions (XDCCC),
+which are a standard format for new root window properties that contains
+the information about the physical characteristics of the screen necessary
+to support the conversion of device-independent color specifications into
+device-dependent values.
+
+<P>Several existing Xlib functions were modified to support
+this new standard syntax for color strings. The syntax allows color specification
+in several international standard color spaces including CIElab, CIEluv,
+and a simple color space called TEKhvc. RGB is also still supported.
+<H3>
+Resource Management</H3>
+The character <B>?</B> may now be used in resource files
+to wildcard a single component of a resource name. This allows greater
+flexibility in the specification of resources.
+
+<P>Resource files may now include other files with a C-like
+<B>#include</B> syntax.
+
+<P>A new function, <B>XrmSetDatabase()</B>, associates a
+resource database with a display, and another new function, <B>XrmGetDatabase()</B>,
+queries the database of a display.
+
+<P>A function, <B>XrmLocaleOfDatabase()</B>, returns the
+locale of a resource database.
+
+<P>Two new functions, <B>XrmCombineDatabase()</B> and <B>XrmCombineFileDatabase()</B>,
+merge the contents of two resource databases. They are more flexible than
+the existing <B>XrmMergeDatabase</B>.
+
+<P>A new function, <B>XrmEnumerateDatabase()</B>, iterates
+through the items in a resource database.
+<H3>
+Scalable Font Support</H3>
+Because the font server was introduced in R5, the server's
+handling of <B>XListFonts()</B>, <B>XLoadFont()</B>, and <B>XLoadQueryFont()</B>
+was changed to allow pattern matching for scalable fonts.
+<BR>
+<HR>
+<H2>
+Miscellaneous Xlib Changes</H2>
+A new type, <B>XPointer</B>, has been defined to replace
+<B>caddr_t</B>, which is not a standard type and is therefore not necessarily
+portable. (The type <B>XtPointer</B> was added to the X11R4 X Toolkit for
+the same reason.) An <B>XPointer</B> is a <B>typedef</B> for a <B>char
+*</B>, and occurs most noticeably in the <B>XrmValue</B> and <B>XrmOptionDescRec</B>
+structures.
+
+<P>The X11R5 distribution installs the file <B>XKeysymDB</B>
+in <I>/usr/lib/X11</I>. This file contains a list of vendor-private keysyms
+names and their corresponding values. It is required for the correct operation
+of many Motif applications and any application that wants to make use of
+vendor-specific keys on a keyboard. This file was in the X11R4 distribution,
+but was not installed by default.
+
+<P>A new function, <B>XFlushGC()</B>, forces Xlib to write
+its cached GC changes to the X server. For efficiency, Xlib combines multiple
+GC changes into a single server request whenever multiple changes to a
+GC occur before a use of that GC. It is possible for extensions to X to
+use GCs in ways that Xlib is not aware of, and this can mean that requests
+made by the extension client library may not operate with the expected
+contents of the GC. <B>XFlushGC()</B> is provided to address this problem.
+
+<P>The <B>XErrorEvent</B> structure used by Xlib contains
+only 32 bits of data specific to the error, which is usually used to return
+a resource ID. This is sufficient for all core X errors, but may not be
+enough for extensions (notably PEX). There is plenty of room in the protocol
+error structure that is transmitted between server and client, but Xlib
+truncates this information when converting the protocol error into an <B>XErrorEvent</B>
+structure. Since the <B>XErrorEvent</B> structure is smaller than the <B>XEvent</B>
+union of which it is a part, an <B>XErrorEvent</B> can be cast into a larger
+structure with more room for error values, and the workaround provided
+by X11R5 takes advantage of this fact. X11R5 provides two new functions,
+<B>XESetWireToError()</B> and <B>XESetPrintErrorValues()</B>, which allow
+an extension library to register a function to convert a protocol error
+into some type longer than an <B>XErrorEvent</B>, and to display an error
+message that makes use of the additional data in the special error message.
+<BR>
+<HR>
+<H2>
+Changes from Release 3 to Release 4</H2>
+We will begin by describing the new functions, and then we
+will describe the small existing interface changes.
+<H3>
+New Routines</H3>
+Because of the adoption of the ICCCM (<I>Inter-Client Communication
+Conventions Manual</I>) as an X Consortium standard, several Xlib structures
+had to be changed, and therefore, several of the R3 routines are now superceded
+by new routines. All R3 routines are still supported, but the superseded
+routines should not be used in new applications because they do not meet
+the current conventions. Table H-1 lists the old and new routines.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table H-1 : </B>Superseded R3 Routines and New
+R4 Routines</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Superseded Routine</TH>
+
+<TH>New Routine</TH>
+
+<TH>Change</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XSetStandardProperties</B></TD>
+
+<TD><B>XSetWMProperties</B></TD>
+
+<TD>Added <B>WM_HINTS</B> and <B>WM_CLASS</B> , format changes</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XSetNormalHints</B></TD>
+
+<TD><B>XSetWMNormalHints</B></TD>
+
+<TD>New fields in <B>XSizeHints</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XGetNormalHints</B></TD>
+
+<TD><B>XGetWMNormalHints</B></TD>
+
+<TD>New fields in <B>XSizeHints</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XSetZoomHints</B></TD>
+
+<TD>(No replacement)</TD>
+
+<TD>No longer part of ICCCM</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XGetZoomHints</B></TD>
+
+<TD>(No replacement)</TD>
+
+<TD>No longer part of ICCCM</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>XSetSizeHints</TD>
+
+<TD><B>XSetWMSizeHints</B></TD>
+
+<TD>New fields in <B>XSizeHints</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XGetSizeHints</B></TD>
+
+<TD><B>XGetWMSizeHints</B></TD>
+
+<TD>New fields in <B>XSizeHints</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XStoreName</B></TD>
+
+<TD><B>XSetWMName</B></TD>
+
+<TD>Property format change</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XFetchName</B></TD>
+
+<TD><B>XGetWMName</B></TD>
+
+<TD>Property format change</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>(No R3 equivalent)</TD>
+
+<TD><B>XGetCommand</B></TD>
+
+<TD>Convenience routine for <B>XGetWindowProperty</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XSetIconName</B></TD>
+
+<TD><B>XSetWMIconName</B></TD>
+
+<TD>Property format change</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XGetIconName</B></TD>
+
+<TD><B>XGetWMIconName</B></TD>
+
+<TD>Property format change</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XGeometry</B></TD>
+
+<TD><B>XWMGeometry</B></TD>
+
+<TD>New fields and arguments</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XGetStandardColormap</B></TD>
+
+<TD><B>XGetRGBColormaps</B></TD>
+
+<TD>New fields in <B>XStandardColormap</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XSetStandardColormap</B></TD>
+
+<TD><B>XSetRGBColormaps</B></TD>
+
+<TD>New fields in <B>XStandardColormap</B></TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P><B>XSetWMProperties()</B> is the new interface for setting
+all required window manager properties. This function now sets the WM_HINTS
+and WM_CLASS properties, in addition to the properties set under R3 by
+<B>XSetStandardProperties()</B>. <B>Furthermore,</B> the window name and
+icon name arguments are now <B>XTextProperty</B> structures that can be
+filled with the new function <B>XStringListToTextProperty()</B>, described
+below.
+
+<P>All string properties to be set for the window manager
+have been changed to use <B>XTextProperty</B> structures so that they can
+use non-Western encodings (which require more than the eight bits of data
+provided in the R3 STRING property). For this reason, <B>XGetWMIconName()</B>
+replaces <B>XGetIconName()</B>, <B>XSetWMIconName()</B> replaces <B>XSetIconName()</B>,
+<B>XGetWMName()</B> replaces <B>XFetchName()</B>, and <B>XSetWMName()</B>
+replaces <B>XStoreName()</B>.
+
+<P><B>XGetCommand()</B> was added to make it easier for window
+managers to read the <B>XA_WM_COMMAND</B> property. In R3, <B>XSetCommand()</B>
+was provided but no <B>XGetCommand()</B>.
+
+<P>Three new fields have been added to the <B>XSizeHints</B>
+structure. Two, <B>base_width</B> and <B>base_height</B>, basically supercede
+the <B>min_width</B> and <B>min_height</B> fields. The <B>x</B>, <B>y</B>,
+<B>width</B>, and <B>height</B> fields of <B>XSizeHints</B> are no longer
+used. Instead these values are simply set when creating the top-level window
+(and the window manager gets these values through substructure redirection
+in <B>CreateNotify</B> and <B>MapNotify</B> events). The other new field,
+<B>win_gravity</B>, allows an application to specify that some other portion
+of the window is to be placed when the window manager allows the user to
+place windows. The purpose of this, for example, is to allow users that
+display languages that read from right to left to position the top-right
+corner of these terminals instead of their top-left corner.
+
+<P><B>XWMGeometry</B> replaces <B>XGeometry</B>. <B>XWMGeometry</B>
+calculates geometry values for the top-level window, given a possibly incomplete
+user-specified geometry string and a complete application default geometry
+specified using an <B>XSizeHints</B> structure. <B>XWMGeometry</B> also
+returns a <B>win_gravity</B> value based on which corner of the top-level
+window the user or application specified, suitable for setting into the
+<B>XSizeHints</B> structure.
+
+<P>New fields have been added to the <B>XStandardColormap</B>
+structure to return the visual associated with the colormap and also to
+provide information about who is allowed to delete the colormap. To use
+the new fields, <B>XGetStandardColormap()</B> is superceded by <B>XGetRGBColormaps()</B>
+and <B>XSetStandardColormap()</B> is superceded by <B>XSetRGBColormaps()</B>.
+
+<P>The following routines are completely new in R4.
+
+<P><B>XSetWMClientMachine()</B> is used by clients to set
+a new property to be read with <B>XGetWMClientMachine()</B> by window or
+session managers. The property stores the name of the machine on which
+the client is running, as seen from the server, so that the session manager
+can stop and restart the client on the right machine. See Chapter 12, "Interclient
+Communication."
+
+<P><B>XSetWMProtocols()</B> is used by clients to set a new
+property to be read with <B>XGetWMProtocols()</B> by the window manager.
+This property indicates which of a number of window manager-client protocols
+the client would like to take part in. Under these protocols, the window
+manager sends synthetic events to the client to notify the client of certain
+impending conditions, such as that the client has been granted the keyboard
+focus or is about to have one of its windows destroyed or that the entire
+client is about to be killed. See Chapter 12, "Interclient Communication."
+
+<P><B>XSetWMColormapWindows()</B> is used by clients to set
+a new property to be read with <B>XGetWMColormapWindows()</B> by the window
+manager. This property tells the window manager that certain subwindows
+of the client have custom colormaps that will need installing. See Chapter
+12, "Interclient Communication."
+
+<P>Five new routines are provided that allocate and zero
+the fields of structures used in setting the window manager hints: <B>XAllocClassHint()</B>,
+<B>XAllocIconSize()</B>, <B>XAllocSizeHints()</B>, <B>XAllocStandardColormap()</B>,
+and <B>XAllocWMHints()</B>. When using these routines, an application declares
+only a pointer to the structure and then uses one of these routines to
+allocate the memory. The purpose of doing this is to avoid having compiled-in
+structure sizes, so that fields can be added to these structures in later
+releases without causing binary incompatibility. See Chapter 12, "Interclient
+Communication."
+
+<P><B>XGetGCValues()</B> reads most GC component values out
+of Xlib's local cache. It does not read the dash list or clip mask. See
+Chapter 5, "The Graphics Context."
+
+<P><B>XIconifyWindow()</B> is to be called by the client
+to tell the window manager to iconify a window. Similarly, <B>XWithdrawWindow()</B>
+tells the window manager to unmap a window without iconifying it. These
+two routines were added to simplify compliance with the new ICCCM. <B>XReconfigureWMWindow()</B>
+is used by clients to reconfigure top-level windows--it works like <B>XConfigureWindow()</B>
+except that it handles stacking order changes correctly even if the window
+or some of its siblings have been reparented. See Chapter 12, "Interclient
+Communication."
+
+<P>As mentioned above, all of the R3 functions that write
+or read string properties have been superceded by R4 functions that provide
+a more flexible property format. All these new functions use the <B>XTextProperty</B>
+structure. Several routines that manipulate these structures are now provided:
+<B>XFreeStringList()</B>, <B>XGetTextProperty()</B>, <B>XSetTextProperty()</B>,
+<B>XStringListToTextProperty()</B>, and <B>XTextPropertyToStringList()</B>.
+See Chapter 12, "Interclient Communication."
+
+<P><B>XListDepths()</B> and <B>XListPixmapFormats()</B> extract
+information from the <B>Display</B> structure. These are useful when you
+want to create a window or a pixmap that is not the default depth and not
+a depth of one plane.
+
+<P><B>XrmDestroyDatabase()</B> destroys a resource database,
+a function that was missing in earlier releases.
+
+<P>The <B>XScreenNumberOfScreen()</B> function has also been
+added. It simply returns the screen integer corresponding to the specified
+pointer to a <B>Screen</B> structure. This function is listed with the
+macros in Appendix C, <I>Macros</I>, of <I>Volume Two, Xlib Reference Manual</I>.
+<H3>
+Existing Interface Changes</H3>
+The following sections describe the changes in the areas
+of <B>XOpenDisplay()</B>, error handlers, nonstandard keysyms and keyboard
+groups, <B>XReadBitmapFile()</B>, resource specification syntax, and <B>XrmParseCommand()</B>.
+<H4>
+XOpenDisplay()</H4>
+The use of <I>unix</I> as a hostname in the DISPLAY environment
+variable read by <B>XOpenDisplay()</B> is no longer part of the specification
+(for trademark reasons); use an empty hostname. In other words, setting
+DISPLAY to ":0.0" will instruct Xlib to make the best local connection
+to the server running on the same system as this client.
+<H4>
+Error Handlers</H4>
+<B>XSetErrorHandler()</B> and <B>XIOSetErrorHandler</B> now
+return the previous error handler.
+<BLOCKQUOTE>
+<PRE><TT>int (*XSetErrorHandler(handler))()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int (*handler)(Display *, XErrorEvent *)
+
+int (*XSetIOErrorHandler(handler))()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int (*handler)(Display *);</TT></PRE>
+</BLOCKQUOTE>
+In <B>XGetErrorDatabaseText()</B>, for an extension request,
+the extension name (as given by <B>XInitExtension()</B>) followed by a
+period (.) and the minor request protocol number is used for the message
+argument.
+<H4>
+Nonstandard Keysyms</H4>
+Keysyms that are not part of the Xlib standard can now be
+obtained by using <B>XStringToKeysym()</B> and <B>XKeysymToString()</B>.
+Note that the set of keysyms that are available in this manner and the
+mechanisms by which Xlib obtains them is implementation-dependent. (In
+the MIT sample implementation, the resource file <I>/usr/lib/X11/XKeysymDB</I>
+is used starting in R4. The keysym name is used as the resource name, and
+the resource value is the keysym value in uppercase hexadecimal.)
+<H4>
+XReadBitmapFile()</H4>
+In <B>XReadBitmapFile()</B>, the ability to read X10 format
+is no longer required of an implementation. The ability to read other than
+the standard format is implementation-dependent.
+<H4>
+Resource Specification Syntax</H4>
+As of R4, the BNF notation of a resource specification is
+now specified:
+<BLOCKQUOTE>
+<PRE><TT>&nbsp;&nbsp; ResourceLine&nbsp;&nbsp; =&nbsp;&nbsp; Comment|ResourceSpec
+&nbsp;&nbsp; Comment&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =&nbsp;&nbsp; "!" string|&lt;empty line>&nbsp;
+&nbsp;&nbsp; ResourceSpec&nbsp;&nbsp; =&nbsp;&nbsp; WhiteSpace ResourceName WhiteSpace ":" WhiteSpace value
+&nbsp;&nbsp; ResourceName&nbsp;&nbsp; =&nbsp;&nbsp; [Binding] ComponentName {Binding ComponentName}
+&nbsp;&nbsp; Binding&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =&nbsp;&nbsp; "."|"*"
+&nbsp;&nbsp; WhiteSpace&nbsp;&nbsp;&nbsp;&nbsp; =&nbsp;&nbsp; {""|"Tab"}
+&nbsp;&nbsp; ComponentName&nbsp; =&nbsp;&nbsp; {"a"-"z"|"A"-"Z"|"0"-"9"|"_"|"-"}
+&nbsp;&nbsp; value&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =&nbsp;&nbsp; string
+&nbsp;&nbsp; string&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =&nbsp;&nbsp; {&lt;any character not including "\n">}</TT></PRE>
+</BLOCKQUOTE>
+Note that elements enclosed in curly braces ({...}) indicate
+zero or more occurrences of the enclosed elements.
+
+<P>To allow values to contain arbitrary octets, the four-character
+sequence \<I>nnn</I>, where <I>n</I> is a digit in the range of 0 through
+7 is recognized and replaced with a single byte that contains this sequence
+interpreted as an octal number. For example, a value containing a <B>NULL</B>
+byte can be stored by specifying \000.
+<H4>
+XrmParseCommand()</H4>
+In <B>XrmParseCommand()</B>, a new value, <B>XrmoptionSkipNArgs</B>,
+has been added to the <B>XrmOptionKind</B> enum. Note that <B>XrmoptionSkipArg</B>
+is equivalent to <B>XrmoptionSkipNArgs</B> with the <B>XrmOptionDescRec.value</B>
+field containing the value one. Note also that the value zero for <B>XrmoptionSkipNArgs</B>
+indicates that only the option itself is to be skipped.
+<H4>
+Keyboard Groups</H4>
+In R4, the concept of keyboard groups has been introduced,
+and <B>XLookupString()</B> implements new semantics to support keyboard
+groups. Keyboard groups support having two complete sets of keysyms for
+a keyboard. Which set will be used can be toggled using a particular key.
+This is implemented by using the first two keysyms in the list for a key
+as one set and the next two keysyms as the second set.
+
+<P>The standard rules for obtaining a keysym from a <B>KeyPress</B>
+event make use of only the Group 1 and Group 2 keysyms; no interpretation
+of other keysyms in the list is given here. Which group to use is determined
+by modifier state. Switching between groups is controlled by the keysym
+named MODE SWITCH, by attaching that keysym to some keycode and attaching
+that keycode to any one of the modifiers Mod1 through Mod5. This modifier
+is called the "group modifier." For any keycode, Group 1 is used when the
+group modifier is off and Group 2 is used when the group modifier is on.
+
+<P>Within a group, which keysym to use is also determined
+by modifier state. The first keysym is used when the Shift and Lock modifiers
+are off. The second keysym is used when the Shift modifier is on, when
+the Lock modifier is on and the second keysym is uppercase alphabetic,
+or when the Lock modifier is on and is interpreted as Shift Lock. Otherwise,
+when the Lock modifier is on and is interpreted as Caps Lock, the state
+of the Shift modifier is applied first to select a keysym, but if that
+keysym is lowercase alphabetic, then the corresponding uppercase keysym
+is used instead.
+
+<P>If the list of Keysyms (ignoring trailing <B>NoSymbol</B>
+entries) is a single keysym "<I>K</I>," then the list is treated as if
+it were the list "<I>K</I> NoSymbol <I>K</I><B>NoSymbol</B>." If the list
+(ignoring trailing <B>NoSymbol</B> entries) is a pair of keysyms "<I>K1
+K2</I>," then the list is treated as if it were the list "<I>K1 K2 K1 K2</I>."
+If the list (ignoring trailing <B>NoSymbol</B> entries) is a triple of
+keysyms "<I>K1 K2 K3</I>," then the list is treated as if it were the list
+"<I>K1 K2 K3</I><B>NoSymbol</B>." When an explicit "void" element is desired
+in the list, the value <B>VoidSymbol</B> can be used.
+
+<P>The first four elements of the list are split into two
+groups of keysyms. Group 1 contains the first and second keysyms; Group
+2 contains the third and fourth keysyms. Within each group, if the second
+element of the group is <B>NoSymbol</B>, then the group should be treated
+as if the second element were the same as the first element, except when
+the first element is an alphabetic keysym "<I>K</I>" for which both lowercase
+and uppercase forms are defined. In that case, the group should be treated
+as if the first element were the lowercase form of "<I>K</I>" and the second
+element were the uppercase form of "<I>K</I>."
+
+<P>No spatial geometry of the symbols on the key is defined
+by their order in the keysym list, although a geometry might be defined
+on a vendor-specific basis. The X server does not use the mapping between
+keycodes and keysyms. Rather it stores it merely for reading and writing
+by clients.
+
+<P>The modifier named Lock is intended to be mapped to either
+a Caps Lock or a Shift Lock key, but which one is left as application-specific
+and/or user-specific. However, it is suggested that the determination be
+made according to the associated keysym(s) of the corresponding keycode.
+<BR>
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

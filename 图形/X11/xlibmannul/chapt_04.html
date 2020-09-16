@@ -1,0 +1,1474 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_03.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_05.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H1>
+Window Attributes</H1>
+The window attributes control a window's background and border
+pattern or color, the events that should be queued for it, and so on. This
+chapter describes how to set and get window attributes and provides a detailed
+description of each attribute. Everyone should read this chapter.
+
+<P>Now that you know the basic X concepts and you have seen
+the code for an X application, we can go back and start to describe various
+aspects of Xlib in full detail. This chapter describes the window attributes
+thoroughly. The window attributes were introduced in Section 2.2.1, "Window
+Characteristics" and described in more detail in Section 2.4.1, "Window
+Attributes." You should read those sections before proceeding.
+
+<P>The setting of window attributes becomes necessary when
+you use <B>XCreateWindow()</B> instead of the simpler <B>XCreateSimpleWindow()</B>.
+However, it is not essential that you set any window attributes other than
+the window background and border. Therefore, this chapter is mainly about
+optional features that you may find useful.
+
+<P>You will continue to find this chapter useful as a reference
+even when you are an experienced X programmer. A useful quick reference
+to the window attributes is also provided inside the back cover of <I>Volume
+Two, Xlib Reference Manual</I>.
+<BR>
+<HR>
+<H2>
+Setting Window Attributes</H2>
+Window attributes can be set while creating a window with
+<B>XCreateWindow()</B> or afterward with a call to <B>XChangeWindowAttributes()</B>.
+When creating a window with <B>XCreateSimpleWindow()</B>, most of the attributes
+are inherited from the parent. There are also several routines for changing
+individual window attributes, including the <B>event_mask</B>, background
+and border.
+
+<P>The procedure for setting the attributes is the same with
+<B>XCreateWindow()</B> or <B>XChangeWindowAttributes()</B>. You set the
+members of an <B>XSetWindowAttributes</B> structure to the desired values,
+create a mask indicating which members you have set, and call the routine
+to create the window or change the attributes.
+<BR>
+<HR>
+<H2>
+The Window Attribute Structures</H2>
+There are actually two structures associated with window
+attributes. <B>XWindowAttributes</B> is a read-only structure that contains
+all the attributes, while <B>XSetWindowAttributes</B> is a structure that
+contains only those attributes that a program is allowed to set. We will
+not show you <B>XWindowAttributes</B> until Section 4.4, "Information from
+the XWindowAttributes Structure," since it is used in programming only
+for getting the values of the window attributes.
+
+<P>Example 4-1 shows the structure that is used to set the
+window attributes.
+
+<P><B>The XSetWindowAttributes structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct _XSetWindowAttributes {
+&nbsp;&nbsp; Pixmap background_pixmap;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Pixmap, None, or ParentRelative */
+&nbsp;&nbsp; long background_pixel;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Background pixel value */
+&nbsp;&nbsp; Pixmap border_pixmap;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Pixmap, None, or CopyFromParent */
+&nbsp;&nbsp; long border_pixel;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Border pixel value */
+&nbsp;&nbsp; int bit_gravity;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* One of the bit gravity symbols */
+&nbsp;&nbsp; int win_gravity;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* One of the window gravity symbols */
+&nbsp;&nbsp; int backing_store;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* NotUseful, WhenMapped, or Always */
+&nbsp;&nbsp; long backing_bitplanes;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Planes to be preserved, if possible */
+&nbsp;&nbsp; long backing_pixel;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Value to use in restoring planes */
+&nbsp;&nbsp; Bool save_under;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Should bits under window be saved */
+&nbsp;&nbsp; long event_mask;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Events that should be queued */
+&nbsp;&nbsp; long do_not_propagate_mask;&nbsp;&nbsp; /* Events that shouldn't propagate */
+&nbsp;&nbsp; Bool override_redirect;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Override redirected configuration
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * requests */
+&nbsp;&nbsp; Colormap colormap;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Colormap associated with window */
+&nbsp;&nbsp; Cursor cursor;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Cursor to be displayed or None */
+} XSetWindowAttributes;</TT></PRE>
+</BLOCKQUOTE>
+To set the window attributes, you need to set the elements
+of the <B>XSetWindowAttributes</B> structure to the desired values and
+then set a <B>valuemask</B> argument that represents which members are
+to be changed in the server's internal structure. A symbol specifying each
+member to be changed is combined with the bitwise OR operator (<I>|</I>).
+These symbols are shown in Table 4-1. They begin with the letters <B>CW</B>
+("Create Window" or "Change Window") because the routines they are used
+in have those capital letters in their names.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 4-1 : </B>Window Attribute Mask Symbols</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Member</TH>
+
+<TH>Flag</TH>
+
+<TH>Bit</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>background_pixmap</B></TD>
+
+<TD><B>CWBackPixmap</B></TD>
+
+<TD>0</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>background_pixel</B></TD>
+
+<TD><B>CWBackPixel</B></TD>
+
+<TD>1</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>border_pixmap</B></TD>
+
+<TD><B>CWBorderPixmap</B></TD>
+
+<TD>2</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>border_pixel</B></TD>
+
+<TD><B>CWBorderPixel</B></TD>
+
+<TD>3</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>bit_gravity</B></TD>
+
+<TD><B>CWBitGravity</B></TD>
+
+<TD>4</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>win_gravity</B></TD>
+
+<TD><B>CWWinGravity</B></TD>
+
+<TD>5</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>backing_store</B></TD>
+
+<TD><B>CWBackingStore</B></TD>
+
+<TD>6</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>backing_planes</B></TD>
+
+<TD><B>CWBackingPlanes</B></TD>
+
+<TD>7</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>backing_pixel</B></TD>
+
+<TD><B>CWBackingPixel</B></TD>
+
+<TD>8</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>override_redirect</B></TD>
+
+<TD><B>CWOverrideRedirect</B></TD>
+
+<TD>9</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>save_under</B></TD>
+
+<TD><B>CWSaveUnder</B></TD>
+
+<TD>10</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>event_mask</B></TD>
+
+<TD><B>CWEventMask</B></TD>
+
+<TD>11</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>do_not_propagate_mask</B></TD>
+
+<TD><B>CWDontPropagate</B></TD>
+
+<TD>12</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>colormap</B></TD>
+
+<TD><B>CWColormap</B></TD>
+
+<TD>13</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>cursor</B></TD>
+
+<TD><B>CWCursor</B></TD>
+
+<TD>14</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>For example, if you want to set the initial values of
+the background and border pixel values, you would follow the procedure
+shown in Example 4-2.
+
+<P><B>Setting window attributes while creating a window</B>
+<BLOCKQUOTE>
+<PRE><TT>Display *display;
+Window parent, window;
+int x, y;
+unsigned int width, height, border_width;
+int depth;
+int screen_num;
+Visual *visual;
+unsigned int class;
+XSetWindowAttributes setwinattr;
+unsigned long valuemask;
+/* (Must open display) */
+screen_num = DefaultScreen(display);
+valuemask = CWBackPixel | CWBorderPixel;
+setwinattr.background_pixel = WhitePixel(display, screen_num);
+setwinattr.border_pixel = BlackPixel(display, screen_num);
+window = XCreateWindow(display, parent, x, y, width, height,
+&nbsp;&nbsp; border_width, depth, class, visual, valuemask, &amp;setwinattr);</TT></PRE>
+</BLOCKQUOTE>
+If the window already exists, you can change those same attributes
+with the procedure shown in Example 4-3.
+
+<P><B>Changing window attributes of existing window</B>
+<BLOCKQUOTE>
+<PRE><TT>Display *display;
+Window window;
+XSetWindowAttributes setwinattr;
+unsigned long valuemask;
+/* (Must open display, create window) */
+valuemask = CWBackPixel | CWBorderPixel;
+setwinattr.background_pixel = WhitePixel(display, screen_num);
+setwinattr.border_pixel = BlackPixel(display, screen_num);
+XChangeWindowAttributes(display, window, valuemask, &amp;setwinattr);</TT></PRE>
+</BLOCKQUOTE>
+You can also use separate calls to <B>XSetWindowBackground()</B>
+and <B>XSetWindowBorder()</B> to set these particular attributes. These
+and a few other attributes have routines for setting them individually.
+(These routines are referred to as <I>convenience routines</I>. They are
+provided for the attributes that most often need to be set without modifying
+any other attributes.) Table 4-2 lists the attributes that can be set individually
+and the routines that set them. But it is important to realize that each
+of these routines would generate a separate protocol request to the server,
+so if more than one attribute is to be set, it is more efficient to use
+the procedures shown above in Examples 4-2 and 4-3.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 4-2 : </B>Attributes that can be Set Individually</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Attribute</TH>
+
+<TH>Routine for Setting It</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>background_pixmap</B></TD>
+
+<TD><B>XSetWindowBackgroundPixmap()</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>background_pixel</B></TD>
+
+<TD><B>XSetWindowBackground()</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>border_pixmap</B></TD>
+
+<TD><B>XSetWindowBorderPixmap()</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>border_pixel</B></TD>
+
+<TD><B>XSetWindowBorder()</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>event_mask</B></TD>
+
+<TD><B>XSelectInput()</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>colormap</B></TD>
+
+<TD><B>XSetWindowColormap()</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>cursor</B></TD>
+
+<TD><B>XDefineCursor()</B> or <B>XUndefineCursor()</B></TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>Section 4.3, "Settable Attributes" describes all of the
+attributes and the routines for setting them.
+<BR>
+<HR>
+<H2>
+Settable Attributes</H2>
+The sections that follow describe the options and default
+values for each member of the <B>XSetWindowAttributes</B> structure. The
+attributes control a wide variety of ways for a window to act. They can
+be grouped loosely to help you understand when you might want to set each
+attribute.
+
+<P>One group of attributes controls the appearance of a window.
+These are <B>background_pixel</B>, <B>background_pixmap</B>, <B>border_pixel</B>,
+<B>border_ pixmap</B>, <B>colormap</B>, and <B>cursor</B>. Most clients
+will set the border, background, and cursor but use the default colormap.
+
+<P>A second group is provided to allow clients to improve
+their redrawing performance under certain conditions. These are <B>backing_pixel</B>,
+<B>backing_planes</B>, <B>backing_store</B>, <B>bit_gravity</B>, and <B>save_under</B>.
+These attributes do not affect the appearance or operation of a client.
+It is advisable to consider <B>bit_gravity</B> when designing a client,
+but the code for using these attributes can be added after a client's functionality
+is complete.
+
+<P>The <B>event_mask</B> and <B>do_not_propagate_mask</B>
+attributes control the selection and propagation of events. These attributes
+are described briefly in this chapter but also in much more detail in Chapter
+8, "Events."
+
+<P>The <B>win_gravity</B> attribute provides a means for
+relocating a window automatically when its parent is resized. Applications
+can take advantage of this feature to simplify the code that positions
+their subwindows when they are resized.
+
+<P>The <B>override_redirect</B> attribute controls whether
+requests to map or reconfigure the window can be intercepted by the window
+manager. <B>override_redirect</B> is meant to be set for the most temporary
+types of windows such as pop-up menus. In practice, this attribute only
+affects the top-level windows of an application (all children of the root
+window).
+
+<P>As described in Chapter 2, there are two window classes:
+<B>InputOutput</B> and <B>InputOnly</B>. The class of a window is specified
+in the call to <B>XCreateWindow()</B>, or is <B>InputOutput</B> if the
+window is created with <B>XCreateSimpleWindow()</B>.
+
+<P><B>InputOutput</B> windows have all of the attributes
+described in the sections below. <B>InputOnly</B> windows have only the
+following subset of attributes:
+<UL>
+<LI>
+<B>win_gravity</B></LI>
+
+<LI>
+<B>event_mask</B></LI>
+
+<LI>
+<B>do_not_propagate_mask</B></LI>
+
+<LI>
+<B>override_redirect</B></LI>
+
+<LI>
+<B>cursor</B></LI>
+</UL>
+Any attempt to set attributes other than these five on an
+<B>InputOnly</B> window will cause an X protocol error (<B>BadMatch</B>).
+<H3>
+The Window Background</H3>
+The background of a window is the drawing surface on which
+other graphics are drawn. It may be a solid color, or it may be patterned
+with a pixmap. This choice is mostly an aesthetic decision for the programmer.
+However, users expect to be able to specify the background color on the
+command line or in the resource database. Therefore, if a pixmap is used,
+the code for creating the pixmap should use two colors specified by the
+user (see Section 6.1.5, "Creating Bitmaps, Pixmaps, Tiles, and Stipples"
+for information on creating pixmaps).
+
+<P>The two attributes that control the background are <B>background_pixmap</B>
+and <B>background_pixel</B>, set by <B>XSetWindowBackgroundPixmap()</B>
+and <B>XSetWindowBackground()</B>, respectively.
+
+<P>These two attributes are not independent since they affect
+the same pixels. Either attribute can take precedence over the other, the
+winner being the one that is set last. If both are set in the same call
+to <B>XCreateWindow()</B> or <B>XChangeWindowAttributes()</B>, the <B>background_pixel</B>
+value is used.
+
+<P>The background of exposed areas of windows is automatically
+repainted by the server, regardless of whether the application selects
+<B>Expose</B> events.
+
+<P>However, changes in background attributes will not take
+effect until the server generates the next <B>Expose</B> event on that
+window. If you want the new background to be visible immediately, call
+<B>XClearWindow()</B> and flush the request buffer with <B>XFlush()</B>.
+
+<P>Applications must set one or the other for all windows.
+Otherwise, the results are undefined. Most applications set backgrounds
+to a solid color by setting the <B>background_pixel</B> attribute. The
+easiest way to do this is by setting the last argument of <B>XCreateSimpleWindow()</B>
+to <B>BlackPixel</B> or <B>WhitePixel()</B>.
+<H4>
+background_pixmap</H4>
+If the background is set to a pixmap, the background is tiled
+with the pixmap. <I>Tiling</I> is the laying out of a pixmap to cover an
+area. The first pixmap is applied at the origin of the window (or its parent's
+origin if using the parent's background pixmap by specifying <B>ParentRelative</B>,
+as described below). Another copy of the same pixmap is applied next to
+that one and another below it and so on until the window is filled.
+
+<P>The pixmap may be any size, though some sizes may be tiled
+faster than others. To find the most efficient tile size for a particular
+screen, call <B>XQueryBestTile()</B>.
+
+<P>A pixmap must be created with <B>XCreatePixmap()</B> or
+<B>XCreatePixmapFromBitmapData()</B> before being set as the <B>background_pixmap</B>
+attribute. The pixmap must have the same depth as the window and be created
+on the same screen. These characteristics are assigned to a pixmap as it
+is created. (For more information on creating pixmaps for tiles, see Section
+6.1.5, "Creating Bitmaps, Pixmaps, Tiles, and Stipples.")
+
+<P>The <B>background_pixmap</B> attribute has the following
+possible values:
+<DL>
+<DT>
+<B>None</B> (default)</DT>
+
+<DD>
+Specifies that the window has no defined background pixmap.
+The window background initially will be invisible and will share the bits
+of its parent but only if the <B>background_pixel</B> attribute is not
+set. When anything is drawn by any client into the area enclosed by the
+window, the contents will remain until the area is explicitly cleared with
+<B>XClearWindow()</B>. The background is not automatically refreshed after
+exposure. The main purpose of the setting <B>None</B> is a minor performance
+improvement. If the application is simply going to cover the entire window
+with graphics (i.e., there is no reasonable "background" that the application
+can set), then why bother forcing the server to spend time painting the
+background? <B>None</B> might also be useful for a subwindow when that
+subwindow will never be moved in relation to its parent.</DD>
+
+<DT>
+a pixmap ID</DT>
+
+<DD>
+The background will be tiled with the specified pixmap, but
+not until the next <B>Expose</B> event or <B>XClearWindow()</B> call. The
+background tile origin is the window origin. If the pixmap is not explicitly
+referenced again, it can be freed, since a copy is maintained in the server.
+Because the server copies the pixmap, changes to it after you set the <B>background_pixmap</B>
+attribute are not guaranteed to be reflected in the window background.
+For consistent results, therefore, you need to reset the attribute after
+each change to the pixmap.</DD>
+
+<DT>
+<B>ParentRelative</B></DT>
+
+<DD>
+Specifies that the parent's background is to be used and
+that the origin for tiling is the parent's origin (or the parent's parent
+if the parent's <B>background_pixmap</B> attribute is also <B>ParentRelative</B>
+and so on). The difference between setting <B>ParentRelative</B> and explicitly
+setting the same pixmap as the parent is the origin of the tiling. The
+difference between <B>ParentRelative</B> and <B>None</B> is that for <B>ParentRelative</B>,
+the background is automatically repainted on exposure.</DD>
+
+<DD>
+The window must have the same depth as the parent, or a <B>BadMatch</B>
+error will occur. If the parent has background <B>None</B>, then the window
+will also have background <B>None</B>. The parent's background is re-examined
+each time the window background is required (when it needs to be redrawn
+due to exposure). The window's contents will be lost when the window is
+moved relative to its parent, and the contents will have to be redrawn.</DD>
+</DL>
+Changing the <B>background_pixmap</B> attribute of the root
+window to <B>None</B> or <B>ParentRelative</B> restores the default background,
+which is server-dependent.
+
+<P>By the way, the symbol <B>CopyFromParent</B> is not used
+for setting the background, but it will not cause an error, since its value
+is the same as <B>None</B>.
+<H4>
+background_pixel</H4>
+If the background pixel value is specified, the entire background
+will take on the color (or shade of gray) indicated for that pixel value
+in the current colormap.
+
+<P>The <B>background_pixel</B> attribute has the following
+possible values:
+<DL>
+<DT>
+undefined (default)</DT>
+
+<DD>
+Indicates that the background is as specified in the <B>background_pixmap</B>
+attribute. This value is possible only by creating a window with <B>XCreateWindow()</B>
+and not setting the <B>background_pixel</B> attribute.</DD>
+
+<DT>
+a pixel value</DT>
+
+<DD>
+The background is filled with the specified pixel value.
+This can be set with the last argument of <B>XCreateSimpleWindow()</B>,
+<B>XCreateWindow()</B>, or <B>XChangeWindowAttributes()</B>.</DD>
+</DL>
+
+<H3>
+The Window Border</H3>
+Like the window background, the window border may have a
+solid color or may be tiled with a pixmap. This choice is again up to the
+programmer, though the user should be allowed to determine the color or
+colors.
+
+<P>Unlike changes to the window background, changes to a
+window's border attributes are reflected immediately. No call to <B>XClearWindow()</B>
+or call to flush the request buffer is necessary. This feature makes it
+possible to use the window border for indicating a client's state. But
+you cannot use the border of the top-level window, since some window managers
+manipulate this border to indicate the keyboard focus window (see Section
+8.3.2.1, "The Keyboard Focus Window" for a description of the keyboard
+focus).
+
+<P>The design of a pattern for the border will be different
+from the background pixmap, because the border width is usually narrow
+(at most four pixels).
+
+<P>The two attributes that affect the border are <B>border_pixmap</B>
+and <B>border_pixel</B>. <B>XSetWindowBorderPixmap()</B> and <B>XSetWindowBorder()</B>
+can be used to set these attributes. Like the window background, whenever
+one of these routines is called, it overrides the previous setting of the
+border. If they are both set simultaneously with <B>XCreateWindow()</B>
+or <B>XChangeWindowAttributes()</B>, the <B>border_pixel</B> attribute
+takes precedence.
+
+<P>Most applications simply set the <B>border_pixel</B> to
+<B>BlackPixel</B> or <B>WhitePixel()</B> in the next-to-last argument of
+<B>XCreateSimpleWindow()</B>.
+<H4>
+border_pixmap</H4>
+If the <B>border_pixmap</B> is set to a pixmap, the border
+is tiled with the pixmap. Tiling is performed as described previously for
+the background pixmap; the border tile origin is the same as the background
+tile origin.
+
+<P>The <B>border_pixmap</B> attribute has the following possible
+values:
+<DL>
+<DT>
+<B>CopyFromParent</B> (default)</DT>
+
+<DD>
+Specifies that the border pixmap is to be copied from the
+parent. (Note that <B>CopyFromParent</B> will cause protocol errors if
+the window's depth is different from its parent's.) Subsequent changes
+to the parent's border attributes do not affect the child, but changes
+to the pixmap used by the parent may be reflected in the child border (server-dependent).</DD>
+
+<DT>
+<B>None</B></DT>
+
+<DD>
+Specifies that the window has no border pixmap. If the window
+has no border pixel value either, then it uses the same border pixel value
+as the parent.</DD>
+
+<DT>
+a pixmap ID</DT>
+
+<DD>
+Specifies a pixmap to be tiled in the border. The border
+tile origin is always the window origin; it is not taken from the background
+tile origin. If the pixmap is not explicitly referenced again, it can be
+freed since a copy is maintained in the server.</DD>
+</DL>
+For the root window, <B>CopyFromParent</B> indicates that
+the default border will be inherited by subsequently created children of
+the root window, instead of any other border that was set for the root
+window. Setting the <B>border_pixmap</B> of the root window to <B>CopyFromParent</B>
+restores the default border pixmap for later inheritance.
+<H4>
+border_pixel</H4>
+If a border pixel value is specified, the entire border will
+take on the color (or shade of gray) indicated for that pixel value in
+the current colormap.
+
+<P>The <B>border_pixel</B> attribute has the following possible
+values:
+<DL>
+<DT>
+undefined (default)</DT>
+
+<DD>
+Indicates that the border is as specified in the <B>border_pixmap</B>
+attribute. This value is possible only by creating a window with <B>XCreateWindow()</B>
+and not setting the <B>border_pixel</B> attribute.</DD>
+
+<DT>
+a pixel value</DT>
+
+<DD>
+Overrides the default and any <B>border_pixmap</B> given,
+and fills the border with the specified pixel value. This is set by the
+next-to-last argument of <B>XCreateSimpleWindow()</B>.</DD>
+</DL>
+
+<H3>
+Bit Gravity</H3>
+When an unobscured window is moved, its contents are moved
+with it, since none of the pixel values need to be changed. But when a
+window is enlarged or shrunk, the server has no idea where in the resulting
+window the old contents should be placed, so it normally throws them out.
+The <B>bit_gravity</B> attribute tells the server where to put the existing
+bits in the larger or smaller window. By instructing the server where to
+place the old contents, bit gravity allows some clients (not all can take
+advantage of it) to avoid redrawing parts of their windows.
+
+<P>Bit gravity is never <I>necessary</I> in programs. It
+does not affect the appearance or functionality of the client. It is used
+to improve performance in certain cases. Some X servers may not implement
+bit gravity and may throw out the window contents on resizing regardless
+of the setting of this attribute. This response is the default for all
+servers. That is, the default bit gravity is <B>ForgetGravity</B>, which
+means that the contents of a window are always lost when the window is
+resized, even if they are maintained in backing store or because of a <B>save_under</B>
+(to be described in Sections 4.3.5 and 4.3.6).
+
+<P>The window is tiled with its background in the areas that
+are not preserved by the bit gravity, unless no background is defined,
+in which case the existing screen is not altered.
+
+<P>There is no routine to set the <B>bit_gravity</B> individually;
+it can be set only with <B>XChangeWindowAttributes()</B> or <B>XCreateWindow()</B>.
+
+<P>The <B>bit_gravity</B> attribute has 11 possible values:
+<DL>
+<DT>
+<B>ForgetGravity</B> (default)</DT>
+
+<DD>
+Specifies that window contents should always be discarded
+after a size change. Note that some X servers may not implement bit gravity
+and may use <B>ForgetGravity</B> in all cases.</DD>
+
+<DT>
+<B>StaticGravity</B></DT>
+
+<DD>
+Specifies that window contents should not move relative to
+the origin of the root window. This means that the area of intersection
+between the original extent of the window and the final extent of the window
+will not be disturbed.</DD>
+</DL>
+Each constant below specifies where the old window contents
+should be placed in the resized window.
+<DL>
+<DT>
+<B>NorthWestGravity</B></DT>
+
+<DD>
+Upper-left corner of the resized window.</DD>
+
+<DT>
+<B>NorthGravity</B></DT>
+
+<DD>
+Top center of the resized window.</DD>
+
+<DT>
+<B>NorthEastGravity</B></DT>
+
+<DD>
+Upper-right corner of the resized window.</DD>
+
+<DT>
+<B>WestGravity</B></DT>
+
+<DD>
+Left center of the resized window.</DD>
+
+<DT>
+<B>CenterGravity</B></DT>
+
+<DD>
+Center of the resized window.</DD>
+
+<DT>
+<B>EastGravity</B></DT>
+
+<DD>
+Right center of the resized window.</DD>
+
+<DT>
+<B>SouthWestGravity</B></DT>
+
+<DD>
+Lower-left corner of the resized window.</DD>
+
+<DT>
+<B>SouthGravity</B></DT>
+
+<DD>
+Bottom center of the resized window.</DD>
+
+<DT>
+<B>SouthEastGravity</B></DT>
+
+<DD>
+Lower-right corner of the resized window.</DD>
+</DL>
+Here are two examples of applications that could take advantage
+of bit gravity. Figure 4-1 shows a fictional application that draws a two-axis
+graph in a window, with the origin at the lower-left corner. If that window
+were resized, the application would want the old contents to be placed
+against the new lower-left corner, no matter which sides of the window
+were moved in or out. That application would set the <B>bit_gravity</B>
+attribute of this window to <B>SouthWestGravity</B>. Figure 4-1 shows the
+response of this window to resizing with this bit gravity setting.
+
+<P><B>bit_gravity for a graphing application</B>
+
+<P><IMG SRC="imgs/fig.4.01.gif" ALT="fig.4.01.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;Each compass constant, such as <B>SouthWestGravity</B>,
+indicates the placement of the retained region in the window after resizing.
+In this case, the lower-left corner of the existing pixels is placed against
+the lower-left corner of the resulting window. When an <B>Expose</B> event
+arrives, the application need only redraw the two new strips of the window
+at the top and right side. No <B>Expose</B> event will be generated on
+the area that was saved because of <B>bit_gravity</B>.
+
+<P>For another example, think of a window containing centered
+text. If that window were resized either larger or smaller, we would still
+like the text to be centered. In this case, the <B>bit_gravity</B> should
+be set to <B>CenterGravity</B>. Then only if the window is resized smaller
+than the length of the text would we have to redraw the area and only then
+to break the line or use a shorter message. We could see whether changing
+the message would be necessary by looking at the <B>ConfigureNotify</B>
+event that occurs as a result of the resize (see <I>basicwin</I> in Chapter
+3, "Basic Window Program"). The window would still have to be redrawn if
+it were obscured and then exposed, of course--bit gravity only saves <I>some</I>
+of the redrawing that would otherwise have to be done.
+
+<P>If the constant were <B>NorthGravity</B>, the top center
+of the pixels in the window before the resize would be placed against the
+top center of the resulting window. This would be appropriate if we had
+a line of text centered at the top of the window that we wished to preserve
+when possible.
+<H3>
+Window Gravity</H3>
+The <B>win_gravity</B> attribute controls the repositioning
+of subwindows when a parent window is resized. The attribute is set on
+the children. Normally, each child has a fixed position measured from the
+origin of the parent window. Window gravity can be used to tell the server
+to unmap the child or to move the child an amount depending on the change
+in size of the parent. The constants used to set <B>win_gravity</B> are
+similar to those for bit gravity, but their effect is quite different.
+
+<P><B>NorthGravity</B> specifies that the child window should
+be moved horizontally by an amount one-half as great as the amount the
+window was resized in the horizontal direction. The child is not moved
+vertically. That means that if the window was originally centered along
+the top edge of the window, it will also be centered along the top edge
+of the window after resizing. If it was not originally centered, its relative
+distance from the center may be accentuated or reduced depending on whether
+the parent is resized larger or smaller.
+
+<P>Window gravity is only useful for children placed against
+or very near the outside edges of the parent or directly in its center.
+Furthermore, the child must be centered along one of the outside edges
+or in a corner. Figure 4-2 shows the nine child positions where window
+gravity can be useful and the setting to be used for each position.
+
+<P><B>Child positions where window gravity is useful</B>
+
+<P><IMG SRC="imgs/fig.4.02.gif" ALT="fig.4.02.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;If any other setting is used for any of these positions,
+the window gravity may move the child outside the resized parent, since
+there are no checks to prevent this. The application can try to prevent
+it by getting the new position of the child from a <B>ConfigureNotify</B>
+event (see Section 3.2.16, "Handling Resizing of the Window") and moving
+the child inside if necessary. But this will cause a flash when the child
+window is automatically placed incorrectly and then moved to the correct
+position by the application. And if an application has to go to the trouble
+to check the position and move the child, it might as well just forget
+about window gravity and place the child itself.
+
+<P><B>NorthWestGravity</B> (the default) indicates that the
+child (for which this attribute is set) is not moved relative to its parent.
+
+<P><B>UnmapGravity</B> specifies that the subwindow should
+be unmapped when the parent is resized. This might be used when a client
+wishes to recalculate the positions of its children. Normally, the children
+would appear in their old positions before the client could move them into
+their recalculated positions. This can be confusing to the user. By setting
+the <B>win_gravity</B> attribute to <B>UnmapGravity</B>, the server will
+unmap the windows. They can be repositioned at the client's leisure, and
+then the client can remap them (with <B>XMapSubwindows()</B>) in their
+new locations.
+
+<P>There is no routine to set the <B>win_gravity</B> attribute
+individually; it can be set only with <B>XChangeWindowAttributes()</B>
+or <B>XCreateWindow()</B>.
+
+<P>The <B>win_gravity</B> attribute has the following possible
+values:
+<DL>
+<DT>
+<B>UnmapGravity</B></DT>
+
+<DD>
+Specifies that the child is unmapped (removed from the screen)
+when the parent is resized, and an <B>UnmapNotify</B> event is generated.</DD>
+
+<DT>
+<B>StaticGravity</B></DT>
+
+<DD>
+Specifies that the window contents should not move relative
+to the origin of the root window.</DD>
+
+<DT>
+One of the compass constants below</DT>
+
+<DD>
+The list below shows the distance the child window will be
+moved; <I>W</I> is the amount the parent was resized in width, and <I>H</I>
+is the amount the parent was resized in height:</DD>
+
+<DL>
+<DT>
+<B>NorthWestGravity</B> (default)</DT>
+
+<DD>
+(0, 0)</DD>
+
+<DT>
+<B>NorthGravity</B></DT>
+
+<DD>
+(W/2, 0)</DD>
+
+<DT>
+<B>NorthEastGravity</B></DT>
+
+<DD>
+(W, 0)</DD>
+
+<DT>
+<B>WestGravity</B></DT>
+
+<DD>
+(0, H/2)</DD>
+
+<DT>
+<B>CenterGravity</B></DT>
+
+<DD>
+(W/2, H/2)</DD>
+
+<DT>
+<B>EastGravity</B></DT>
+
+<DD>
+(W, H/2)</DD>
+
+<DT>
+<B>SouthWestGravity</B></DT>
+
+<DD>
+(0, H)</DD>
+
+<DT>
+<B>SouthGravity</B></DT>
+
+<DD>
+(W/2, H)</DD>
+
+<DT>
+<B>SouthEastGravity</B></DT>
+
+<DD>
+(W, H)</DD>
+</DL>
+</DL>
+
+<H3>
+Backing Store</H3>
+A <I>backing store</I> automatically maintains the contents
+of a window while it is obscured or even while it is unmapped. Backing
+is like having a copy of the window saved in a pixmap, automatically copied
+to the screen whenever necessary to keep the visible contents up to date.
+Backing store is only available on some servers, usually on high performance
+workstations.
+
+<P>These servers can be instructed when to back up a window
+and which planes to save, through the backing store attributes. Even when
+it is available, the backing store should be avoided since it may carry
+a heavy performance penalty on the server. You can find out whether backing
+is supported on a particular screen with the <B>DoesBackingStore()</B>
+macro.
+
+<P>A client might use this feature to back up a window the
+client is incapable of redrawing for some reason or to be able to draw
+into a window that is obscured or unmapped.
+
+<P>Three separate attributes control backing: <B>backing_store</B>,
+<B>backing_planes</B>, and <B>backing_pixel</B>. There are no routines
+for setting these attributes individually (use <B>XChangeWindowAttributes()</B>
+or <B>XCreateWindow()</B>). The <B>backing_store</B> attribute determines
+when and if a window's contents are preserved by the server. The <B>backing_planes</B>
+attribute specifies which planes must be preserved, and <B>backing_pixel</B>
+specifies the pixel value used to fill planes not specified in <B>backing_planes</B>.
+The X server is free to save only the bit planes specified in <B>backing_planes</B>
+and to regenerate the remaining planes with the specified pixel value.
+
+<P>When the backing store feature is active and the window
+is larger than its parent, the server maintains complete contents, not
+just the region within the parent's boundaries. If the server is maintaining
+the contents of a window, <B>Expose</B> events will not be generated when
+that window is exposed.
+
+<P>Use of the backing store does not make a window immune
+to the other window attributes. If the <B>bit_gravity</B> is <B>ForgetGravity</B>,
+the contents will still be lost whenever the window is resized.
+
+<P>The <B>backing_store</B> attribute has the following possible
+values:
+<DL>
+<DT>
+<B>NotUseful</B> (default)</DT>
+
+<DD>
+Advises the server that maintaining contents is unnecessary.
+A server may still choose to maintain contents.</DD>
+
+<DT>
+<B>WhenMapped</B></DT>
+
+<DD>
+Advises the server that it would be beneficial to maintain
+contents of obscured regions when the window is mapped.</DD>
+
+<DT>
+<B>Always</B></DT>
+
+<DD>
+Advises the server that it would be beneficial to maintain
+contents even when the window is unmapped.</DD>
+</DL>
+The <B>backing_planes</B> attribute specifies a mask (default
+all 1's) that indicates which planes of the window hold dynamic data that
+must be preserved in the backing store.
+
+<P>The <B>backing_pixel</B> attribute specifies a pixel value
+(default 0) to be used in planes not specified in the <B>backing_plane</B>
+attribute.
+<H3>
+Saving Under</H3>
+The <B>save_under</B> attribute controls whether the contents
+of the screen beneath a window should be preserved just before the window
+is mapped and replaced just after it is unmapped. This attribute is most
+useful for pop-up windows, which need to be on the screen only briefly.
+No <B>Expose</B> events will be sent to the windows that are exposed when
+the pop-up window is unmapped, saving the time necessary to redraw their
+contents.
+
+<P>Pop-up windows are usually children of the root window
+and, therefore, are not constrained to appear within the application's
+top-level window. Therefore, without <B>save_under</B> both your application
+and other applications on the screen would need to redraw areas when the
+pop-up window is unmapped.
+
+<P>Setting <B>save_under</B> is never necessary, but it can
+improve the performance of the server running clients that frequently map
+and unmap temporary windows. The user would otherwise have to wait for
+the area under the menu to be redrawn when the menu was unmapped.
+
+<P>There is no routine for setting the <B>save_under</B>
+attribute individually; it can only be set with <B>XChangeWindowAttributes()</B>
+or <B>XCreateWindow()</B>.
+
+<P>The <B>save_under</B> attribute is different from the
+backing store; <B>save_under</B> may save portions of several windows beneath
+a window for the duration of the appearance of the window on the screen,
+while the backing store saves the contents of a single window while it
+is mapped or even when unmapped, depending on the attributes.
+
+<P>Not all servers are capable of saving under windows. You
+can find out whether this feature is supported on a particular screen with
+the <B>DoesSaveUnders()</B> macro.
+
+<P>The <B>save_under</B> attribute has the following possible
+values:
+<DL>
+<DT>
+<B>False</B> (default)</DT>
+
+<DD>
+Specifies that covered clients should be sent <B>Expose</B>
+events when the window is unmapped, unless they are preserved in the backing
+store.</DD>
+
+<DT>
+<B>True</B></DT>
+
+<DD>
+Specifies that the server should save areas under the window
+and replace them when the window is unmapped.</DD>
+</DL>
+Setting the <B>save_under</B> attribute to <B>True</B> does
+not prevent all <B>Expose</B> events on the area underneath. For example,
+assume there is a window whose <B>bit_gravity</B> is <B>ForgetGravity</B>,
+and this window lies under a window that has the <B>save_under</B> attribute
+set to <B>True</B>. The contents of the obscured window will be lost if
+the underlying window is resized while partially obscured, and <B>Expose</B>
+events will be generated even on the saved area.
+<H3>
+Event Handling</H3>
+The <B>event_mask</B> and <B>do_not_propagate_mask</B> attributes
+control the propagation of events through the window hierarchy. The <B>event_mask</B>
+attribute is normally set with <B>XSelectInput()</B>, but it can also be
+set directly with <B>XChangeWindowAttributes()</B> or <B>XCreateWindow()</B>.
+
+<P>The <B>event_mask</B> attribute specifies which event
+types are queued for the window when they occur. The <B>do_not_propagate_mask</B>
+attribute defines which events should not be propagated to ancestor windows
+when the event type is not selected in this window. Both masks are made
+by combining the constants listed below using the bitwise OR operator (<I>|</I>).
+<BLOCKQUOTE>
+<PRE><TT>&nbsp;&nbsp;&nbsp;&nbsp; Button1MotionMask&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; KeyPressMask&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp; Button2MotionMask&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; KeyReleaseMask&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp; Button3MotionMask&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LeaveWindowMask&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp; Button4MotionMask&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; NoEventMask&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp; Button5MotionMask&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OwnerGrabButtonMask&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp; ButtonMotionMask&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; PointerMotionHintMask&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp; ButtonPressMask&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; PointerMotionMask&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp; ButtonReleaseMask&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; PropertyChangeMask&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp; ColormapChangeMask&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ResizeRedirectMask&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp; EnterWindowMask&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; StructureNotifyMask&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp; ExposureMask&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SubstructureNotifyMask&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp; FocusChangeMask&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SubstructureRedirectMask&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp; KeymapStateMask&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; VisibilityChangeMask</TT></PRE>
+</BLOCKQUOTE>
+Much more information on setting the event masks, including
+examples, is presented in Chapter 8, "Events." This is a very important
+topic.
+<H3>
+Substructure Redirect Override</H3>
+A feature called <I>substructure redirect</I> allows a window
+manager to intercept any requests to map, move, resize, or change the border
+width of windows. This allows the window manager to modify these requests,
+if necessary, to ensure that they meet its window layout policy.
+
+<P>Setting the <B>override_redirect</B> attribute <B>True</B>
+for a window allows a window to be mapped, moved, resized, or its border
+width changed without the intervention of the window manager. This override
+is usually done for menus that are frequently mapped and almost immediately
+unmapped again.
+
+<P>Under properly designed window managers, there is a property
+you can set to tell the window manager to allow a window to pop up with
+minimal intervention (<B>XA_WM_TRANSIENT_FOR</B>). This is used for dialog
+boxes, as described in Section 12.3.1.4.6, "Transient Window Field."
+
+<P>There is no routine for setting the <B>override_redirect</B>
+attribute individually; it must be set with <B>XChangeWindowAttributes()</B>
+or <B>XCreateWindow()</B>.
+
+<P>The <B>override_redirect</B> attribute has the following
+possible values:
+<DL>
+<DT>
+<B>False</B> (default)</DT>
+
+<DD>
+Specifies that map, move, and resize requests may be processed
+by the window manager.</DD>
+
+<DT>
+<B>True</B></DT>
+
+<DD>
+Specifies that map, move, and resize requests are to be done
+verbatim, bypassing any window manager involvement.</DD>
+</DL>
+
+<H3>
+Colormap</H3>
+The <B>colormap</B> attribute specifies which colormap should
+be used to interpret the pixel values in a window.
+
+<P>For the large majority of clients without special color
+needs, this attribute can be left in its default state. By default, the
+<B>colormap</B> attribute from the parent is taken, which, if all ancestors
+of the window have used the default, will be the default colormap. This
+means that the default colormap for the screen will be used to translate
+into colors the pixel values drawn into this window.
+
+<P>If the client requires its own colormap for some reason,
+the client can create a colormap and set the <B>colormap</B> attribute
+to the ID of the new colormap. A colormap ID is of type <B>Colormap</B>.
+
+<P>The window manager will read this attribute and install
+the specified colormap into the hardware colormap when the user indicates
+that the application should be active. If the system only has one hardware
+colormap, all other applications will appear in false colors. This is one
+good reason that applications are encouraged not to create their own colormaps
+but to use the default colormap instead.
+
+<P>To understand this process, you need to know more about
+colormaps in X, and for that, see Chapter 7, "Color."
+
+<P><B>XSetWindowColormap()</B> sets the <B>colormap</B> attribute,
+which can be set to the following values:
+<DL>
+<DT>
+<B>CopyFromParent</B> (default)</DT>
+
+<DD>
+Specifies that the colormap attribute is to be copied from
+the parent (subsequent changes to the parent's attribute do not affect
+the child), but the window must have the same visual type as the parent
+and the parent must not have a colormap of <B>None</B> (otherwise a <B>BadMatch</B>
+error occurs).</DD>
+
+<DT>
+a colormap ID</DT>
+
+<DD>
+The specified colormap will be used for displaying this window,
+at least while the window manager considers the application active.</DD>
+</DL>
+
+<H3>
+Cursor</H3>
+The cursor is the object that tracks the pointer on the screen,
+sometimes called the sprite. In X, a <I>cursor</I> is a server resource
+which defines a cursor pattern, its colors, and the point within the pattern
+that will be reported in events (called the <I>hotspot</I>). The ID of
+a cursor is of type <B>Cursor</B>.
+
+<P>Most clients will define a suitable cursor for their top-level
+window and other cursors for each subwindow if needed. For example, <I>xterm</I>
+specifies the thin text cursor for the main window and a vertical bidirectional
+arrow for the scrollbar.
+
+<P>A cursor can be associated with any <B>InputOutput</B>
+or <B>InputOnly</B> window using the <B>cursor</B> attribute. Then the
+specified cursor will track the pointer while the pointer is within the
+window's borders.
+
+<P>A primary purpose for having a different cursor in a window
+is to indicate visually to the user that something different will happen
+to keyboard or button input while in the window. Another reason might be
+to change a cursor's color to increase its visibility over the background
+of certain windows (although there is another way to obtain contrast, with
+the cursor mask). There are probably other uses for a separate cursor.
+
+<P>A call to <B>XDefineCursor()</B> sets this attribute to
+a <B>Cursor</B>, and a call to <B>XUndefineCursor()</B> sets it back to
+<B>None</B>, which means that the cursor of the parent is used. The resource
+<B>Cursor</B> must be created before calling <B>XDefineCursor()</B>. This
+can be done with <B>XCreateFontCursor()</B>. <B>XCreateGlyphCursor()</B>,
+or <B>XCreatePixmapCursor()</B>, as described in Section 6.5.1, "The Standard
+Cursor Font." The <B>cursor</B> resource can be freed with <B>XFreeCursor()</B>
+when no further explicit references to it are to be made.
+
+<P>The <B>cursor</B> attribute has the following possible
+values:
+<DL>
+<DT>
+<B>None</B> (default)</DT>
+
+<DD>
+Specifies that the parent's cursor will be used when the
+pointer is in the window.</DD>
+
+<DT>
+a cursor ID</DT>
+
+<DD>
+Specifies a cursor that will be used whenever the pointer
+is in the window.</DD>
+</DL>
+The cursor of the root window is initially a large X, but
+this may be changed like the cursor in any other window if desired. However,
+this should only be done by the window manager or by the user using the
+<I>xsetroot</I> application. See <I>Volume Three, X Window System User's
+Guide</I>, for a description of <I>xsetroot</I>.
+<H3>
+Default Attributes</H3>
+Table 4-3 summarizes the default attributes for an <B>InputOutput</B>
+window. Only five of the attributes are relevant for <B>InputOnly</B> windows:
+<B>cursor</B>, <B>do_not_ propagate_mask</B>, <B>event_mask</B>, <B>override_redirect</B>,
+and <B>win_gravity</B>. These attributes have the same defaults as for
+<B>InputOutput</B> windows.
+
+<P>The background, border, and <B>event_mask</B> attributes
+need to be set for virtually all windows.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 4-3 : </B>Default Window Attributes</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Member</TH>
+
+<TH>Default Value</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>background_pixmap</B></TD>
+
+<TD><B>None</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>background_pixel</B></TD>
+
+<TD>Undefined</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>border_pixmap</B></TD>
+
+<TD><B>CopyFromParent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>border_pixel</B></TD>
+
+<TD>Undefined</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>bit_gravity</B></TD>
+
+<TD><B>ForgetGravity</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>win_gravity</B></TD>
+
+<TD><B>NorthWestGravity</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>backing_store</B></TD>
+
+<TD><B>NotUseful</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>backing_planes</B></TD>
+
+<TD>All <B>1</B> 's (ones)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>backing_pixel</B></TD>
+
+<TD><B>0</B> (zero)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>override_redirect</B></TD>
+
+<TD><B>False</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>save_under</B></TD>
+
+<TD><B>False</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>event_mask</B></TD>
+
+<TD><B>0</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>do_not_propagate_mask</B></TD>
+
+<TD><B>0</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>colormap</B></TD>
+
+<TD><B>CopyFromParent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>cursor</B></TD>
+
+<TD><B>None</B></TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>
+<HR>
+<H2>
+Information from the XWindowAttributes Structure</H2>
+We have been describing the programmable window attributes
+stored in the <B>XSetWindowAttributes</B> structure. Many of the other
+window characteristics described in Chapter 2, "X Concepts," including
+the window configuration, are also stored with the window attributes by
+the server but are not programmable using <B>XChangeWindowAttributes()</B>.
+For example, depth, class, and visual are assigned at window creation and
+cannot be changed. The window size, position, and border width are changed
+with a separate mechanism, because for top-level windows there must be
+cooperation from the window manager.
+
+<P>The current state of most of the programmable attributes,
+the read-only attributes, and the window configuration can be read with
+<B>XGetWindowAttributes()</B>. All this information is returned in an <B>XWindowAttributes</B>
+structure (not an <B>XSetWindowAttributes</B> structure).
+
+<P>Example 4-4 shows the fields of the <B>XWindowAttributes</B>
+structure that are not present in <B>XSetWindowAttributes</B>.
+
+<P><B>Read-only XWindowAttributes members</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp;&nbsp; /* Members writable with XChangeWindowAttributes omitted */
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp; /* Window geometry -- set by window configuration functions
+&nbsp;&nbsp;&nbsp;&nbsp; * in cooperation with window manager */
+&nbsp;&nbsp;&nbsp; int x, y;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Location of window */
+&nbsp;&nbsp;&nbsp; int width, height;&nbsp;&nbsp;&nbsp; /* Width and height of window */
+&nbsp;&nbsp;&nbsp; int border_width;&nbsp;&nbsp;&nbsp;&nbsp; /* Border width of window */
+&nbsp;&nbsp;&nbsp; /* This is the event_mask attribute set by XSelectInput */
+&nbsp;&nbsp;&nbsp; long your_event_mask; /* My event mask */
+&nbsp;&nbsp;&nbsp; /* Set when the window is created, not changeable */
+&nbsp;&nbsp;&nbsp; Visual *visual;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* The associated visual structure */
+&nbsp;&nbsp;&nbsp; int class;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* InputOutput, InputOnly */
+&nbsp;&nbsp;&nbsp; int depth;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Depth of window */
+&nbsp;&nbsp;&nbsp; Screen *screen;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Pointer to screen the window is on */
+&nbsp;&nbsp;&nbsp; /* Server sets these members */
+&nbsp;&nbsp;&nbsp; Window root;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Root of screen containing window */
+&nbsp;&nbsp;&nbsp; Bool map_installed;&nbsp;&nbsp; /* Is colormap currently installed */
+&nbsp;&nbsp;&nbsp; int map_state;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* IsUnmapped, IsUnviewable, or
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * IsViewable */
+&nbsp;&nbsp;&nbsp; long all_event_masks; /* Events all clients have interest in */
+}&nbsp; XWindowAttributes;</TT></PRE>
+</BLOCKQUOTE>
+As you can see, the members of <B>XWindowAttributes</B> that
+cannot be directly written with <B>XChangeWindowAttributes()</B> are separated
+into four groups.
+
+<P>The first group provides a way to get the window geometry.
+This information is returned by <B>XGetGeometry()</B>, but it might be
+useful to use <B>XGetWindowAttributes()</B> instead if you need both the
+geometry and a few attributes.
+
+<P>The <B>your_event_mask</B> member can be useful if you
+want to add event mask symbols to those already selected. In a call to
+<B>XSelectInput()</B>, you must always specify all the desired event masks.
+If you do not know which event masks are already selected or do not want
+to bother passing an <B>event_mask</B> argument into one of your routines,
+you could read the existing event mask here. Then you could OR in any additional
+event mask symbols before calling <B>XSelectInput()</B> or <B>XChangeWindowAttributes()</B>.
+See Chapter 8, "Events," for more information on the use of event masks.
+
+<P>The <B>depth</B>, <B>class</B>, <B>visual</B>, and <B>screen</B>
+members are set when the window is created. If the window was created with
+<B>XCreateSimpleWindow()</B>, they were inherited from the parent. If the
+window was created with <B>XCreateWindow()</B>, these members were specified
+as arguments, except <B>screen</B>, which is indirectly specified by the
+parent argument. The <B>screen</B> member points to a structure that tells
+you about the screen on which this window was created. This is one of the
+<B>Screen</B> structures from the list in the <B>Display</B> structure,
+and therefore, the information it contains can also be gotten from the
+macros as described in Section 3.2.3, "Display Macros" and Appendix C,
+<I>Macros</I>, of <I>Volume Two, Xlib Reference Manual</I>. Again, these
+should only be needed for convenience to avoid having to pass around these
+values as arguments or global variables.
+
+<P>The <B>root</B> member tells you the ID of the root window
+on the screen on which your window was created. It is usually more convenient
+to use the <B>RootWindow()</B> macro.
+
+<P>The <B>map_installed</B> member can be monitored to tell
+your application whether the colormap it has set in its <B>colormap</B>
+attribute is currently installed. If not, the application may be displayed
+in false colors. See Chapter 7, "Color," for more details.
+
+<P>The <B>map_state</B> member can be monitored by a program
+and used to turn off processing while a window is unviewable. Some applications
+that continuously poll for input or draw (such as in action games) can
+stop doing so and save processor cycles when there is no chance of getting
+input or no point in drawing.
+
+<P>The <B>all_event_masks</B> member tells you all the event
+types that are selected by all clients on the window requested. This is
+the OR of all the <B>event_mask</B> attributes for that window for all
+clients. By contrast, <B>your_event_mask</B> specifies only the events
+selected by <I>your</I> client.
+
+<P>Also note that <B>XWindowAttributes</B> is missing a few
+fields that are present in <B>XSetWindowAttributes</B>. This means that
+there are some fields that can be set but not queried. These fields are
+the background and border pixel value and pixmap and the cursor. The designers
+of X decided to make these fields nonreadable to reduce restrictions on
+the implementation of backgrounds, borders, and cursors in the server.
+<BR>
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

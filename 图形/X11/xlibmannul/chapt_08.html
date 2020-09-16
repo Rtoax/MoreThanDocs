@@ -1,0 +1,2150 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_07.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_09.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H1>
+Events</H1>
+This chapter is another must-read. Events are central to
+X. The fundamental framework for handling events was given in Chapter 3,
+but this chapter gives much more detail, both on selecting events for a
+window and on handling them when they arrive. It discusses each of the
+masks used to select events; for a description of the event structures
+themselves, see Appendix E.
+
+<P>An event, to quote the Oxford English Dictionary, is an
+"incident of importance" or a "consequence, result, or outcome." This definition
+holds for X. An event reports some device activity or is generated as a
+side effect of an Xlib routine.
+
+<P>From a programmer's point of view, an event reports:
+<UL>
+<LI>
+Something that your program needs to know about, such as
+user input or information available from other clients.</LI>
+
+<LI>
+Something your program is doing that other clients need to
+know about, such as making text available for pasting to another client.</LI>
+
+<LI>
+Something the window manager needs to know, such as a request
+by your program for a change to the layout of the screen by mapping a window.</LI>
+</UL>
+Programming with events is quite different from traditional
+methods of programming for input. You cannot simply wait for a user to
+type something and expect nothing else to happen in the meantime. Other
+programs are running concurrently and sharing the same system resources
+including the screen. They can affect your program. What happens if another
+window is placed over yours in the middle of the instruction your user
+is typing? The program must be able to listen to several types of events
+at once and jump back and forth when acting on them. Events imply a philosophy
+that the program should respond to the user's actions, not the other way
+around. Events make this type of programming straightforward.
+
+<P>Events occur asynchronously and get queued for each client
+that requested them. It is possible for more than one client to get copies
+of the same event. Usually a program handles each one in turn and performs
+the appropriate action before reading the next one. But there is usually
+no way for a program to predict in what order it will find the events on
+the queue.
+
+<P>This chapter covers events in detail, going further than
+the introduction to events in Chapter 2, "X Concepts." Here we discuss
+the event union and structure types, the selection and propagation of events,
+how each event type is usually used, how events are received and handled
+in a program, and how they are sent by one client to another.
+
+<P>After you have read and understood this chapter, see Chapter
+9, "The Keyboard and Pointer," which demonstrates how to use events to
+handle the user's input, and Appendix E, <I>Event Reference</I>, which
+describes all the event types in a reference format.
+<BR>
+<HR>
+<H2>
+Overview of Event Handling</H2>
+There are three important steps in a program's handling of
+events. First, the program selects the events it wants for each window.
+Then it maps the windows. Finally, it provides an event loop which reads
+events from the event queue as they occur.
+
+<P>This process is quite simple, the only complication being
+the variety of events that may occur, each perhaps having a different meaning
+when it occurs in a different window. You have to know every circumstance
+in which a particular event is generated and make sure that your program
+does the right thing with it. But you will not need to understand the details
+of every event in order to begin using the most important ones.
+
+<P>The easiest way to select events is to call <B>XSelectInput()</B>
+for each window that you want to receive events. You can also set the <B>event_mask</B>
+attribute directly with <B>XChangeWindowAttributes()</B> or <B>XCreateWindow()</B>.
+You specify a mask which specifies which event types you want, combining
+any number of the event mask symbols with the bitwise OR operator (<I>|</I>).
+
+<P>You must make sure that every window that is to receive
+events appears on the screen after the events are selected for that window
+but before the event loop begins. Otherwise, the client will miss the first
+<B>Expose</B> event that triggers the drawing of the window's contents.
+For top-level windows, the client might also miss the <B>ConfigureNotify</B>
+event that reports the size of the window granted by the window manager.
+For a window to appear on the screen, it must be mapped and all its ancestors
+must be mapped. It is permissible to map all the windows except the top-level
+ones at any time, but the mapping of children of the root window must be
+done between the <B>XSelectInput()</B> call and the routine that gets events
+for the event loop.
+
+<P>A simple event loop was shown in Chapter 3, "Basic Window
+Program." The only difference between this loop and the loops in real clients
+is in the number of different event types handled and the complexity of
+each branch.
+
+<P>Even though selection of events must be done first, we
+are going to start by describing how to handle events once you have them,
+because there are fewer details involved. We will return to the exact procedure
+for selecting events and the meaning of each event mask symbol in Section
+8.3, "Selecting Events."
+<BR>
+<HR>
+<H2>
+Event Processing</H2>
+This section describes what an event type is and what an
+event structure contains, reviews how the event queue stores events and
+how a program reads events from it, and summarizes all the routines that
+can be used to get events.
+<H3>
+The Event Structures</H3>
+An event is implemented as a packet of information stored
+in a structure. The simplest event structure is shown in Example 8-1.
+
+<P><B>The XAnyEvent structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* The type of event */
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if sent from a SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window window;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Window that receives event */
+} XAnyEvent;</TT></PRE>
+</BLOCKQUOTE>
+There are 30 different event structures. Virtually all of
+them have the members shown in the <B>XAnyEvent</B> structure. Most of
+the event structures also contain various additional members that provide
+useful information for clients. The first member of every event structure,
+<B>type</B>, indicates the type of event. We will come back to the type
+in Section 8.2.2, "Event Types and XEvent Union." The <B>serial</B> member
+identifies the last protocol request processed by the server, for use in
+debugging. The <B>send_event</B> flag indicates whether this event was
+sent from the server (<B>False</B>) or from another client (<B>True</B>).
+Other clients can send events with <B>XSendEvent()</B>, as described in
+Section 8.4, "Sending Events."
+
+<P>Many of the event structures also have a <B>display</B>
+member or a <B>root</B> member or both. The <B>display</B> member identifies
+the connection to the server that this event came from. (Some applications
+connect with more than one server.) The <B>root</B> member indicates the
+screen on which the event occurred (a server may control more than one
+screen). Most programs only use a single screen and therefore do not need
+to worry about the <B>root</B> member. The <B>display</B> member can be
+useful for passing the display variable into routines by simply passing
+a pointer to the event structure.
+
+<P>Most event structures also have a <B>window</B> member,
+which indicates the window that selected and received the event. This is
+the window where the event arrives if it is a keyboard or pointer event
+and has propagated through the hierarchy, as described in Section 8.3.2,
+"Propagation of Device Events." One event type may have two different meanings
+to a client, depending on which window the event appears in.
+<H3>
+Event Types and XEvent Union</H3>
+All the event structures are padded when necessary to be
+the same size. The <B>XEvent</B> union contains all the event structures,
+as shown in Example 8-2.&nbsp; The first member of the <B>XEvent</B> union
+is the type of event. Each event structure within the <B>XEvent</B> union
+also begins with the type of event. A client determines the type of event
+by looking at the <B>type</B> member of <B>XEvent</B>. Then the client
+branches to specific code for that event type. After the initial determination
+of the event type, only the event structure containing the specific information
+for each event type should be used in each branch. For example, assuming
+you have declared an <B>XEvent</B> variable called <B>report</B>, the <B>report.xexpose</B>
+structure should be used within the branch for <B>Expose</B> events. This
+lets you use the fields unique to the <B>Expose</B> event structure.
+
+<P>The value of <B>type</B> is any one of the constants listed
+in the center column of Table 8-3, presented later in this chapter. After
+determining the event type, you know which event structure from the <B>XEvent</B>
+union contains specific information about the event. You can then use the
+appropriate event structure name, such as <B>xkey</B>, to access the specific
+information unique to that event structure. The event structure name is
+also shown on each event reference page in Appendix E, <I>Event Reference</I>.
+
+<P><B>The XEvent union</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; int type;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Must not be changed; first member */
+&nbsp;&nbsp; XAnyEvent xany;
+&nbsp;&nbsp; XKeyEvent xkey;
+&nbsp;&nbsp; XButtonEvent xbutton;
+&nbsp;&nbsp; XMotionEvent xmotion;
+&nbsp;&nbsp; XCrossingEvent xcrossing;
+&nbsp;&nbsp; XFocusChangeEvent xfocus;
+&nbsp;&nbsp; XKeymapEvent xkeymap;
+&nbsp;&nbsp; XExposeEvent xexpose;
+&nbsp;&nbsp; XNoExposeEvent xnoexpose;
+&nbsp;&nbsp; XGraphicsExposeEvent xgraphicsexpose;
+&nbsp;&nbsp; XVisibilityEvent xvisibility;
+&nbsp;&nbsp; XCreateWindowEvent xcreatewindow;
+&nbsp;&nbsp; XDestroyWindowEvent xdestroywindow;
+&nbsp;&nbsp; XUnmapEvent xunmap;
+&nbsp;&nbsp; XMapEvent xmap;
+&nbsp;&nbsp; XMappingEvent xmapping;
+&nbsp;&nbsp; XMapRequestEvent xmaprequest;
+&nbsp;&nbsp; XReparentEvent xreparent;
+&nbsp;&nbsp; XConfigureEvent xconfigure;
+&nbsp;&nbsp; XGravityEvent xgravity;
+&nbsp;&nbsp; XResizeRequestEvent xresizerequest;
+&nbsp;&nbsp; XConfigureRequestEvent xconfigurerequest;
+&nbsp;&nbsp; XCirculateEvent xcirculate;
+&nbsp;&nbsp; XCirculateRequestEvent xcirculaterequest;
+&nbsp;&nbsp; XPropertyEvent xproperty;
+&nbsp;&nbsp; XSelectionClearEvent xselectionclear;
+&nbsp;&nbsp; XSelectionRequestEvent xselectionrequest;
+&nbsp;&nbsp; XSelectionEvent xselection;
+&nbsp;&nbsp; XColormapEvent xcolormap;
+&nbsp;&nbsp; XClientMessageEvent xclient;
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Xlib's Event Queue</H3>
+The event structures are placed on an event queue in the
+order they occur, so that the program can read them and act accordingly.
+As shown in Figure 8-1, the server maintains one event queue, on which
+all events are placed, and distributes events to the Xlib in each client.
+The events in the server's queue are periodically transferred over the
+network to the Xlib queues. Two clients can receive copies of the same
+events if they each select them.
+
+<P><B>The server's event queue and client's event queue</B>
+
+<P><IMG SRC="imgs/fig.8.01.gif" ALT="fig.8.01.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;The client sets up an event-receiving loop to handle
+the events that arrive on its event queue. There are several routines a
+client can use to get events. They differ in how many windows they monitor,
+how many types of events they look for, and whether they wait for events
+to appear before returning. For a description of the event-getting routines,
+see Section 8.2.6, "Routines that Get Events."
+<H3>
+Writing the Event Loop</H3>
+In <I>basicwin</I> (the example program in Chapter 3, "Basic
+Window Program"), you have already seen the structure of the code you should
+write to handle events. In a more complex application, the code for each
+event type will simply be divided according to the values in the members
+in each event structure. Usually, the next branch after the event type
+will test the window in which the event occurred.
+
+<P>The branch for <B>Expose</B> events in Example 8-3 demonstrates
+how an event might be handled when there are several windows involved.
+The example also notes when each of the selected events--and the events
+that may be delivered without your selecting them--should be handled within
+your event loop. Depending on your application, other events might need
+to be handled as well.
+
+<P>Notice how the specific event structure names such as
+<B>xexpose</B> are used to access information in the event structures.
+
+<P><B>An event-handling loop</B>
+<BLOCKQUOTE>
+<PRE><TT>XEvent report;
+Window window1, window2, window3;
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+/* Open display, create windows, etc. */
+/* Window 1 is a top-level window, window 2 is a child
+&nbsp;* of window 1 */
+XSelectInput(display, window1, StructureNotifyMask | ExposureMask
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | ButtonPressMask);
+XSelectInput(display, window2, ExposureMask);
+XSelectInput(display, window3, ExposureMask);
+XMapWindow(display, window1);
+XMapWindow(display, window2);
+XMapWindow(display, window3);
+/* Get events, use first to display text and graphics */
+while (1)
+{
+&nbsp;&nbsp; /* Get any type of event on any window; this gets
+&nbsp;&nbsp;&nbsp; * events on every window for which we have selected
+&nbsp;&nbsp;&nbsp; * events (three in this case) */
+&nbsp;&nbsp; XNextEvent(display, &amp;report);
+&nbsp;&nbsp; switch (report.type)&nbsp; {
+&nbsp;&nbsp; case Expose:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("got an Expose event\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Redraw contents of windows; note that we can't
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * use switch because window IDs are not constant */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (report.xexpose.window == window1)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Redraw window 1 */;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if (report.xexpose.window == window2)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Redraw window 2 */;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else (report.xexpose.window == window3)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Redraw window 3 */;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; case ButtonPress:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("got a ButtonPress event\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Respond to buttonpress, probably depending on
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * which window is reported in report.xbutton.window */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; case ConfigureNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("got a ConfigureNotify event\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Window was resized, moved, or restacked or border
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * width was changed; reset application variables
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * so Expose branch will scale graphics properly */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; case MappingNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("got a MappingNotify event\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Keyboard or Pointer mapping was changed by another
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * client; if keyboard, should call XRefreshKeyboardMapping,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * unless keyboard events are not used */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; case ClientMessage:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("got a ClientMessage event\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Primarily used for transferring selection data,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * also might be used in a private interclient
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * protocol; otherwise, not needed in event loop */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; case SelectionClear:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("got a SelectionClear event\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* If this application previously called
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * XSetSelectionOwner, it may get this event;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * otherwise, you don't need it in your
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * event loop */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; case SelectionNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("got a SelectionNotify event\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* If this application calls XConvertSelection,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * it will get this event; otherwise, you don't
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * need it in your event loop */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; case SelectionRequest:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("got a SelectionRequest event\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* If this application previously called
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * XSetSelectionOwner, it may get this event;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * otherwise, you don't need it in your
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * event loop */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; case GraphicsExpose:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Fall through into NoExpose */
+&nbsp;&nbsp; case NoExpose:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("got a GraphicsExpose or NoExpose event\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* If this application calls XCopyArea or XCopyPlane
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * and the graphics_exposures member of the GC is
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * True and the source is a window, these events may
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * be generated; handle GraphicsExpose like Expose */
+&nbsp;&nbsp; default:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("Event being thrown away\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* All *Notify events except ConfigureNotify will
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * be thrown away; they are not needed by most
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * applications but are sent because ConfigureNotify
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * can't be selected independently */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; }&nbsp; /* End switch on event type */
+} /* End while (1) */</TT></PRE>
+</BLOCKQUOTE>
+The <B>XNextEvent()</B> routine gets the next event on the
+queue for our client or waits until one appears before returning. There
+are many other routines that get events of particular types, in particular
+windows, with or without waiting for the event to appear. These routines
+are described in Section 8.2.6, "Routines that Get Events."
+
+<P>The first member of the <B>XEvent</B> report contains
+the type of event. This information is used in a "switch" statement to
+branch according to the event type. Once the type is known, the specific
+event structure is known, and its contents can be accessed. For example,
+the width of the exposed area in the window is contained in the <B>XExposeEvent</B>
+structure as <B>report.xexpose.width</B>, where <B>report</B> is the <B>XEvent</B>
+variable, <B>xexpose</B> is the member of the <B>XEvent</B> union, and
+<B>width</B> is a member of the <B>XExposeEvent</B> structure type.
+<H3>
+Printing the Event Type</H3>
+We recommend that you print the event type and perhaps other
+event information in each branch of the event loop while you are in the
+application debugging stage. Be very careful that the loop handles all
+the events that can occur and that the Xlib routine you choose to get events
+is capable of getting all the events you need. If your program hangs and
+cannot be interrupted with CTRL-C, it is probably waiting for an event
+that you did not select. For example, you may have called <B>XMaskEvent()</B>
+with a mask of <B>ButtonReleaseMask</B> but you did not select <B>ButtonReleaseMask</B>
+in the <B>XSelectEvent()</B> call. The event-getting routines do not check
+to make sure you have selected the events you are requesting.
+
+<P>Instead of printing the event type as a number which you
+then have to interpret using the &lt;<I>X11/X.h</I>> include file, you
+can have your program print the real name of the event. Example 8-4 creates
+an include file containing an array of strings spelling out the event type
+names. Example 8-5 then prints the correct event name.
+
+<P><B>An include file for printing the event type -- eventnames.h</B>
+<BLOCKQUOTE>
+<PRE><TT>static char *event_names[] = {
+&nbsp;&nbsp; "",
+&nbsp;&nbsp; "",
+&nbsp;&nbsp; "KeyPress",
+&nbsp;&nbsp; "KeyRelease",
+&nbsp;&nbsp; "ButtonPress",
+&nbsp;&nbsp; "ButtonRelease",
+&nbsp;&nbsp; "MotionNotify",
+&nbsp;&nbsp; "EnterNotify",
+&nbsp;&nbsp; "LeaveNotify",
+&nbsp;&nbsp; "FocusIn",
+&nbsp;&nbsp; "FocusOut",
+&nbsp;&nbsp; "KeymapNotify",
+&nbsp;&nbsp; "Expose",
+&nbsp;&nbsp; "GraphicsExpose",
+&nbsp;&nbsp; "NoExpose",
+&nbsp;&nbsp; "VisibilityNotify",
+&nbsp;&nbsp; "CreateNotify",
+&nbsp;&nbsp; "DestroyNotify",
+&nbsp;&nbsp; "UnmapNotify",
+&nbsp;&nbsp; "MapNotify",
+&nbsp;&nbsp; "MapRequest",
+&nbsp;&nbsp; "ReparentNotify",
+&nbsp;&nbsp; "ConfigureNotify",
+&nbsp;&nbsp; "ConfigureRequest",
+&nbsp;&nbsp; "GravityNotify",
+&nbsp;&nbsp; "ResizeRequest",
+&nbsp;&nbsp; "CirculateNotify",
+&nbsp;&nbsp; "CirculateRequest",
+&nbsp;&nbsp; "PropertyNotify",
+&nbsp;&nbsp; "SelectionClear",
+&nbsp;&nbsp; "SelectionRequest",
+&nbsp;&nbsp; "SelectionNotify",
+&nbsp;&nbsp; "ColormapNotify",
+&nbsp;&nbsp; "ClientMessage",
+&nbsp;&nbsp; "MappingNotify"
+};</TT></PRE>
+</BLOCKQUOTE>
+Note that <I>eventnames.h</I> is not a standard include file
+but one we have written for the purpose of printing the event type more
+legibly. You could use a similar method to identify windows, but since
+their IDs are not constants, you would need to load the array dynamically
+after you have created the windows.
+
+<P>Example 8-5 demonstrates printing an event using the include
+file shown in Example 8-4.
+
+<P><B>Printing the event type</B>
+<BLOCKQUOTE>
+<PRE><TT>#ifdef DEBUG
+#include "eventnames.h"
+#endif
+XEvent event;
+XNextEvent(display, &amp;event);
+#ifdef DEBUG
+fprintf(stderr, "winman: got a %s event\n", event_name[event.type]);
+#endif</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Routines that Get Events</H3>
+There are several functions that get event structures from
+the queue. They differ in the following respects:
+<UL>
+<LI>
+The number of windows they monitor (whether they inspect
+the <B>window</B> member).</LI>
+
+<LI>
+Whether they look for particular event types.</LI>
+
+<LI>
+Whether the event is removed from the queue when it is read.</LI>
+
+<LI>
+Whether a routine you write is used to determine whether
+the event should be returned.</LI>
+
+<LI>
+Whether Xlib waits until an event meeting the criteria arrives
+or immediately returns a success or failure code.</LI>
+
+<LI>
+Whether the connection to the server is flushed to see if
+any more events become available.</LI>
+</UL>
+The following is a list of the event-handling routines and
+their differences. In all of these routines, you pass a pointer to an <B>XEvent</B>
+structure to be filled.
+<DL>
+<DT>
+<B>XNextEvent()</B></DT>
+
+<DD>
+Gets the next event of any type on any window. This function
+flushes the request buffer if Xlib's queue does not contain an event and
+waits for an event to arrive from the server connection.</DD>
+
+<DT>
+<B>XMaskEvent()</B></DT>
+
+<DD>
+Gets the next event matching the specified mask on any window.
+This function flushes the request buffer if Xlib's queue does not contain
+a matching event and waits for a matching event to arrive from the server
+connection.</DD>
+
+<DT>
+<B>XCheckMaskEvent()</B></DT>
+
+<DD>
+Behaves like <B>XMaskEvent()</B> but immediately returns
+<B>False</B> if there is no matching event in Xlib's queue and none could
+be read from the server connection after flushing the request buffer. Returns
+<B>True</B> if a matching event was found.</DD>
+
+<DT>
+<B>XWindowEvent()</B></DT>
+
+<DD>
+Gets the next event matching both the specified mask and
+the specified window. This function flushes the request buffer if Xlib's
+queue does not contain a matching event and waits for a matching event
+to arrive from the server connection.</DD>
+
+<DT>
+<B>XCheckWindowEvent()</B></DT>
+
+<DD>
+Behaves like <B>XWindowEvent</B> but immediately returns
+<B>False</B> if there is no matching event in Xlib's queue and none could
+be read from the server connection after flushing the request buffer. Returns
+<B>True</B> if a matching event was found.</DD>
+
+<DT>
+<B>XIfEvent()</B></DT>
+
+<DD>
+Looks for an event on the queue that matches the conditions
+set by a user-supplied predicate procedure. This function flushes the request
+buffer if Xlib's queue does not contain a matching event and waits for
+a matching event to arrive from the server connection.</DD>
+
+<DT>
+<B>XCheckIfEvent()</B></DT>
+
+<DD>
+Behaves like <B>XIfEvent()</B> but immediately returns <B>False</B>
+if there is no matching event in Xlib's queue and none could be read from
+the server connection after flushing the request buffer. Returns <B>True</B>
+if a matching event was found.</DD>
+
+<DT>
+<B>XPeekEvent()</B></DT>
+
+<DD>
+Gets the next event of any type from any window without removing
+the event from the queue. This function flushes the request buffer if Xlib's
+queue is empty and waits for an event to arrive from the server connection.</DD>
+
+<DT>
+<B>XPeekIfEvent()</B></DT>
+
+<DD>
+Gets the next event that matches the specified predicate
+procedure, without removing the event from the queue. This function flushes
+the request buffer if Xlib's queue does not contain a matching event and
+waits for a matching event to arrive from the server connection.</DD>
+
+<DT>
+<B>XCheckTypedEvent()</B></DT>
+
+<DD>
+Searches the queue from the oldest event for the desired
+event type, without discarding all those searched that do not match. If
+no matching event is found in Xlib's queue, this function flushes the request
+buffer and returns <B>False</B>.</DD>
+
+<DT>
+<B>XCheckTypedWindowEvent()</B></DT>
+
+<DD>
+Searches the queue from the oldest event for the desired
+window and event type, without discarding those searched that do not match.
+If no matching event is found in Xlib's queue, this function flushes the
+request buffer and returns <B>False</B>.</DD>
+
+<DT>
+<B>XEventsQueued()</B></DT>
+
+<DD>
+Returns the number of events on the queue but has three modes
+that specify what else is done. All three modes count the events already
+in Xlib's queue and return if there are any. <B>QueuedAlready</B> returns
+even if there are not any events in the queue. <B>QueuedAfterFlush</B>
+flushes the request buffer and attempts to read more events from the connection
+before returning. <B>QueuedAfterReading</B> attempts to read more events
+from the connection without flushing the buffer.</DD>
+
+<DT>
+<B>XPending()</B></DT>
+
+<DD>
+Returns the number of events on the queue. If there are none,
+it flushes the request buffer and tries another count. This is identical
+to <B>XEventsQueued()</B> with mode <B>QueuedAfterFlush</B>.</DD>
+
+<DT>
+<B>XPutBackEvent()</B></DT>
+
+<DD>
+Puts an event you supply back on Xlib's queue, so that it
+will be the next to be received by <B>XNextEvent()</B>.</DD>
+
+<DT>
+<B>XGetMotionEvents()</B></DT>
+
+<DD>
+Gets all the motion events that occurred on the specified
+window in a specified time period. Motion history buffers were implemented
+for the first time in the R5 sample servers from MIT. An application should
+check to see if <B>XDisplayMotionBufferSize(display) == 0</B>, which indicates
+that motion history buffer is not supported.</DD>
+
+<DT>
+<B>XQLength()</B></DT>
+
+<DD>
+Returns the number of events on the queue, without flushing
+the request buffer.</DD>
+</DL>
+Note that the functions that have mask arguments do not return
+non-maskable events (MappingNotify, Selection events, and ClientMessage).
+
+<P>You may notice that there are two broad categories of
+routines that get input: those that wait for a matching event and those
+that do not wait. The latter may be used in porting applications that use
+the "polling" style of programming, which checks to see if input has arrived
+at regular intervals by continuously calling a "polling" function in a
+loop. Given the choice, however, it is much better to use the routines
+that wait for events as much as possible, since this technique does not
+waste processor cycles. This is true event-<I>driven</I> programming.
+
+<P>Table 8-1 organizes the event-receiving functions according
+to whether they wait for events if none are present on Xlib's queue.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 8-1 : </B>Event-getting Routines</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Event Specifications</TH>
+
+<TH>Desired Result:Wait if necessary</TH>
+
+<TH>Desired Result:Return False immediately if none queued</TH>
+
+<TH>Desired Result:Leave in queue (may wait)</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Any event</TD>
+
+<TD><B>XNextEvent</B></TD>
+
+<TD>n/a</TD>
+
+<TD><B>XPeekEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>With predicate</TD>
+
+<TD><B>XIfEvent</B></TD>
+
+<TD><B>XCheckIfEvent</B></TD>
+
+<TD><B>XPeekIfEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>For window</TD>
+
+<TD><B>XWindowEvent</B></TD>
+
+<TD><B>XCheckWindowEvent</B></TD>
+
+<TD>n/a</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>For event mask</TD>
+
+<TD><B>XMaskEvent</B></TD>
+
+<TD><B>XCheckMaskEvent</B></TD>
+
+<TD>n/a</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>For type</TD>
+
+<TD>n/a</TD>
+
+<TD><B>XCheckTypedEvent</B></TD>
+
+<TD>n/a</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>For window and type</TD>
+
+<TD>n/a</TD>
+
+<TD><B>XCheckTypedWindowEvent</B></TD>
+
+<TD>n/a</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>Note that most of the routines apparently missing from
+Xlib according to Table 8-1 can be simulated with other routines and fairly
+simple code. The hole on the top row can be filled by calling <B>XCheckMaskEvent()</B>
+with a mask set to all 1's. For the four routines missing in the last column,
+you can write a predicate procedure and call <B>XPeekIfEvent()</B>. An
+example predicate procedure is shown in Example 8-6. The two routines missing
+in the first column can also be replaced with a predicate procedure and
+<B>XIfEvent()</B>.
+
+<P>The event-getting routines with <B>Check</B> in their
+names are useful for programs that need to poll for input to handle interrupts.
+To illustrate the handling of interrupts, let's say you have a routine
+in a program that performs a complex, lengthy calculation like a Fourier
+transform. You want to be able to abort the calculation midway. Therefore,
+you need to be able to check the keyboard to see if a CTRL-C or other interrupt
+character has been typed. You also might want to provide for exposure events
+during the long wait, though you might be able to get away without this
+provision. This would be a good application for <B>XCheckTypedEvent()</B>
+or <B>XCheckTypedWindowEvent()</B>, since these routines poll without waiting
+if no events can be read. When an event does arrive, you can decide from
+the type or window whether to bother processing it.
+<H3>
+Predicate Procedures</H3>
+The routines <B>XCheckIfEvent()</B>, <B>XIfEvent()</B>, and
+<B>XPeekIfEvent()</B> allow you to supply a procedure that returns <B>True</B>
+or <B>False</B> depending on some characteristic of the event. You would
+use one of these routines if you have a matching algorithm that is complicated
+or simply to enable you to clear up the code by putting some of the event
+processing in a separate routine.
+
+<P>Your predicate procedure is called with the same arguments
+as the event-getting routine (except for the predicate procedure pointer,
+of course). Example 8-6 shows a predicate procedure and the <B>XIfEvent()</B>
+call that uses it. This code would normally use <B>XNextEvent()</B>, but
+we have substituted <B>XIfEvent()</B> so that we can filter out button
+events on buttons other than button 1. This predicate procedure returns
+<B>True</B> for all events except the undesirable button events.
+
+<P><B>A predicate procedure and XIfEvent() call</B>
+<BLOCKQUOTE>
+<PRE><TT>void main(argc, argv)
+int argc;
+char **argv;
+{
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Bool predproc();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; static char *stuff = "do this or that";
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSelectInput(display, wint, ExposureMask | ButtonPressMask
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | ButtonReleaseMask | ButtonMotionMask
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | PointerMotionHintMask);
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; while (1)&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XIfEvent(display, &amp;report, predproc, stuff);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch&nbsp; (report.type) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Note that no code here for eliminating button
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * events on other buttons, because only button
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * one events are returned by XIfEvent */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ButtonPress:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; points[index].x = report.xbutton.x;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; points[index].y = report.xbutton.y;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ButtonRelease:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; index++;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; points[index].x = report.xbutton.x;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; points[index].y = report.xbutton.y;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp; }
+}
+Bool predproc(display, event, arg)
+Display *display;
+XEvent *event;
+char *arg;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("The arg is %s\n", arg);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch (event->type) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case Expose:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case MotionNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ConfigureNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case KeyPress:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return(True);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ButtonPress:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ButtonRelease:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (event->xbutton.button == Button1)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return(True);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return(False);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; default:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<HR>
+<H2>
+Selecting Events</H2>
+For each window, a client must select which event types it
+wants placed in its queue when they occur in that window. This is normally
+done with <B>XSelectInput()</B>, which sets the <B>event_mask</B> attribute
+of a window. The client need not select events on all of its windows, only
+those in which it wants to see the events that occur.
+
+<P>To select event types for a window, pass an <B>event_mask</B>
+as an argument to <B>XSelectInput()</B> or set the <B>event_mask</B> member
+of the <B>XSetWindowAttributes</B> structure and call <B>XChangeWindowAttributes()</B>
+or <B>XCreateWindow()</B>. (For more information on the <B>XSetWindowAttributes</B>
+structure, see Section 4.1, "Setting Window Attributes.")
+
+<P>The <B>event_mask</B> is formed by combining the event
+mask symbols listed in the first column of Table 8-2 with the bitwise OR
+operator (<I>|</I>). Each mask symbol sets a bit in the <B>event_mask</B>.
+
+<P>Table 8-2 also describes briefly the circumstances under
+which you would want to specify each symbol. You will need to read about
+each mask in Section 8.3.3, "Event Masks"; see the examples using the events
+in Chapter 9, "The Keyboard and Pointer," and throughout this manual; and
+look at the event structures in Appendix E, <I>Event Reference</I>, before
+you will really understand when to use each of these symbols.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 8-2 : </B>Event Mask Definitions</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Event Mask Symbol</TH>
+
+<TH>Circumstances</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>NoEventMask</B></TD>
+
+<TD>No events</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>KeyPressMask</B></TD>
+
+<TD>Keyboard down events</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>KeyReleaseMask</B></TD>
+
+<TD>Keyboard up events</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ButtonPressMask</B></TD>
+
+<TD>Pointer button down events</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ButtonReleaseMask</B></TD>
+
+<TD>Pointer button up events</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>EnterWindowMask</B></TD>
+
+<TD>Pointer window entry events</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>LeaveWindowMask</B></TD>
+
+<TD>Pointer window leave events</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>PointerMotionMask</B></TD>
+
+<TD>All pointer motion events</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>PointerMotionHintMask</B></TD>
+
+<TD>Fewer pointer motion events</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>Button1MotionMask</B></TD>
+
+<TD>Pointer motion while button 1 down</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>Button2MotionMask</B></TD>
+
+<TD>Pointer motion while button 2 down</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>Button3MotionMask</B></TD>
+
+<TD>Pointer motion while button 3 down</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>Button4MotionMask</B></TD>
+
+<TD>Pointer motion while button 4 down</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>Button5MotionMask</B></TD>
+
+<TD>Pointer motion while button 5 down</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ButtonMotionMask</B></TD>
+
+<TD>Pointer motion while any button down</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>KeymapStateMask</B></TD>
+
+<TD>Any keyboard state change on <B>EnterNotify</B> , <B>LeaveNotify</B>
+, <B>FocusIn</B> or <B>FocusOut</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ExposureMask</B></TD>
+
+<TD>Any exposure (except <B>GraphicsExpose</B> and <B>NoExpose</B>
+)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>VisibilityChangeMask</B></TD>
+
+<TD>Any change in visibility</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>StructureNotifyMask</B></TD>
+
+<TD>Any change in window configuration.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ResizeRedirectMask</B></TD>
+
+<TD>Redirect resize of this window</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>SubstructureNotifyMask</B></TD>
+
+<TD>Notify about reconfiguration of children</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>SubstructureRedirectMask</B></TD>
+
+<TD>Redirect reconfiguration of children</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>FocusChangeMask</B></TD>
+
+<TD>Any change in keyboard focus</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>PropertyChangeMask</B></TD>
+
+<TD>Any change in property</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ColormapChangeMask</B></TD>
+
+<TD>Any change in colormap</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>OwnerGrabButtonMask</B></TD>
+
+<TD>Modifies handling of pointer events</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>The <B>do_not_propagate_mask</B> window attribute is formed
+in the same way as <B>event_mask</B> but can only be set with <B>XChangeWindowAttributes()</B>
+or <B>XCreateWindow()</B>. Its function is described in Section 8.3.2,
+"Propagation of Device Events."
+
+<P>Example 8-7 shows how to set the <B>event_mask</B> and
+call <B>XSelectInput()</B>.
+
+<P><B>An example of selecting input</B>
+<BLOCKQUOTE>
+<PRE><TT>Display display;
+Window window;
+unsigned long event_mask;
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+/* Must open display, create window, etc. */
+/* Select key events */
+event_mask = ExposureMask | KeyPressMask | KeyReleaseMask;
+XSelectInput(display, window, event_mask);
+/* Map window after selecting */
+/* Get events */</TT></PRE>
+</BLOCKQUOTE>
+In Example 8-7, events are selected <I>before</I> the window
+is mapped. This sequence is important, since otherwise the window will
+not receive the first <B>Expose</B> event that occurs after a new window
+is mapped and it will not know when to redraw the window. You will remember
+from <I>basicwin</I> that an <B>Expose</B> event signifies that a window
+has become visible and needs to be redrawn. Every <B>Expose</B> event,
+including the first, should trigger the drawing of the window's contents.
+
+<P>Also, note that you cannot add to the selected events
+by calling <B>XSelectInput()</B> with a single additional mask. You must
+specify all the desired event masks every time you call it.
+<H3>
+Correspondence Between Event Masks and Events</H3>
+Each event mask symbol indicates that a certain type of event
+or group of event types should be queued when they occur. For example,
+when used alone as an event_mask argument to <B>XSelectInput()</B>, a <B>KeyPressMask</B>
+symbol indicates that only <B>KeyPress</B> events are desired. A <B>FocusChangeMask</B>
+symbol, on the other hand, indicates an interest in two types of events:
+<B>FocusIn</B> and <B>FocusOut</B>.
+
+<P>On the other hand, there is more than one event mask symbol
+for <B>MotionNotify</B> events; the different masks specify the conditions
+under which pointer motion events are desired. For example, if both <B>Button1MotionMask</B>
+and <B>Button3MotionMask</B> symbols are combined to form an <B>event_mask</B>
+argument to <B>XSelectInput()</B>, only one event type is requested: <B>MotionNotify</B>
+events. However, this event type will be queued only if the pointer moves
+while the first or third button (or both) is held down.
+
+<P>Table 8-3 lists each event mask, its associated event
+types, and the associated structure definition. The structures for each
+event type are described in Appendix E, <I>Event Reference</I>.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 8-3 : </B>Event Masks, Event Types, and
+Event Structures</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Event Mask</TH>
+
+<TH>Event Type</TH>
+
+<TH>Structure</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>KeyPressMask</B></TD>
+
+<TD><B>KeyPress</B></TD>
+
+<TD><B>XKeyPressedEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>KeyReleaseMask</B></TD>
+
+<TD><B>KeyRelease</B></TD>
+
+<TD><B>XKeyReleasedEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ButtonPressMask</B></TD>
+
+<TD><B>ButtonPress</B></TD>
+
+<TD><B>XButtonPressedEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ButtonReleaseMask</B></TD>
+
+<TD><B>ButtonRelease</B></TD>
+
+<TD><B>XButtonReleasedEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>OwnerGrabButtonMask</B></TD>
+
+<TD>n/a</TD>
+
+<TD>n/a</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>KeymapStateMask</B></TD>
+
+<TD><B>KeymapNotify</B></TD>
+
+<TD><B>XKeymapEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>PointerMotionMask PointerMotionHintMask ButtonMotionMask
+Button1MotionMask Button2MotionMask Button3MotionMask Button4MotionMask
+Button5MotionMask</B></TD>
+
+<TD><B>MotionNotify</B></TD>
+
+<TD><B>XPointerMovedEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>EnterWindowMask</B></TD>
+
+<TD><B>EnterNotify</B></TD>
+
+<TD><B>XEnterWindowEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>LeaveWindowMask</B></TD>
+
+<TD><B>LeaveNotify</B></TD>
+
+<TD><B>XLeaveWindowEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>FocusChangeMask</B></TD>
+
+<TD><B>FocusIn FocusOut</B></TD>
+
+<TD><B>XFocusInEvent XFocusOutEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ExposureMask</B></TD>
+
+<TD><B>Expose</B></TD>
+
+<TD><B>XExposeEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>(Selected in GC by <B>graphics_expose</B> member)</TD>
+
+<TD><B>GraphicsExposeNoExpose</B></TD>
+
+<TD><B>XGraphicsExposeEventXNoExposeEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ColormapChangeMask</B></TD>
+
+<TD><B>ColormapNotify</B></TD>
+
+<TD><B>XColormapEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>PropertyChangeMask</B></TD>
+
+<TD><B>PropertyNotify</B></TD>
+
+<TD><B>XPropertyEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>VisibilityChangeMask</B></TD>
+
+<TD><B>VisibilityNotify</B></TD>
+
+<TD><B>XVisibilityEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ResizeRedirectMask</B></TD>
+
+<TD><B>ResizeRequest</B></TD>
+
+<TD><B>XResizeRequestEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>StructureNotifyMask</B></TD>
+
+<TD><B>CirculateNotify ConfigureNotify DestroyNotify GravityNotify
+MapNotify ReparentNotify UnmapNotify</B></TD>
+
+<TD><B>XCirculateEvent XConfigureEvent XDestroyWindowEvent
+XGravityEvent XMapEvent XReparentEvent XUnmapEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>SubstructureNotifyMask</B></TD>
+
+<TD><B>CirculateNotify ConfigureNotify CreateNotify DestroyNotify
+GravityNotify MapNotify ReparentNotify UnmapNotify</B></TD>
+
+<TD><B>XCirculateEvent XConfigureEventXCreate WindowEvent
+XDestroyWindowEvent XGravityEvent XMapEvent XReparentEvent XUnmapEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>SubstructureRedirectMask</B></TD>
+
+<TD><B>CirculateRequest ConfigureRequest MapRequest</B></TD>
+
+<TD><B>XCirculateRequestEven XConfigureRequestEven XMapRequestEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>(Always selected)</TD>
+
+<TD><B>MappingNotify</B></TD>
+
+<TD><B>XMappingEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>(Always selected)</TD>
+
+<TD><B>ClientMessage</B></TD>
+
+<TD><B>XClientMessageEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>(Always selected)</TD>
+
+<TD><B>SelectionClear</B></TD>
+
+<TD><B>XSetSelectClearEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>(Always selected)</TD>
+
+<TD><B>SelectionNotify</B></TD>
+
+<TD><B>XSelectionEvent</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>(Always selected)</TD>
+
+<TD><B>SelectionRequest</B></TD>
+
+<TD><B>XSelectionRequestEvent</B></TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>There is no event mask for several of the event types
+listed at the end of this table, because the X server or another client
+can send them to any client without them being selected. For example, <B>MappingNotify</B>
+indicates that the keyboard mapping (see Section 9.1.2.3, "Keycodes to
+Keysyms") or pointer mapping has changed. This event is reported to all
+clients by the server when any client changes those mappings. The selection
+events are a means of interclient communication, where one client announces
+with an event that it has a selection of text or graphics available for
+pasting, and another client responds with an event specifying in what format
+it would like the information. Similarly, <B>ClientMessage</B> events are
+always selected because they are sent from one client directly to another
+using the <B>XSendEvent()</B> routine.
+
+<P>Also note that <B>SubstructureNotifyMask</B> and <B>StructureNotifyMask</B>
+select the same event types but on different windows. The former selects
+the events when they occur in any <I>child</I> of the window specified
+in the call to <B>XSelectEvent()</B>, and the latter only when they occur
+in the window specified. (These are perhaps the two least often used masks.)
+<H3>
+Propagation of Device Events</H3>
+The fifth member in almost every event structure, <B>window</B>,
+contains the ID of the window in which the event appears to have occurred.
+This is called the <I>event window</I>. For <B>ButtonPress</B>, <B>ButtonRelease</B>,
+<B>KeyPress</B>, <B>KeyRelease</B>, and <B>MotionNotify</B> events, the
+event window is not necessarily the window in which the event originally
+happened, which is called the <I>source window</I>.
+
+<P>Which window is reported in the event on the queue depends
+on the results of propagation up through the window hierarchy and is controlled
+by the <B>event_mask</B> and <B>do_not_propagate_mask</B> window attributes.
+
+<P>The source window is the <I>lowest</I> visible window
+in the hierarchy that encloses the pointer when the device event occurs.
+It is also the <I>smallest</I> visible window enclosing the pointer. The
+<B>window</B> member of the event in the queue (the event window) will
+be the source window only if the <B>event_mask</B> attribute (set with
+<B>XSelectInput()</B>) of the source window selected the event's type.
+
+<P>If the event was not selected for the source window, then
+the event is sent to the parent and so on until the event arrives at an
+ancestor window that has selected the right event type. The ID of this
+window is then placed in the <B>window</B> member of the event structure
+and that structure is placed on the queue for this client. Once a window
+that has selected the event is found, the event no longer propagates. If
+no window selected the event anywhere in the hierarchy up to and including
+the root window, the server never sends the event.
+
+<P>The <B>do_not_propagate_mask</B> window attribute also
+gets involved in this process. When an event arrives at a window but finds
+it has not been selected, the <B>do_not_propagate_mask</B> determines whether
+the event will be sent to ancestor windows. By default, all events that
+can propagate do. If the mask for the event type that occurred is included
+in the <B>do_not_propagate_mask</B>, the event is never sent.
+
+<P>Figures 8-2a, 8-2b, and 8-2c demonstrate the propagation
+of an event through the hierarchy, given three different <B>event_mask</B>
+and <B>do_not_propagate</B> attribute settings.
+
+<P><B>One possible selection scheme</B>
+
+<P><IMG SRC="imgs/fig.8.02a.gif" ALT="fig.8.02a.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;The <B>do_not_propagate_mask</B> is rarely used.
+However, here is one scenario in which setting the <B>do_not_propagate_mask</B>
+attribute would be useful. Consider an application with two windows, a
+parent and a child. The program lets the user draw in the child by moving
+the pointer while holding down a pointer button. However, like <I>basicwin</I>,
+the application exits on a <B>ButtonPress</B> event in the parent window.
+Since <B>ButtonPress</B> events are not selected in the child window, they
+will be propagated to the parent and will cause the application to exit.
+But a <B>ButtonPress</B> is necessary because we want the drawing in the
+child window to occur only when a button is held. By setting the <B>do_not_propagate_mask</B>
+attribute of the child window to <B>ButtonPressMask</B>, this problem is
+solved.
+
+<P><B>Another possible selection scheme</B>
+
+<P><IMG SRC="imgs/fig.8.02b.gif" ALT="fig.8.02b.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P><B>Yet another possible selection scheme</B>
+
+<P><IMG SRC="imgs/fig.8.02c.gif" ALT="fig.8.02c.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;Here's an example of where event propagation requires
+care in selecting events. Imagine a program that creates one large window
+and a small subwindow. The large window takes <B>ButtonPress</B> events
+to exit, and the small subwindow draws dots whenever the pointer is moved
+with a button held down. If you select <B>ButtonPressMask</B> alone for
+the parent, and <B>ButtonMotionMask</B> alone for the child, it does not
+work! The reason is that when the <B>ButtonPress</B> occurs, it propagates
+to the parent, and initiates a grab of all pointer events. (This is an
+automatic grab, discussed in the next section, not the result of an <B>XGrabButton()</B>
+or <B>XGrabPointer()</B> call). Since the parent did not select motion
+events, no <B>MotionNotify</B> events are received by the program. The
+moral of the story is that if a parent (or any ancestor) selects <B>ButtonPress</B>
+events, then its children must also select <B>ButtonPress</B> events in
+order for the children to get any other type of pointer events (including
+<B>MotionNotify</B>, <B>EnterNotify</B>, <B>LeaveNotify</B>).
+
+<P>For brevity, we need conventions for describing the distribution
+of events. We'll say that an event is <I>sent</I> to a window when it is
+generated in that window either because of device action or as a side effect
+to an Xlib routine. A window <I>receives</I> an event sent to it only if
+the window has selected that event type or if the event type is always
+selected. Only when a window <I>receives</I> an event is it placed on the
+queue for that client. Another convention is helpful in describing the
+selection of events. We will say that "the window has selected that event
+type" rather than the more cumbersome "the program has called <B>XSelectInput()</B>,
+specifying the window and the mask that selects that event type."
+
+<P>We have described the way device events propagate normally.
+But two other actions can modify this operation: changing the keyboard
+focus window or grabbing the keyboard or pointer. Not only do these change
+the distribution of normal events, they create new events as side effects.
+We'll just introduce these here and return to them in Chapter 9, "The Keyboard
+and Pointer."
+<H4>
+The Keyboard Focus Window</H4>
+The keyboard focus window affects the distribution of <B>KeyPress</B>
+and <B>KeyRelease</B> events. Normally, the window manager allows the user
+to specify which window, if any, should be the keyboard focus. Only the
+focus window and its descendants receive keyboard input, and within them,
+event propagation occurs normally. Events occurring outside the focus window
+are delivered to the focus window. By default, the focus window is the
+root and keyboard events are normally distributed to all windows on the
+screen, since all the windows on a screen are descendants of the root.
+
+<P>The keyboard focus is set to a window with <B>XSetInputFocus()</B>.
+The focus window must be viewable.&nbsp; If it is not viewable or later
+becomes not viewable, the focus reverts to another window specified in
+the <B>XSetInputFocus()</B> call, the revert_to window.
+
+<P>The current focus window can be read with <B>XGetInputFocus()</B>.
+
+<P><B>FocusOut</B> events are delivered to the old focus
+window, and <B>FocusIn</B> events to the window which receives the focus.
+Windows in between these two windows in the hierarchy are said to be virtually
+crossed and receive focus change events depending on the relationship and
+direction of transfer between the origin and destination windows. Some
+or all of the windows between the window containing the pointer at the
+time of the focus change and that window's root can also receive focus
+change events. By checking the <B>detail</B> member of <B>FocusIn</B> and
+<B>FocusOut</B> events, a client can tell which of its windows can receive
+input. See Chapter 9, "The Keyboard and Pointer," for more information
+about tracking the keyboard focus.
+
+<P>Applications should set the keyboard focus to one of their
+own windows only when absolutely necessary, because this will prevent other
+clients from receiving keyboard events. It is permissible for clients to
+set the focus window when the mouse enters their top-level window, as long
+as they set it back to the root window when the pointer leaves again. A
+client might want to do this to send all keyboard input to one of its subwindows.
+See Chapter 12, "Interclient Communication," for more information about
+what a client should do regarding the keyboard focus.
+<H4>
+Keyboard and Pointer Grabbing</H4>
+The keyboard and/or the pointer can be grabbed when their
+input should not be allowed to be interrupted by other clients. As the
+name implies, grabbing prevents other clients from receiving input and,
+therefore, can be antisocial. It should not be done unless absolutely necessary.
+Grabbing the pointer is particularly troublesome, because there is no event
+to announce to other clients that this has happened. See Appendix L, <I>Interclient
+Communcation Conventions</I>, of <I>Volume Zero, X Protocol Reference Manual</I>
+(as of the second printing).
+
+<P>In general, grabbing is an advanced topic that you do
+not need to understand in detail until you find a reason to use it. But
+there are two exceptions to this rule. You do need to know what will happen
+when other clients grab, so that your client can prepare for it. Secondly,
+an automatic grab takes place between <B>ButtonPress</B> and <B>ButtonRelease</B>
+events if your client has selected both. You must understand grabbing to
+understand the implications of this automatic grab.
+
+<P>An <I>active grab</I> causes pointer and keyboard events
+to be sent to the grabbing window regardless of the current position of
+the pointer. Active grabs are invoked directly by calling <B>XGrabPointer()</B>
+and <B>XGrabKeyboard()</B>. A <I>passive grab</I> (invoked by calling <B>XGrabKey()</B>
+or <B>XGrabButton()</B>) causes an active grab to begin when a certain
+key or button combination is pressed. Passive grabs are useful in implementing
+menus.
+
+<P>When you grab a device, you have the option of confining
+the pointer to any window within the grabbing client and of controlling
+the further processing of both keyboard and pointer events.
+
+<P>Grabbing the keyboard effectively selects all keyboard
+events, whether you selected them previously or not. Grabbing the keyboard
+also causes <B>FocusIn</B> and <B>FocusOut</B> events to be sent to the
+old and new focus windows, but they must be selected by each window to
+be received. In the call to grab the pointer, however, you specify what
+types of pointer, button, and enter/leave events you want.
+
+<P>Grabs take precedence over the keyboard focus window.
+Grabs of the keyboard generated <B>FocusIn</B> and <B>FocusOut</B> events,
+so that if your client selects these, it can determine whether or not it
+can get keyboard events. Pointer grabbing is more problematic, since no
+event notifies other clients when one client has grabbed it. However, pointer
+grabs are almost always temporary.
+
+<P>For more on keyboard and pointer grabbing, see Section
+9.4, "Grabbing the Keyboard and Pointer." For a description of server grabbing,
+which is a different topic though still related to events, see Chapter
+16, "Window Management."
+<H3>
+Event Masks</H3>
+This section describes the event masks and the events they
+select. After reading this section, you should have a good idea of what
+types of events exist, what they are for, how to select them, and when
+to use them. Chapter 9, "The Keyboard and Pointer," and the sections listed
+in Table 8-5 provide practical examples and describe the use of some of
+the more commonly used events in more detail. Appendix E, <I>Event Reference</I>,
+provides a complete reference to each event type.
+<H4>
+KeyPressMask and KeyReleaseMask</H4>
+<B>KeyPress</B> and <B>KeyRelease</B> events report when
+a keyboard key has been pressed or released. Most, but not all, servers
+are capable of generating <B>KeyRelease</B> events. Shift, Control, and
+other modifier keys generate events just like the main keyboard.
+
+<P>The <B>KeyPress</B> and <B>KeyRelease</B> events provide
+a keycode that identifies the key, but the keycodes are server-dependent
+and should not be used to interpret the event. Instead you can use <B>XLookupString()</B>
+to translate the keycode into a portable symbol called a keysym, which
+represents the symbol on the cap of the key, and into an ASCII character
+string. Both the mapping between keycodes and keysyms and the mapping between
+keysyms and ASCII strings can be modified.
+
+<P>In <B>XLookupString()</B>, the main routine used for interpreting
+<B>KeyPress</B> and <B>KeyRelease</B> events, there is a provision for
+a special Compose key which is available on some keyboards, so that multikey
+sequences, usually used to type characters for languages other than English,
+can be entered and translated into the appropriate keysym. The Compose
+key feature, however, is not implemented in the versions of Xlib provided
+by MIT.
+
+<P>The events selected by <B>KeyPressMask</B> and <B>KeyReleaseMask</B>
+are used in the examples in Section 9.1.1, "Simple Keyboard Input."
+<H4>
+ButtonPressMask, ButtonReleaseMask, and OwnerGrabButtonMask</H4>
+<B>ButtonPress</B> and <B>ButtonRelease</B> events occur
+when the pointer buttons are pressed. There are generally between three
+and five buttons on the pointer, and the event structure specifies not
+only the button that caused the event but also the current state of all
+the pointer buttons and the modifier keys on the keyboard. The mapping
+between the bits in the button mask and the physical buttons can be changed
+with <B>XSetPointerMapping()</B> and read with <B>XGetPointerMapping()</B>
+and is global to the server.
+
+<P>The pointer is automatically grabbed between the <B>ButtonPress</B>
+and <B>ButtonRelease</B> events on behalf of the client for whose window
+the <B>ButtonPress</B> was selected. This way, you always expect to receive
+button events in pairs since the release will be sent to your client regardless
+of the position of the pointer at that time. Only one client can select
+button events on any one window at one time, due to the grab that automatically
+takes place.
+
+<P>The <B>OwnerGrabButtonMask</B> does not select any event
+by itself, but it controls the distribution of button events to your client
+during the automatic grab between the <B>ButtonPress</B> and <B>ButtonRelease</B>
+(and during any grab your client might make). If it is selected, the automatic
+grab has the same effect as an <B>XGrabButton()</B> call with the owner_events
+argument set to <B>True</B>, so that the <B>ButtonRelease</B> event is
+sent to whichever of the client's windows the pointer is in. If the <B>ButtonRelease</B>
+occurs outside the client's windows or if <B>OwnerGrabButtonMask</B> is
+not selected, all events will be sent only to the window where the <B>ButtonPress</B>
+occurred. Current wisdom suggests that you should always select <B>OwnerGrabButtonMask</B>
+with <B>ButtonPressMask</B>.
+
+<P>The events selected by <B>ButtonPressMask</B> and <B>ButtonReleaseMask</B>
+are discussed in Section 9.2.2, "Handling Pointer Button Events" and demonstrated
+in Examples 9-9, 16-1, and 16-2.
+<H4>
+The Pointer Motion Masks</H4>
+There are eight pointer motion masks: <B>PointerMotionMask</B>,
+<B>PointerMotionHintMask</B>, <B>ButtonMotionMask</B>, <B>Button1MotionMask</B>,
+<B>Button2MotionMask</B>, <B>Button3MotionMask</B>, <B>Button4MotionMask</B>,
+and <B>Button5MotionMask</B>. Up to five pointer buttons are supported,
+even though most mice have only three buttons and some have only one.
+<UL>
+<LI>
+<B>PointerMotionMask</B> selects motion events that occur
+when any or none of the pointer buttons are pressed. Each event includes
+the position of the pointer within the event window and the position relative
+to the origin of the root window. All motion events contain a mask that
+gives the current status of the modifier keys and pointer buttons and the
+current server time. <B>MotionNotify</B> events occur in large numbers
+while the pointer is moving steadily. Therefore, this mask is selected
+alone only by clients that require a complete record of pointer position,
+such as painting programs.</LI>
+
+<LI>
+<B>PointerMotionHintMask</B> is used in concert with other
+pointer motion masks to reduce the number of events generated. By itself,
+it does not select any events. <B>PointerMotionHintMask</B> specifies that
+the server should send only one <B>MotionNotify</B> event when the pointer
+moves, until a key or button state changes, the pointer leaves the window,
+or the client calls <B>XQueryPointer()</B> or <B>XGetMotionEvents()</B>.
+The idea is that instead of processing hundreds of pointer motion events,
+the client gets only one event per movement and then queries the pointer
+position or examines the motion history buffer (the latter may not exist
+on some servers) for the current position. This approach is suitable for
+clients that need the pointer position at particular times but that do
+not need all the intermediate positions. Even though each query for the
+pointer position is a round-trip request, the performance of this approach
+is better than that of selecting all the events with <B>PointerMotionMask</B>
+alone, because of the reduced network traffic.</LI>
+
+<LI>
+<B>ButtonMotionMask</B> selects any pointer motion events
+that occur when at least one button is pressed.</LI>
+
+<LI>
+<B>Button1MotionMask</B>, <B>Button2MotionMask</B>, <B>Button3MotionMask</B>,
+<B>Button4MotionMask</B>, and <B>Button5MotionMask</B> select pointer motion
+events that occur when the specified button is pressed. If two or more
+of these masks are used, events with any combination of the specified buttons
+(except both released) will be selected.</LI>
+</UL>
+Handling the events selected by these masks is described
+in Section 9.2.1, "Tracking Pointer Motion" and demonstrated in three examples
+in that section.
+<H4>
+FocusChangeMask</H4>
+<B>FocusIn</B> and <B>FocusOut</B> events occur when the
+keyboard focus window is changed. A window that selects <B>FocusChangeMask</B>
+receives a <B>FocusOut</B> event if it was the old focus window or is in
+the same branch of the hierarchy as the old focus window. It receives a
+<B>FocusIn</B> event if it is the new focus window or is in the same branch
+of the hierarchy as the new focus window. The <B>detail</B> member in the
+event tells the relationship of the window to the new or old focus window.
+With this information, it is possible to tell whether the window can receive
+keyboard input. You can read the details of what events are delivered in
+Appendix E, <I>Event Reference</I>.
+
+<P><B>EnterNotify</B>, <B>LeaveNotify</B>, <B>FocusIn</B>,
+and <B>FocusOut</B> events are often used together to track whether the
+pointer is in a window and whether the client has the keyboard focus. If
+the focus is the root, <B>EnterNotify</B> and <B>LeaveNotify</B> events
+are used. With any other focus, the <B>FocusIn</B> and <B>FocusOut</B>
+events take precedence.
+
+<P><B>FocusIn</B> and <B>FocusOut</B> events are described
+and used in Section 9.3, "Border Crossing and Keyboard Focus Change Events."
+<H4>
+EnterWindowMask and LeaveWindowMask</H4>
+<B>EnterNotify</B> and <B>LeaveNotify</B> events are typically
+used to inform a client that the pointer just entered or just left one
+of its windows. If the client receives a <B>LeaveNotify</B> event in its
+top-level window, the client will not be receiving any more key, button,
+or motion events until it gets an <B>EnterNotify</B> event, unless it is
+the keyboard focus window or has grabbed the keyboard or pointer.
+
+<P>An <B>EnterNotify</B> event is also generated when a window
+is mapped over the current position of the pointer, and a <B>LeaveNotify</B>
+is generated when a window containing the pointer is unmapped.
+
+<P><B>EnterNotify</B> and <B>LeaveNotify</B> events are described
+and used in Section 9.3, "Border Crossing and Keyboard Focus Change Events."
+<H4>
+KeymapStateMask</H4>
+A <B>KeymapNotify</B> event notifies the client about the
+keyboard state when the pointer or keyboard focus enters a window. The
+keyboard state is represented (in the event structure) by 32 bytes of data
+called a <I>keyboard vector</I>, with one bit for each keyboard key. The
+number of a bit in the vector for a particular key is the same as the key's
+keycode. This vector is the same as the vector returned by <B>XQueryKeymap()</B>.
+
+<P>This event type, if it is selected, always follows immediately
+after an <B>EnterNotify</B> or <B>FocusIn</B> event. It allows a client
+to find out which keys were pressed when the pointer or the keyboard focus
+entered the window. Since the state of the modifier keys is already reported
+in <B>EnterNotify</B> and <B>FocusIn</B> events, the <B>KeymapNotify</B>
+event is only useful for reporting the state of other keys.
+
+<P><B>KeymapState</B> events are not used in the examples
+in this manual, because they are rarely needed. For more information about
+them, see Appendix E, <I>Event Reference</I>.
+<H4>
+ExposureMask</H4>
+An <B>Expose</B> event tells a client which window or area
+within a window has just become visible. The usual response is to redraw
+the contents of the area or of the entire window, if that is easier and
+comparably fast. Figure 8-3 shows a typical window hierarchy before and
+after window <I>C</I> is lowered. Two <B>Expose</B> events are sent to
+window <I>A</I> specifying areas <I>E1</I> and <I>E2</I>, and one <B>Expose</B>
+event is sent to window <I>B</I> specifying area <I>E3</I>.
+
+<P><B>Expose events generated by lowering of window C</B>
+
+<P><IMG SRC="imgs/fig.8.03.gif" ALT="fig.8.03.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;The handling of <B>Expose</B> events is fully described
+and demonstrated in Section 3.2.13.1, "Repainting the Window."
+<H4>
+VisibilityChangeMask</H4>
+A <B>VisibilityNotify</B> event is sent when a window makes
+any change in visibility, as shown in Table 8-4, except when the window
+becomes not viewable. (Becoming not viewable means that the window or one
+of its ancestors was unmapped, which generates an <B>UnmapNotify</B> event.)
+This event might be used by a client that must be completely visible in
+order to be useful.
+
+<P>The symbol returned in the <B>state</B> flag of the event
+is shown in the third column of the table.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 8-4 : </B>Visibility Transitions Causing
+VisibilityNotify Events</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Beginning State</TH>
+
+<TH>Final State</TH>
+
+<TH>state Flag</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>unobscured</TD>
+
+<TD>partially obscured</TD>
+
+<TD><B>VisibilityPartiallyObscured</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>unobscured</TD>
+
+<TD>fully obscured</TD>
+
+<TD><B>VisibilityFullyObscured</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>partially obscured</TD>
+
+<TD>unobscured</TD>
+
+<TD><B>VisibilityUnobscured</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>partially obscured</TD>
+
+<TD>fully obscured</TD>
+
+<TD><B>VisibilityFullyObscured</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>fully obscured</TD>
+
+<TD>unobscured</TD>
+
+<TD><B>VisibilityUnobscured</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>fully obscured</TD>
+
+<TD>partially obscured</TD>
+
+<TD><B>VisibilityPartiallyObscured</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>not viewable</TD>
+
+<TD>unobscured</TD>
+
+<TD><B>VisibilityUnobscured</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>not viewable</TD>
+
+<TD>partially obscured</TD>
+
+<TD><B>VisibilityPartiallyObscured</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>not viewable</TD>
+
+<TD>fully obscured</TD>
+
+<TD><B>VisibilityFullyObscured</B></TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P><B>VisibilityNotify</B> events are not demonstrated in
+this manual. For more information on them, see Appendix E, <I>Event Reference</I>.
+<H4>
+ColormapChangeMask</H4>
+A <B>ColormapNotify</B> event reports when the colormap attribute
+of the window (for which this mask was selected) changes and when the colormap
+specified by the attribute is installed, uninstalled, or freed. <B>XChangeWindowAttributes()</B>
+can generate this event when the <B>colormap</B> window attribute is changed.
+<B>XFreeColormap()</B>, <B>XInstallColormap()</B>, and <B>XUninstallColormap()</B>
+generate this event if called on the colormap specified in the attribute
+of the window. From the information in the structure, you can tell which
+of these calls generated the event and what the current status of the colormap
+is. The conventions for what the client should do in response to each of
+these contingencies has not yet been determined. See Chapter 12, "Interclient
+Communication."
+
+<P><B>ColormapNotify</B> events are discussed in Section
+7.10.2, "The ColormapNotify Event."
+<H4>
+PropertyChangeMask</H4>
+A <B>PropertyNotify</B> event indicates that a property of
+a certain window was changed or deleted. This event is generated when <B>XChangeProperty()</B>,
+<B>XDeleteProperty()</B>, or <B>XRotateWindowProperties()</B> is called
+or when <B>XGetWindowProperty()</B> is called with certain arguments. Beyond
+its normal purpose, this event can be used to get the current server time.
+This is done by appending zero-length data to a property using <B>XChangeProperty()</B>,
+which generates a <B>PropertyNotify</B> event containing the time.
+
+<P>The uses of <B>PropertyNotify</B> events are described
+in Chapter 12, "Interclient Communication."
+<H4>
+StructureNotifyMask and SubstructureNotifyMask</H4>
+<B>StructureNotifyMask</B> selects a group of event types
+that report when the state of a window has changed. This includes the window's
+configuration (size, position, border width, stacking order), whether it
+was destroyed, whether it was moved due to its <B>win_gravity</B> window
+attribute, whether it was mapped or unmapped, and whether it was reparented.
+
+<P><B>SubstructureNotifyMask</B> selects the same events
+plus one that indicates that a window has been created; it monitors all
+the <I>subwindows</I> of the window specified in the <B>XSelectInput()</B>
+call that used this mask. Only <B>SubstructureNotifyMask</B> selects <B>CreateNotify</B>
+events, because the window does not exist beforehand, and therefore, no
+ID exists to use in a call to <B>XSelectInput()</B> using <B>StructureNotifyMask</B>.
+
+<P>Applications often select <B>StructureNotifyMask</B> to
+be notified that they have been manipulated by the window manager or some
+other client, so that they can act accordingly.
+
+<P>The following list describes the events selected by <B>StructureNotifyMask</B>
+and <B>SubstructureNotifyMask</B>:
+<UL>
+<LI>
+A <B>CirculateNotify</B> event reports a call to change the
+stacking order and includes whether the final position is on top or on
+bottom. This event is generated by <B>XCirculateSubwindows()</B>, <B>XCirculateSubwindowsDown()</B>,
+or <B>XCirculateSubwindowsUp()</B>.</LI>
+
+<LI>
+A <B>ConfigureNotify</B> event reports changes to a window's
+configuration, including its size, position, border width, and stacking
+order. This event is generated by <B>XConfigureWindow()</B>, <B>XLowerWindow()</B>,
+<B>XMapRaised()</B>, <B>XMoveResizeWindow()</B>, <B>XMoveWindow()</B>,
+<B>XRaiseWindow()</B>, <B>XResizeWindow()</B>, <B>XRestackWindows()</B>,
+and <B>XSetWindowBorderWidth()</B>.</LI>
+
+<LI>
+A <B>CreateNotify</B> event reports that a new window has
+been created with either <B>XCreateSimpleWindow()</B> or <B>XCreateWindow()</B>.</LI>
+
+<LI>
+A <B>DestroyNotify</B> event reports that a window has been
+destroyed with <B>XDestroyWindow()</B> or <B>XDestroySubwindows()</B>.
+When a window is destroyed, this event is delivered to all subwindows of
+the window before it is delivered to the window itself, unless the subwindows
+are in another client's save-set (see Chapter 16, "Window Management,"
+for a description of save-sets).</LI>
+
+<LI>
+A <B>GravityNotify</B> event reports when a window is moved
+because its parent was resized and had its window gravity attribute set.</LI>
+
+<LI>
+A <B>MapNotify</B> event reports when a window is mapped.
+This event is generated by <B>XMapWindow()</B>, <B>XMapRaised()</B>, and
+<B>XMapSubwindows()</B>.</LI>
+
+<LI>
+A <B>ReparentNotify</B> event reports when a client successfully
+reparents a window (see Chapter 16, "Window Management" for a description
+of window reparenting).</LI>
+
+<LI>
+An <B>UnmapNotify</B> event reports when a mapped window
+is unmapped. This event also indicates whether the unmapping of a child
+window was due to the fact that the parent window was resized and the child
+had a window gravity attribute of <B>UnmapGravity</B>.</LI>
+</UL>
+The <B>ConfigureNotify</B> event is used in the <I>basicwin</I>
+application described in Chapter 3, "Basic Window Program." The rest of
+these events are used in a similar fashion by applications that need detailed
+knowledge of their state.
+<H4>
+SubstructureRedirectMask</H4>
+The three event types selected by <B>SubstructureRedirectMask</B>--<B>CirculateRequest</B>,
+<B>ConfigureRequest</B>, and <B>MapRequest</B>--can be used by a client
+(virtually always the window manager) to intercept and cancel window-configuration-changing
+requests made by other clients to change the window configuration. Only
+one client at a time can select <B>SubstructureRedirectMask</B> on a particular
+window. Normally, <B>SubstructureRedirectMask</B> is selected on the root
+window to allow the window manager to intercept layout-changing requests
+for the top-level windows of each application. When these events are selected,
+the Xlib requests noted in the paragraphs below do not perform their usual
+function but instead simply generate these events. The window manager is
+then able to modify the requests according to its layout policy before
+repeating the requests itself with its modified arguments.
+
+<P>These events differ from <B>CirculateNotify</B>, <B>ConfigureNotify</B>,
+and <B>MapNotify</B> in that the <B>*Request</B> events&nbsp; deliver the
+parameters of the request before the requests are carried out and indicate
+that the original request has been cancelled. The <B>*Notify</B> requests
+indicate the final outcome of such requests, unhindered.
+
+<P>Each of the event structures associated with the following
+event types includes an <B>override_redirect</B> member, which is either
+<B>True</B> or <B>False</B>. If it is <B>True</B>, the window manager should
+ignore the event, since this indicates that the client has set the <B>override_redirect</B>
+attribute to indicate that this is a temporary window. (For more information,
+see Section 16.2, "Substructure Redirection.")
+<UL>
+<LI>
+<B>CirculateRequest</B> events report when an Xlib function,
+such as <B>XCirculateSubwindows()</B>, <B>XCirculateSubwindowsDown()</B>,
+<B>XCirculateSubwindowsUp()</B>, or <B>XRestackWindows()</B> is called
+to change the stacking order of a group of children.</LI>
+
+<LI>
+<B>ConfigureRequest</B> events report when an Xlib function,
+such as <B>XConfigureWindow()</B>, <B>XLowerWindow()</B>, <B>XMoveResizeWindow()</B>,
+<B>XMoveWindow()</B>, <B>XRaiseWindow()</B>, <B>XResizeWindow()</B>, or
+<B>XSetWindowBorderWidth()</B> is called to resize, move, restack, or change
+the border width of a window.</LI>
+
+<LI>
+<B>MapRequest</B> events report when <B>XMapWindow()</B>
+or <B>XMapSubwindows()</B> is called to map a window.</LI>
+</UL>
+The uses of the event types selected by <B>SubstructureRedirectMask</B>
+are described in Chapter 16, "Window Management."
+<H4>
+ResizeRedirectMask</H4>
+The <B>ResizeRequest</B> event is generated when some other
+client (usually the window manager) attempts to resize the window on which
+<B>ResizeRedirectMask</B> is selected. <B>XConfigureWindow()</B>, <B>XMoveResizeWindow()</B>,
+and <B>XResizeWindow()</B> generate this event. Only one client can select
+<B>ResizeRedirectMask</B> at a time on a particular window.
+
+<P>This event includes the <I>requested</I> size. The final
+size may be adjusted by the window manager and can be found from the resulting
+<B>ConfigureNotify</B> event or, if the window is visible, from the <B>Expose</B>
+event.
+
+<P>A client might wish to select this mask if it has only
+one acceptable size. Then when any client attempted to resize the window,
+the request would be sent as an event and can be safely ignored. However,
+if some client (say, the window manager) has selected <B>SubstructureRedirectMask</B>
+for the parent of the window on which <B>ResizeRedirectMask</B> was selected,
+the substructure redirect takes precedence. Therefore, this usually will
+not work. <B>ResizeRedirectMask</B> is not very useful, given that most
+window managers select <B>SubstructureRedirectMask</B>.
+<H4>
+Automatically Selected Events</H4>
+Seven types of events can be sent to your program even if
+you do not explicitly select them. Your client must handle or throw away
+<B>MappingNotify</B> events regardless of whether the client reads the
+keyboard. All the others are generated in response to your own actions
+(either by the server or by other clients), and therefore, you should know
+that you are going to get them. Example 8-3 described when each of these
+events should be present in your event loop.
+<UL>
+<LI>
+<B>MappingNotify</B> events are caused by <B>XChangeKeyboardMapping()</B>,
+<B>XSetModifierMapping()</B>, and <B>XSetPointerMapping()</B> calls that
+set the pointer button, keyboard key, and keyboard modifier key mappings.
+Since these mappings are global to the server, each client must call the
+correct function to refresh its knowledge of the mappings.If the changed
+mapping is of the keyboard, a receiving client should call <B>XRefreshKeyboardMapping()</B>,
+which updates a client's knowledge of the server's mapping between keycodes
+and keysyms.If the changed mapping is of the pointer, the client can call
+<B>XGetPointerMapping()</B> to update its knowledge. Most current clients
+do not do this, however, because it is assumed that the button mappings
+were intentionally changed by the user. That means that the client should
+not attempt to adjust its operation so that the buttons have their old
+meanings.</LI>
+
+<LI>
+<B>ClientMessage</B> events are sent as a result of a call
+to <B>XSendEvent()</B> by a client to a particular window. They contain
+data described by an <B>Atom</B>. These events are normally used to transfer
+selection data. The <B>send_event</B> member of the event structure will
+always be set.</LI>
+
+<LI>
+<B>SelectionClear</B>, <B>SelectionNotify</B>, and <B>SelectionRequest</B>
+events are used to communicate back and forth between two applications
+that are transferring information. This process is described in Section
+12.4, "Selections."</LI>
+
+<LI>
+<B>GraphicsExpose</B> and <B>NoExpose</B> events are selected
+not by an event mask but by the <B>graphics_exposures</B> member of the
+GC. One or the other of them (or both) is generated by each <B>XCopyArea()</B>
+or <B>XCopyPlane()</B> request when the GC specified for the request has
+this member set to <B>True</B>. Otherwise, the events are not generated.
+The <B>GraphicsExpose</B> event indicates that a source area could not
+be completely copied into a destination because the source was partially
+or fully obscured. The <B>NoExpose</B> event indicates that the copy was
+not affected by an obscured source. More than one <B>GraphicsExpose</B>
+event can be generated by a single <B>XCopyArea()</B> or <B>XCopyPlane()</B>
+request, depending on the number and position of the obscuring windows,
+but only one <B>NoExpose</B> is possible as a result of a single copy.
+<B>GraphicsExpose</B> events are often handled just like <B>Expose</B>
+events.</LI>
+</UL>
+
+<HR>
+<H2>
+Sending Events</H2>
+The <B>XSendEvent()</B> function may be used to send a <B>ClientMessage</B>
+event or any other event type to a particular window, to the current keyboard
+focus window, or to the window in which the pointer is located. Sending
+events is necessary in selection processing, as described in Section 12.4,
+"Selections." It may also be useful for designing test procedures for your
+input handling or for making demonstration programs that simulate user
+input.
+
+<P>The <B>send_event</B> member of each event structure indicates
+the origin of the event. If <B>True</B>, it was sent from another client
+rather from the server. Note that, unless this flag is explicitly checked,
+events from the server and from other clients will appear the same to your
+application.
+<BR>
+<HR>
+<H2>
+Where to Find More on Each Event</H2>
+All event types are described in reference format in Appendix
+E, <I>Event Reference</I>. The information on each page includes the event
+structure definition, description of each event structure member, <B>XEvent</B>
+union name, how to select the event, when it is generated, and notes on
+its use. Table 8-5 shows other places in this manual where you can find
+information about using certain event types.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 8-5 : </B>Where Events are Described Further</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Event Type</TH>
+
+<TH>Section</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>KeyPress KeyRelease</B></TD>
+
+<TD>Section 9.1.1.1</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ButtonPress ButtonRelease</B></TD>
+
+<TD>Section 9.2.2</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>KeymapNotify</B></TD>
+
+<TD>Section 9.3.1</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>MotionNotify</B></TD>
+
+<TD>Section 9.2.1</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>EnterNotify LeaveNotify</B></TD>
+
+<TD>Section 9.3</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>FocusIn FocusOut</B></TD>
+
+<TD>Section 9.3</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>Expose</B></TD>
+
+<TD>Section 3.2.13.1</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>GraphicsExpose NoExpose</B></TD>
+
+<TD>Section 5.6</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ColormapNotify</B></TD>
+
+<TD>Section 7.10.2</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>PropertyNotify</B></TD>
+
+<TD>Section 12.1</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ConfigureNotify</B></TD>
+
+<TD>Section 3.2.16</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>CirculateRequest ConfigureRequest MapRequest</B></TD>
+
+<TD>Section 16.2</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>MappingNotify</B></TD>
+
+<TD>Section 9.1.2.3</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>SelectionClear</B></TD>
+
+<TD>Section 12.4</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>SelectionNotify</B></TD>
+
+<TD>Section 12.4</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>SelectionRequest</B></TD>
+
+<TD>Section 12.4</TD>
+</TR>
+</TABLE>
+&nbsp;
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+&nbsp;
+</BODY>
+</HTML>

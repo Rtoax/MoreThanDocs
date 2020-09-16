@@ -1,0 +1,1477 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_19_app_C.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_21_app_E.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H2>
+The basecalc Application</H2>
+This appendix lists the complete source code for the basecalc
+application described in Chapter 12. Source code for all examples in this
+book is available as described in the <I>Preface</I>.
+
+<P>The X Programmer's Calculator (<I>basecalc</I>) was described
+in Chapter 14, "A Complete Application."
+
+<P>This appendix presents the complete code for <I>basecalc</I>,
+including the following files and routines that were not shown in Chapter
+14, "A Complete Application."
+<DL>
+<DT>
+<B>basecalc.h</B></DT>
+
+<DD>
+Include file for this application.</DD>
+
+<DT>
+<B>convButton</B></DT>
+
+<DD>
+Changes the current base and converts a value, if any.</DD>
+
+<DT>
+<B>digitButton</B></DT>
+
+<DD>
+Gets a digit and assigns it to the variable <B>Value</B>.</DD>
+
+<DT>
+<B>displayVal</B></DT>
+
+<DD>
+Calculates appropriate format string for base.</DD>
+
+<DT>
+<B>initTty</B></DT>
+
+<DD>
+Performs system calls to get user's current erase, delete,
+and interrupt characters.</DD>
+
+<DT>
+<B>keyToWin</B></DT>
+
+<DD>
+Translates a keycode as if a <B>pad</B> had been selected.</DD>
+
+<DT>
+<B>makePixmap</B></DT>
+
+<DD>
+Makes a pixmap from bitmap data, shown and described in Chapter
+6, "Drawing Graphics and Text."</DD>
+
+<DT>
+<B>operButton</B></DT>
+
+<DD>
+An operation, either does it or waits for next value and
+=.</DD>
+
+<DT>
+<B>printInBase</B></DT>
+
+<DD>
+Composes the string that should be displayed. Called from
+<B>Sprintf</B>.</DD>
+
+<DT>
+<B>specButton</B></DT>
+
+<DD>
+Clears a digit, an entry, or all, or toggles unsigned mode.</DD>
+
+<DT>
+<B>Sprintf</B></DT>
+
+<DD>
+A modified version of the standard C utility <B>sprintf</B>,
+which does not print in binary. <B>Sprintf</B> calls <B>printInBase</B>.</DD>
+
+<DT>
+<B>winPressed</B></DT>
+
+<DD>
+Determines whether <B>pad</B> pressed was a digit, an operator,
+a conversion, or a special <B>pad</B>.</DD>
+</DL>
+Example D-1 shows the <I>basecalc.h</I> include file. This
+include file sets up the structures and global variables used in the calculator
+application.
+
+<P><B>The complete basecalc.h file</B>
+<BLOCKQUOTE>
+<PRE><TT>/* Window flags */
+#define WTYP_OPER&nbsp;&nbsp; 0x01&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Operator, +, -, =, etc */
+#define WTYP_DIG&nbsp;&nbsp;&nbsp; 0x02&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Digit 0-9, A-F */
+#define WTYP_DISP&nbsp;&nbsp; 0x04&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display Window */
+#define WTYP_CONV&nbsp;&nbsp; 0x08&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Converter -- hex, oct, dec, bin */
+#define WTYP_SPEC&nbsp;&nbsp; 0x10&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Special, CE, CA, CD */
+/* Operators */
+#define OPR_ADD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1
+#define OPR_SUB&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2
+#define OPR_MUL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3
+#define OPR_DIV&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 4
+#define OPR_MOD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 5
+#define OPR_OR&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 6
+#define OPR_AND&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 7
+#define OPR_XOR&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 8
+#define OPR_SHL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 9
+#define OPR_SHR&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 10
+#define OPR_CLRE&nbsp;&nbsp;&nbsp;&nbsp; 11
+#define OPR_CLRD&nbsp;&nbsp;&nbsp;&nbsp; 12
+#define OPR_CLRA&nbsp;&nbsp;&nbsp;&nbsp; 13
+#define OPR_ASGN&nbsp;&nbsp;&nbsp;&nbsp; 14
+#define OPR_NEG&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 15
+#define OPR_NOT&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 16
+#define OPR_UNS&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 17
+/* Colors */
+#define&nbsp;&nbsp; WHITE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0
+#define&nbsp;&nbsp; BLACK&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1
+#define&nbsp;&nbsp; DARKGRAY&nbsp;&nbsp; 2
+#define&nbsp;&nbsp; LIGHTGRAY&nbsp; 3
+static XrmDatabase commandlineDB, rDB;
+int pressedColor =&nbsp;&nbsp;&nbsp;&nbsp; WHITE;
+int unpressedColor =&nbsp;&nbsp; BLACK;
+int disabledColor =&nbsp;&nbsp;&nbsp; LIGHTGRAY;
+int displayColor =&nbsp;&nbsp;&nbsp;&nbsp; WHITE;
+char myDisplayName[256];
+char *myFontName =&nbsp;&nbsp;&nbsp; "8x13";
+char&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *calcName;
+Display&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *display;
+int&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; screen_num;
+Visual&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *visual;
+Colormap&nbsp;&nbsp;&nbsp;&nbsp; colormap;
+XFontStruct&nbsp; *theFont;
+Cursor&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; theCursor;
+Window&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; calcWin;
+Window&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iconWin;
+Window&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; dispWin;
+Pixmap&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; lgrayPixmap;
+Pixmap&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; grayPixmap;
+Pixmap&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iconPixmap;
+int&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreground;
+int&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background;
+GC&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fgGC;
+GC&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; bgGC;
+/* Calculator variables */
+int&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Base = 10;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Default base, updated to command line
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * or .Xdefaults */
+int&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Winbase;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* windata offset for current base, set
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * in InitCalc, used in ConvButton */
+int&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Digit = 0;
+long&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Value = 0;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Current pressed value */
+long&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum = 0;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Current results */
+Bool&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Unsigned = True;&nbsp;&nbsp;&nbsp;&nbsp; /* Default for U/S key */
+int&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LastOpt = OPR_ADD;&nbsp;&nbsp;&nbsp; /* Initial previous operator */
+int&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CalcReset = 0;
+char&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hexmeasure[] = "&nbsp;&nbsp; .&nbsp;&nbsp; .&nbsp;&nbsp; .&nbsp;&nbsp; .&nbsp;&nbsp; .&nbsp;&nbsp; .&nbsp;&nbsp; .&nbsp;&nbsp; ";
+char&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Octmeasure[] = " .&nbsp; .&nbsp; .&nbsp; .&nbsp; .&nbsp; .&nbsp; .&nbsp; .&nbsp; .&nbsp; .&nbsp; ";
+
+/* Startup options */
+Bool iconOnly = False;
+char Geostr[20];
+char iconGeostr[20];
+/* Command line options table; only resources are entered here...
+&nbsp;* there is a pass over the remaining options after XrmParseCommand
+&nbsp;* is let loose; we don't do anything with many of these resources,
+&nbsp;* but the program is ready for expansion */
+#define GEOMETRY&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "*geometry"
+#define ICONGEOMETRY&nbsp; "*iconGeometry"
+#define UNSIGNED&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "*unsigned"
+#define BASE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "*base"
+#define ICONSTARTUP&nbsp;&nbsp; "*iconStartup"
+static int opTableEntries = 25;
+static XrmOptionDescRec opTable[] = {
+{"-unsigned",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; UNSIGNED,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionNoArg,&nbsp;&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; "off"},
+{"-x",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BASE,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionNoArg,&nbsp;&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; "16"},
+{"-hex",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BASE,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionNoArg,&nbsp;&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; "16"},
+{"-dec",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BASE,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionNoArg,&nbsp;&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; "10"},
+{"-oct",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BASE,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionNoArg,&nbsp;&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; "8"},
+{"-binary",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BASE,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionNoArg,&nbsp;&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; "2"},
+{"-geometry",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GEOMETRY,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; NULL},
+{"-iconGeometry",&nbsp; ICONGEOMETRY,&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; NULL},
+{"-iconic",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ICONSTARTUP,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionNoArg,&nbsp;&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; "on"},
+{"-background",&nbsp;&nbsp;&nbsp; "*background",&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; NULL},
+{"-bg",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "*background",&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; NULL},
+{"-fg",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "*foreground",&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; NULL},
+{"-foreground",&nbsp;&nbsp;&nbsp; "*foreground",&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; NULL},
+{"-xrm",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; NULL,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionResArg,&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; NULL},
+{"-display",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ".display",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; NULL},
+/* Remainder not currently supported: */
+{"-bd",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "*borderColor",&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; NULL},
+{"-bordercolor",&nbsp;&nbsp; "*borderColor",&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; NULL},
+{"-borderwidth",&nbsp;&nbsp; ".borderWidth",&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; NULL},
+{"-bw",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ".borderWidth",&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; NULL},
+{"-fn",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "*font",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; NULL},
+{"-font",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "*font",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; NULL},
+{"-name",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ".name",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; NULL},
+{"-title",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ".title",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp; (caddr_t)&nbsp;&nbsp; NULL},
+};
+/* Keyboard equivalents */
+struct KeyCode {
+&nbsp;&nbsp; int&nbsp;&nbsp; kc_char;
+&nbsp;&nbsp; char&nbsp; *kc_func;
+&nbsp;&nbsp; int&nbsp;&nbsp; kc_len;
+} KeyCodes[] = {
+&nbsp;&nbsp; { CERASE,&nbsp;&nbsp; "CD",&nbsp;&nbsp; 2 },
+#ifdef SYSV
+&nbsp;&nbsp; { 027,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "CE",&nbsp;&nbsp; 2 },
+#else
+&nbsp;&nbsp; { CWERASE,&nbsp; "CE",&nbsp;&nbsp; 2 },
+#endif SYSV
+&nbsp;&nbsp; { CKILL,&nbsp;&nbsp;&nbsp; "CE",&nbsp;&nbsp; 2 },
+&nbsp;&nbsp; { CINTR,&nbsp;&nbsp;&nbsp; "CA",&nbsp;&nbsp; 2 },
+&nbsp;&nbsp; { 0,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0,&nbsp;&nbsp; 0 },
+};
+char&nbsp;&nbsp; QuitChar = CQUIT;
+#include "bitmaps/xcalc.icon"
+#include "bitmaps/lgray"
+#include "bitmaps/gray"
+/* Placement variables */
+XSizeHints sizehints = {
+&nbsp;&nbsp; PMinSize | PMaxSize | PPosition | PSize | USSize,
+&nbsp;&nbsp; 400, 100,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* x, y */
+&nbsp;&nbsp; 300, 139,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Width, height */
+&nbsp;&nbsp; 300, 139,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* min_width and min_height */
+&nbsp;&nbsp; 300, 139,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* max_width and max_height */
+&nbsp;&nbsp; 0, 0,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Width and height increments, not set */
+&nbsp;&nbsp; 0, 0, 0, 0,&nbsp;&nbsp;&nbsp;&nbsp; /* Aspect ratio, not set */
+};
+XSizeHints iconsizehints = {
+&nbsp;&nbsp; PMinSize | PMaxSize | PPosition | PSize,
+&nbsp;&nbsp; 150, 2,
+&nbsp;&nbsp; icon_width, icon_height,
+&nbsp;&nbsp; icon_width, icon_height,
+&nbsp;&nbsp; icon_width, icon_height,
+&nbsp;&nbsp; 0, 0,
+&nbsp;&nbsp; 0, 0, 0, 0,
+};
+XWMHints wmhints = {
+&nbsp;&nbsp; InputHint | StateHint | IconWindowHint,
+&nbsp;&nbsp; True,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Input model */
+&nbsp;&nbsp; NormalState,&nbsp;&nbsp;&nbsp; /* Starts up in normal state */
+&nbsp;&nbsp; 0,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Icon pixmap -- set later */
+&nbsp;&nbsp; 0,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Icon window -- created later */
+&nbsp;&nbsp; 150, 2,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Icon position of icon */
+&nbsp;&nbsp; 0,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Icon mask pixmap -- not used */
+};
+/* Configuration of subwindows */
+typedef struct _OpaqueFrame {
+&nbsp;&nbsp; Window self;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Window ID, filled in later */
+&nbsp;&nbsp; int x, y;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Where to create the window */
+&nbsp;&nbsp; unsigned int width, height;&nbsp;&nbsp; /* Width and height */
+} OpaqueFrame;
+#define NBUTTONS 38
+OpaqueFrame Buttons[NBUTTONS] = {
+&nbsp;&nbsp; { 0,&nbsp; 3, 5, 292, 18},&nbsp;&nbsp; /* Display area */
+&nbsp;&nbsp; { 0, 10, 35, 19, 18},&nbsp;&nbsp; /* c d e f */
+&nbsp;&nbsp; { 0, 37, 35, 19, 18},
+&nbsp;&nbsp; { 0, 63, 35, 19, 18},
+&nbsp;&nbsp; { 0, 91, 35, 19, 18},
+&nbsp;&nbsp; { 0, 10, 60, 19, 18},&nbsp;&nbsp; /* 8 9 a b */
+&nbsp;&nbsp; { 0, 37, 60, 19, 18},
+&nbsp;&nbsp; { 0, 63, 60, 19, 18},
+&nbsp;&nbsp; { 0, 91, 60, 19, 18},
+&nbsp;&nbsp; { 0, 10, 85, 19, 18},&nbsp;&nbsp; /* 4 5 6 7 */
+&nbsp;&nbsp; { 0, 37, 85, 19, 18},
+&nbsp;&nbsp; { 0, 63, 85, 19, 18},
+&nbsp;&nbsp; { 0, 91, 85, 19, 18},
+&nbsp;&nbsp; { 0, 10, 110, 19, 18},&nbsp;&nbsp; /* 0 1 2 3 */
+&nbsp;&nbsp; { 0, 37, 110, 19, 18},
+&nbsp;&nbsp; { 0, 63, 110, 19, 18},
+&nbsp;&nbsp; { 0, 91, 110, 19, 18},
+&nbsp;&nbsp; { 0, 261, 110, 28, 18},&nbsp;&nbsp; /* ca ce, cd, = */
+&nbsp;&nbsp; { 0, 187, 110, 28, 18},
+&nbsp;&nbsp; { 0, 224, 110, 28, 18},
+&nbsp;&nbsp; { 0, 131, 110, 46, 18},
+&nbsp;&nbsp; { 0, 131, 60, 19, 18},&nbsp;&nbsp; /* + - * / % */
+&nbsp;&nbsp; { 0, 158, 60, 19, 18},
+&nbsp;&nbsp; { 0, 185, 60, 19, 18},
+&nbsp;&nbsp; { 0, 212, 60, 19, 18},
+&nbsp;&nbsp; { 0, 239, 60, 19, 18},
+&nbsp;&nbsp; { 0, 131, 85, 19, 18},&nbsp;&nbsp; /* | &amp; &lt;&lt; >> ^ */
+&nbsp;&nbsp; { 0, 158, 85, 19, 18},
+&nbsp;&nbsp; { 0, 185, 85, 19, 18},
+&nbsp;&nbsp; { 0, 212, 85, 19, 18},
+&nbsp;&nbsp; { 0, 239, 85, 19, 18},
+&nbsp;&nbsp; { 0, 131, 35, 32, 18},&nbsp;&nbsp; /* hex oct bin dec */
+&nbsp;&nbsp; { 0, 165, 35, 31, 18},
+&nbsp;&nbsp; { 0, 198, 35, 32, 18},
+&nbsp;&nbsp; { 0, 232, 35, 31, 18},
+&nbsp;&nbsp; { 0, 269, 35, 20, 18},&nbsp;&nbsp; /* UNS */
+&nbsp;&nbsp; { 0, 269, 60, 20, 18},&nbsp;&nbsp; /* NEG */
+&nbsp;&nbsp; { 0, 269, 85, 20, 18},&nbsp;&nbsp; /* NOT */
+};
+struct windata {
+&nbsp;&nbsp; int&nbsp;&nbsp; color;&nbsp;&nbsp; /* Color */
+&nbsp;&nbsp; char&nbsp; *text;&nbsp;&nbsp; /* Pointer to the text string */
+&nbsp;&nbsp; int&nbsp;&nbsp; x;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* x coordinate of text */
+&nbsp;&nbsp; int&nbsp;&nbsp; y;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* y coordinate of text */
+&nbsp;&nbsp; int&nbsp;&nbsp; value;&nbsp;&nbsp; /* 0-16 for number, symbol for operator */
+&nbsp;&nbsp; int&nbsp;&nbsp; type;&nbsp;&nbsp;&nbsp; /* Number, operator, display */
+} windata[NBUTTONS] = {
+&nbsp;&nbsp; { 1, "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0 ", 2, 3, 0, WTYP_DISP },
+&nbsp;&nbsp; { 0, "C", 5, 3, 12, WTYP_DIG },
+&nbsp;&nbsp; { 0, "D", 5, 3, 13, WTYP_DIG },
+&nbsp;&nbsp; { 0, "E", 5, 3, 14, WTYP_DIG },
+&nbsp;&nbsp; { 0, "F", 5, 3, 15, WTYP_DIG },
+&nbsp;&nbsp; { 0, "8", 5, 3,&nbsp; 8, WTYP_DIG },
+&nbsp;&nbsp; { 0, "9", 5, 3,&nbsp; 9, WTYP_DIG },
+&nbsp;&nbsp; { 0, "A", 5, 3, 10, WTYP_DIG },
+&nbsp;&nbsp; { 0, "B", 5, 3, 11, WTYP_DIG },
+&nbsp;&nbsp; { 0, "4", 5, 3, 4, WTYP_DIG },
+&nbsp;&nbsp; { 0, "5", 5, 3, 5, WTYP_DIG },
+&nbsp;&nbsp; { 0, "6", 5, 3, 6, WTYP_DIG },
+&nbsp;&nbsp; { 0, "7", 5, 3, 7, WTYP_DIG },
+&nbsp;&nbsp; { 0, "0", 5, 3, 0, WTYP_DIG },
+&nbsp;&nbsp; { 0, "1", 5, 3, 1, WTYP_DIG },
+&nbsp;&nbsp; { 0, "2", 5, 3, 2, WTYP_DIG },
+&nbsp;&nbsp; { 0, "3", 5, 3, 3, WTYP_DIG },
+&nbsp;&nbsp; { 0, "CA", 6, 3, OPR_CLRA, WTYP_SPEC },
+&nbsp;&nbsp; { 0, "CE", 6, 3, OPR_CLRE, WTYP_SPEC },
+&nbsp;&nbsp; { 0, "CD", 6, 3, OPR_CLRD, WTYP_SPEC },
+&nbsp;&nbsp; { 0, "=", 17, 2, OPR_ASGN, WTYP_OPER },
+&nbsp;&nbsp; { 0,&nbsp; "+", 5, 3, OPR_ADD, WTYP_OPER },
+&nbsp;&nbsp; { 0,&nbsp; "-", 5, 3, OPR_SUB, WTYP_OPER },
+&nbsp;&nbsp; { 0,&nbsp; "*", 5, 4, OPR_MUL, WTYP_OPER },
+&nbsp;&nbsp; { 0,&nbsp; "/", 5, 3, OPR_DIV, WTYP_OPER },
+&nbsp;&nbsp; { 0,&nbsp; "%", 5, 3, OPR_MOD, WTYP_OPER },
+&nbsp;&nbsp; { 0,&nbsp; "|", 5, 3, OPR_OR,&nbsp; WTYP_OPER },
+&nbsp;&nbsp; { 0,&nbsp; "&amp;", 5, 3, OPR_AND, WTYP_OPER },
+&nbsp;&nbsp; { 0,&nbsp; ">>",1, 3, OPR_SHR, WTYP_OPER },
+&nbsp;&nbsp; { 0,&nbsp; "&lt;&lt;",0, 3, OPR_SHL, WTYP_OPER },
+&nbsp;&nbsp; { 0,&nbsp; "^", 5, 3, OPR_XOR, WTYP_OPER },
+&nbsp;&nbsp; { 0, "HEX", 2, 3, 16, WTYP_CONV },
+&nbsp;&nbsp; { 0, "DEC", 2, 3, 10, WTYP_CONV },
+&nbsp;&nbsp; { 0, "OCT", 2, 3,&nbsp; 8, WTYP_CONV },
+&nbsp;&nbsp; { 0, "BIN", 2, 3,&nbsp; 2, WTYP_CONV },
+&nbsp;&nbsp; { 0, "U",&nbsp; 5, 3,&nbsp; OPR_UNS, WTYP_SPEC },
+&nbsp;&nbsp; { 0, "`",&nbsp; 5, 3,&nbsp; OPR_NEG, WTYP_OPER },
+&nbsp;&nbsp; { 0, "~",&nbsp; 5, 3,&nbsp; OPR_NOT, WTYP_OPER },
+};</TT></PRE>
+</BLOCKQUOTE>
+Example D-2 is the complete source for the calculator application
+described in Chapter 14, "A Complete Application."
+
+<P><B>Remaining code for basecalc</B>
+<BLOCKQUOTE>
+<PRE><TT>/* X Version 11 Integer Programmer's Calculator, written by
+&nbsp;* Alan Greenspan, modified slightly by Adrian Nye */
+#include &lt;X11/Xlib.h>
+#include &lt;X11/Xutil.h>
+#include &lt;X11/Xresource.h>
+#include &lt;X11/cursorfont.h>
+#include &lt;stdio.h>
+#ifdef SYSV
+#include &lt;termio.h>
+#else
+#include &lt;sgtty.h>
+#include &lt;sys/ttychars.h>
+#endif SYSV
+#include &lt;ctype.h>
+#include &lt;pwd.h>
+#include "basecalc.h"
+/* Programmer's calculator with number base conversions */
+main (argc, argv)
+int argc;
+register char *argv[];
+{
+&nbsp;&nbsp;&nbsp; /* So we can use the resource manager data merging functions */
+&nbsp;&nbsp;&nbsp; XrmInitialize();
+&nbsp;&nbsp;&nbsp; /* Parse command line first so we can open display,
+&nbsp;&nbsp;&nbsp;&nbsp; * store any options in a database&nbsp; */
+&nbsp;&nbsp;&nbsp; parseOpenDisp (&amp;argc, argv);
+&nbsp;&nbsp;&nbsp; /* Get server defaults, program defaults, .Xdefaults,
+&nbsp;&nbsp;&nbsp;&nbsp; * command line, etc. and merge them */
+&nbsp;&nbsp;&nbsp; mergeDatabases();
+&nbsp;&nbsp;&nbsp; /* Extract values from database for use */
+&nbsp;&nbsp;&nbsp; extractOpts ();
+&nbsp;&nbsp;&nbsp; /* Load font, make pixmaps, set up arrays of windows */
+&nbsp;&nbsp;&nbsp; initCalc ();
+&nbsp;&nbsp;&nbsp; /* Get keyboard settings for interrupt, delete, etc. */
+&nbsp;&nbsp;&nbsp; initTty ();
+&nbsp;&nbsp;&nbsp; /* Make a standard cursor */
+&nbsp;&nbsp;&nbsp; makeCursor ();
+&nbsp;&nbsp;&nbsp; /* Set standard properties, create and map windows */
+&nbsp;&nbsp;&nbsp; makeWindows (argc, argv);
+&nbsp;&nbsp;&nbsp; /* Get events */
+&nbsp;&nbsp;&nbsp; takeEvents ();
+&nbsp;&nbsp;&nbsp; /* Bow out gracefully */
+&nbsp;&nbsp;&nbsp; XCloseDisplay(display);
+&nbsp;&nbsp;&nbsp; exit (1);
+}
+static char *getHomeDir( dest )
+char *dest;
+{
+&nbsp;&nbsp;&nbsp; int uid;
+&nbsp;&nbsp;&nbsp; extern char *getenv();
+&nbsp;&nbsp;&nbsp; extern int getuid();
+&nbsp;&nbsp;&nbsp; extern struct passwd *getpwuid();
+&nbsp;&nbsp;&nbsp; struct passwd *pw;
+&nbsp;&nbsp;&nbsp; register char *ptr;
+&nbsp;&nbsp;&nbsp; if((ptr = getenv("HOME")) != NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) strcpy(dest, ptr);
+&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if((ptr = getenv("USER")) != NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pw = getpwnam(ptr);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; uid = getuid();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pw = getpwuid(uid);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (pw) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) strcpy(dest, pw->pw_dir);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *dest = '';
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; return dest;
+}
+/* Get program's and user's defaults */
+mergeDatabases()
+{
+&nbsp;&nbsp;&nbsp; XrmDatabase homeDB, serverDB, applicationDB;
+&nbsp;&nbsp;&nbsp; char filenamebuf[1024];
+&nbsp;&nbsp;&nbsp; char *filename = &amp;filenamebuf[0];
+&nbsp;&nbsp;&nbsp; char *environment;
+&nbsp;&nbsp;&nbsp; char *classname = "Basecalc";
+&nbsp;&nbsp;&nbsp; char name[255];
+&nbsp;&nbsp;&nbsp; (void) strcpy(name, "/usr/lib/X11/app-defaults/");
+&nbsp;&nbsp;&nbsp; (void) strcat(name, classname);
+&nbsp;&nbsp;&nbsp; /* Get application defaults file, if any */
+&nbsp;&nbsp;&nbsp; applicationDB = XrmGetFileDatabase(name);
+&nbsp;&nbsp;&nbsp; (void) XrmMergeDatabases(applicationDB, &amp;rDB);
+&nbsp;&nbsp;&nbsp; /* MERGE server defaults, these are created by xrdb,
+&nbsp;&nbsp;&nbsp;&nbsp; * loaded as a property of the root window when the server
+&nbsp;&nbsp;&nbsp;&nbsp; * initializes, and loaded into the display structure
+&nbsp;&nbsp;&nbsp;&nbsp; * on XOpenDisplay; if not defined, use .Xdefaults */
+&nbsp;&nbsp;&nbsp; if (XResourceManagerString(display) != NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; serverDB = XrmGetStringDatabase(XResourceManagerString(display));
+&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Open .Xdefaults file and merge into existing data base */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) getHomeDir(filename);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) strcat(filename, "/.Xdefaults");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; serverDB = XrmGetFileDatabase(filename);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; XrmMergeDatabases(serverDB, &amp;rDB);
+&nbsp;&nbsp;&nbsp; /* Open XENVIRONMENT file or, if not defined, the ~/.Xdefaults,
+&nbsp;&nbsp;&nbsp;&nbsp; * and merge into existing data base */
+&nbsp;&nbsp;&nbsp; if ((environment = getenv("XENVIRONMENT")) == NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int len;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; environment = getHomeDir(filename);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) strcat(environment, "/.Xdefaults-");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; len = strlen(environment);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) gethostname(environment+len, 1024-len);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; homeDB = XrmGetFileDatabase(environment);
+&nbsp;&nbsp;&nbsp; XrmMergeDatabases(homeDB, &amp;rDB);
+&nbsp;&nbsp;&nbsp; /* Command line takes precedence over everything */
+&nbsp;&nbsp;&nbsp; XrmMergeDatabases(commandlineDB, &amp;rDB);
+}
+/* Get command line options */
+parseOpenDisp (argc, argv)
+int *argc;
+register char *argv[];
+{
+&nbsp;&nbsp;&nbsp; XrmValue value;
+&nbsp;&nbsp;&nbsp; char *str_type[20];
+&nbsp;&nbsp;&nbsp; myDisplayName[0] = '';
+&nbsp;&nbsp;&nbsp; XrmParseCommand(&amp;commandlineDB, opTable, opTableEntries, argv[0],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; argc, argv);
+&nbsp;&nbsp;&nbsp; /* Check for any arguments left */
+&nbsp;&nbsp;&nbsp; if (*argc != 1) Usage();
+&nbsp;&nbsp;&nbsp; /* Get display now, because we need it to get other databases*/
+&nbsp;&nbsp;&nbsp; if (XrmGetResource(commandlineDB, "basecalc.display", "Basecalc.Display",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; str_type, &amp;value)== True) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) strncpy(myDisplayName, value.addr, (int) value.size);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; /* Open display */
+&nbsp;&nbsp;&nbsp; if (!(display = XOpenDisplay(myDisplayName))) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "%s: Can't open display '%s'\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; argv[0], XDisplayName(myDisplayName));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; screen_num = DefaultScreen(display);
+&nbsp;&nbsp;&nbsp; visual = DefaultVisual(display, screen_num);
+&nbsp;&nbsp;&nbsp; colormap = DefaultColormap(display, screen_num);
+}
+extractOpts()
+{
+&nbsp;&nbsp;&nbsp; char *str_type[20];
+&nbsp;&nbsp;&nbsp; char buffer[20];
+&nbsp;&nbsp;&nbsp; long flags;
+&nbsp;&nbsp;&nbsp; XrmValue value;
+&nbsp;&nbsp;&nbsp; int x, y, width, height;
+&nbsp;&nbsp;&nbsp; XColor screen_def;
+&nbsp;&nbsp;&nbsp; /* Get geometry (actually, this is currently ignored) */
+&nbsp;&nbsp;&nbsp; if (XrmGetResource(rDB, "basecalc.geometry", "Basecalc.Geometry",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; str_type, &amp;value)== True) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) strncpy(Geostr, value.addr, (int) value.size);
+&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Geostr[0] = NULL;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if (XrmGetResource(rDB, "basecalc.iconGeometry", "Basecalc.IconGeometry",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; str_type, &amp;value)== True) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) strncpy(iconGeostr, value.addr, (int) value.size);
+&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iconGeostr[0] = NULL;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if (XrmGetResource(rDB, "basecalc.unsigned", "Basecalc.Unsigned",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; str_type, &amp;value)== True)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (strncmp(value.addr, "False", (int) value.size) == 0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Unsigned = False;
+&nbsp;&nbsp;&nbsp; if (XrmGetResource(rDB, "basecalc.base", "Basecalc.Base", str_type,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;value)== True) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) strncpy(buffer, value.addr, (int) value.size);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; buffer[value.size] = NULL;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Base = atoi(buffer);
+&nbsp;&nbsp;&nbsp; } else Base = 10;
+&nbsp;&nbsp;&nbsp; if (XrmGetResource(rDB, "basecalc.foreground", "Basecalc.Foreground",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; str_type, &amp;value)== True) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) strncpy(buffer, value.addr, (int) value.size);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (XParseColor(display, colormap, buffer,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;screen_def) == 0)&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "basecalc: fg color specification %s \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invalid", buffer);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreground = BlackPixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((visual->class == StaticGray) || (visual->class ==
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GrayScale))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreground = BlackPixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if (XAllocColor(display, colormap, &amp;screen_def) == 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreground = BlackPixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "basecalc: couldn't allocate color: \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; %s.\n", buffer);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreground = screen_def.pixel;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreground = BlackPixel(display, screen_num);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if (XrmGetResource(rDB, "basecalc.background", "Basecalc.Background",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; str_type, &amp;value)== True) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) strncpy(buffer, value.addr, (int) value.size);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (XParseColor(display, colormap, buffer,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;screen_def) == 0)&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "basecalc: bg color specification %s \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invalid", buffer);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background = WhitePixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((visual->class == StaticGray) || (visual->class ==
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GrayScale))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background = WhitePixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if (XAllocColor(display, colormap, &amp;screen_def) == 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background = WhitePixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "basecalc: couldn't allocate color: \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; %s.\n", buffer);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background = screen_def.pixel;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background = WhitePixel(display, screen_num);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; /* One last check to make sure the colors are different! */
+&nbsp;&nbsp;&nbsp; if (background == foreground) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background = WhitePixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreground = BlackPixel(display, screen_num);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; /*&nbsp; Could add a command line option for initial state:
+&nbsp;&nbsp;&nbsp;&nbsp; *&nbsp; iconOnly[0] = NULL; */
+&nbsp;&nbsp;&nbsp; /* Get window geometry information */
+&nbsp;&nbsp;&nbsp; if (Geostr != NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; flags = XParseGeometry(Geostr,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;x, &amp;y, &amp;width, &amp;height);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((WidthValue|HeightValue) &amp; flags)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Usage ();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (XValue &amp; flags) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (XNegative &amp; flags)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x = DisplayWidth(display, screen_num) +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x - sizehints.width;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sizehints.flags |= USPosition;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sizehints.x = x;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (YValue &amp; flags) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (YNegative &amp; flags)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; y = DisplayHeight(display, screen_num) +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x - sizehints.width;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sizehints.flags |= USPosition;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sizehints.y = y;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; /* Get icon geometry information */
+&nbsp;&nbsp;&nbsp; if (iconGeostr != NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iconGeostr[0] = '=';
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; flags = XParseGeometry(iconGeostr,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;x, &amp;y, &amp;width, &amp;height);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((WidthValue|HeightValue) &amp; flags)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Usage ();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (XValue &amp; flags) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (XNegative &amp; flags)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x = DisplayWidth(display, screen_num) +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x - iconsizehints.width;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iconsizehints.flags |= USPosition;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; wmhints.flags |= IconPositionHint;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; wmhints.icon_x = x;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iconsizehints.x = x;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (YValue &amp; flags) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (YNegative &amp; flags)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; y = DisplayHeight(display, screen_num) +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x - iconsizehints.width;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iconsizehints.flags |= USPosition;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; wmhints.flags |= IconPositionHint;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; wmhints.icon_y = y;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iconsizehints.y = y;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; }
+}
+/* Print message to stderr and exit */
+Usage ()
+{
+&nbsp;&nbsp;&nbsp; (void) fprintf (stderr,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "%s: [-iconic] [-unsigned] [-hex|x|dec|oct|binary] \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [-display &lt;display>] [-geometry &lt;geometrystring>] \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [-iconGeometry &lt;icongeometrystring>\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; calcName ? calcName : "basecalc");
+&nbsp;&nbsp;&nbsp; exit (1);
+}
+/* Make a pixmap */
+Pixmap
+makePixmap(data, width, height)
+char *data;
+unsigned int width, height;
+{
+&nbsp;&nbsp;&nbsp; Pixmap pid;
+&nbsp;&nbsp;&nbsp; pid = XCreatePixmapFromBitmapData(display, DefaultRootWindow(display),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; data, width, height, foreground, background,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DefaultDepth(display, screen_num));
+&nbsp;&nbsp;&nbsp; return(pid);
+}
+/* Initialize calculator options */
+initCalc ()
+{
+&nbsp;&nbsp;&nbsp; register int win;
+&nbsp;&nbsp;&nbsp; register int found = -1;
+&nbsp;&nbsp;&nbsp; XGCValues values;
+&nbsp;&nbsp;&nbsp; extern char lgray_bits[];
+&nbsp;&nbsp;&nbsp; if ((theFont = XLoadQueryFont (display, myFontName)) == NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "basecalc: can't open font %s\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; myFontName);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(-1);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; /* Make the utility pixmaps */
+&nbsp;&nbsp;&nbsp; grayPixmap = makePixmap(gray_bits, gray_width, gray_height);
+&nbsp;&nbsp;&nbsp; lgrayPixmap = makePixmap(lgray_bits, lgray_width, lgray_height);
+&nbsp;&nbsp;&nbsp; /* Make the utility gc's */
+&nbsp;&nbsp;&nbsp; values.font = theFont->fid;
+&nbsp;&nbsp;&nbsp; values.foreground = foreground;
+&nbsp;&nbsp;&nbsp; fgGC = XCreateGC(display, DefaultRootWindow(display),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GCForeground|GCFont, &amp;values);
+&nbsp;&nbsp;&nbsp; values.foreground = background;
+&nbsp;&nbsp;&nbsp; values.function = GXcopy;
+&nbsp;&nbsp;&nbsp; bgGC = XCreateGC(display, DefaultRootWindow(display),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GCForeground|GCFont|GCFunction, &amp;values);
+&nbsp;&nbsp;&nbsp; /* Loop through buttons, setting disabled buttons to Color
+&nbsp;&nbsp;&nbsp;&nbsp; * Light Gray; also find the window which corresponds to the
+&nbsp;&nbsp;&nbsp;&nbsp; * starting display base; also add ascent to y position of text */
+&nbsp;&nbsp;&nbsp; for (win = 1; win &lt; NBUTTONS; win++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (windata[win].type == WTYP_CONV &amp;&amp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].value == Base) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; found = win;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (windata[win].type == WTYP_DIG &amp;&amp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].value >= Base) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].color = disabledColor;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (windata[win].type == WTYP_SPEC &amp;&amp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].value == OPR_UNS) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Unsigned)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].text = "U";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].text = "S";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].color = pressedColor;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].color = unpressedColor;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].y += theFont->max_bounds.ascent;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; windata[0].y += theFont->max_bounds.ascent;
+&nbsp;&nbsp;&nbsp; if (found >= 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Winbase = found;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[found].color = pressedColor;
+&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "basecalc: can't use base %d\n", Base);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(-1);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; windata[0].color = displayColor;
+}
+/* Get the user's tty special chars; this is currently 4.2 specific */
+initTty ()
+{
+&nbsp;&nbsp;&nbsp; register struct KeyCode *KeyCodePtr;
+&nbsp;&nbsp;&nbsp; register int fd;
+#ifdef SYSV
+&nbsp;&nbsp;&nbsp; struct termio term;
+#else
+&nbsp;&nbsp;&nbsp; struct sgttyb tty;
+&nbsp;&nbsp;&nbsp; struct tchars tchars;
+&nbsp;&nbsp;&nbsp; struct ltchars ltchars;
+#endif SYSV
+&nbsp;&nbsp;&nbsp; if (!isatty(0)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((fd = open ("/dev/console", 0)) &lt; 0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return;
+&nbsp;&nbsp;&nbsp; } else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fd = 0;
+#ifdef SYSV
+&nbsp;&nbsp;&nbsp; (void) ioctl&nbsp; (fd, TCGETA,&nbsp;&nbsp; &amp;term);
+#else
+&nbsp;&nbsp;&nbsp; (void) ioctl&nbsp; (fd, TIOCGETP, &amp;tty);
+&nbsp;&nbsp;&nbsp; (void) ioctl&nbsp; (fd, TIOCGETC, &amp;tchars);
+&nbsp;&nbsp;&nbsp; (void) ioctl&nbsp; (fd, TIOCGLTC, &amp;ltchars);
+#endif SYSV
+&nbsp;&nbsp;&nbsp; if (fd)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) close (fd);
+&nbsp;&nbsp;&nbsp; KeyCodePtr = KeyCodes;
+#ifdef SYSV
+&nbsp;&nbsp;&nbsp; KeyCodePtr++->kc_char = term.c_cc[VERASE];
+&nbsp;&nbsp;&nbsp; KeyCodePtr++;
+&nbsp;&nbsp;&nbsp; KeyCodePtr++->kc_char = term.c_cc[VKILL];
+&nbsp;&nbsp;&nbsp; KeyCodePtr->kc_char = term.c_cc[VINTR];
+&nbsp;&nbsp;&nbsp; QuitChar = term.c_cc[VQUIT];
+#else
+&nbsp;&nbsp;&nbsp; KeyCodePtr++->kc_char = tty.sg_erase;
+&nbsp;&nbsp;&nbsp; KeyCodePtr++->kc_char = ltchars.t_werasc;
+&nbsp;&nbsp;&nbsp; KeyCodePtr++->kc_char = tty.sg_kill;
+&nbsp;&nbsp;&nbsp; KeyCodePtr->kc_char = tchars.t_intrc;
+&nbsp;&nbsp;&nbsp; QuitChar = tchars.t_quitc;
+#endif SYSV
+}
+/* Make the cursor */
+makeCursor ()
+{
+&nbsp;&nbsp;&nbsp; theCursor = XCreateFontCursor (display, XC_hand1);
+}
+/* Set up the selection of events */
+selectEvents ()
+{
+&nbsp;&nbsp;&nbsp; int win;
+&nbsp;&nbsp;&nbsp; XSelectInput (display, calcWin, KeyPressMask|KeyReleaseMask);
+&nbsp;&nbsp;&nbsp; XSelectInput (display, dispWin, ExposureMask);
+&nbsp;&nbsp;&nbsp; for (win = 1; win &lt; NBUTTONS; win++)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSelectInput (display, Buttons[win].self,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ExposureMask|
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ButtonPressMask|ButtonReleaseMask|
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; EnterWindowMask|LeaveWindowMask);
+}
+/* Get events and process them */
+takeEvents ()
+{
+&nbsp;&nbsp;&nbsp; XEvent Event;
+&nbsp;&nbsp;&nbsp; register int win;
+&nbsp;&nbsp;&nbsp; register int Pressed = False;
+&nbsp;&nbsp;&nbsp; register int InWindow = False;
+&nbsp;&nbsp;&nbsp; char buffer[10];
+&nbsp;&nbsp;&nbsp; register char *KeyChars = buffer;
+&nbsp;&nbsp;&nbsp; register int WasKeyDown = False;
+&nbsp;&nbsp;&nbsp; unsigned i, nbytes;
+&nbsp;&nbsp;&nbsp; while (1) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!WasKeyDown)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNextEvent (display, &amp;Event);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Event.type = KeyRelease;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Map keyboard events to Window events */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Event.type == KeyPress || Event.type == KeyRelease) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; nbytes = XLookupString (&amp;Event, buffer,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sizeof(buffer), NULL, NULL);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Event.type == KeyPress) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Event.type = ButtonPress;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WasKeyDown = 1;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (i=0; i&lt;60000; i++)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Event.type = ButtonRelease;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((Event.xbutton.window =
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; keyToWin (KeyChars, nbytes)) == None){
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WasKeyDown = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; continue;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (win=0; win &lt; NBUTTONS; win++)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Buttons[win].self == Event.xbutton.window)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch (Event.type) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ButtonPress:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (windata[win].color == disabledColor)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Pressed = win;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!WasKeyDown)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; InWindow = True;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].color = pressedColor;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; drawButton (win, 0);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case LeaveNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Pressed != win)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; InWindow = False;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].color = unpressedColor;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; drawButton (win, 0);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case EnterNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Pressed != win)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; InWindow = True;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].color = pressedColor;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; drawButton (win, 0);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ButtonRelease:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (windata[win].color == disabledColor ||
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Pressed != win) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WasKeyDown = False;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Pressed = False;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].color = unpressedColor;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (WasKeyDown || InWindow)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; winPressed (win);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WasKeyDown = False;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; InWindow = False;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; drawButton (win, 0);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case Expose:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; drawButton (win, 1);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XFlush(display);
+&nbsp;&nbsp;&nbsp; }
+}
+/* Make the calculator windows */
+makeWindows (argc, argv)
+int argc;
+char *argv[];
+{
+&nbsp;&nbsp;&nbsp; register int i;
+&nbsp;&nbsp;&nbsp; XSetWindowAttributes attributes;
+&nbsp;&nbsp;&nbsp; char *window_name = "Programmer's Calculator";
+&nbsp;&nbsp;&nbsp; char *icon_name = "basecalc";
+&nbsp;&nbsp;&nbsp; XClassHint class_hints;
+&nbsp;&nbsp;&nbsp; XTextProperty windowName, iconName;
+&nbsp;&nbsp;&nbsp; /* Define the border and background for the main window --
+&nbsp;&nbsp;&nbsp;&nbsp; * black border and a patterned background */
+&nbsp;&nbsp;&nbsp; attributes.border_pixel = foreground;
+&nbsp;&nbsp;&nbsp; attributes.background_pixmap = grayPixmap;
+&nbsp;&nbsp;&nbsp; /* Create the main window (calculator frame) as a child of
+&nbsp;&nbsp;&nbsp;&nbsp; * the root window */
+&nbsp;&nbsp;&nbsp; attributes.cursor = theCursor;
+&nbsp;&nbsp;&nbsp; calcWin = XCreateWindow(display, DefaultRootWindow(display),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sizehints.x, sizehints.y, sizehints.width, sizehints.height,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1, DefaultDepth(display, screen_num), InputOutput,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CopyFromParent, CWBorderPixel|CWBackPixmap|CWCursor,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;attributes);
+&nbsp;&nbsp;&nbsp; /* Create the icon window and associate it with the calculator */
+&nbsp;&nbsp;&nbsp; iconPixmap = makePixmap(icon_bits, icon_width, icon_height);
+&nbsp;&nbsp;&nbsp; attributes.border_pixel = foreground;
+&nbsp;&nbsp;&nbsp; attributes.background_pixmap = iconPixmap;
+&nbsp;&nbsp;&nbsp; iconWin = XCreateWindow(display, DefaultRootWindow(display),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iconsizehints.x, iconsizehints.y,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iconsizehints.width, iconsizehints.height,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1, DefaultDepth(display, screen_num), InputOutput,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CopyFromParent, CWBorderPixel|CWBackPixmap,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;attributes);
+&nbsp;&nbsp;&nbsp; wmhints.icon_window = iconWin;
+&nbsp;&nbsp;&nbsp; wmhints.initial_state = iconOnly ? IconicState : NormalState;
+&nbsp;&nbsp;&nbsp; wmhints.input = True;
+&nbsp;&nbsp;&nbsp; wmhints.flags |= InputHint | StateHint | IconWindowHint;
+&nbsp;&nbsp;&nbsp; XSetWMHints(display, calcWin, &amp;wmhints);
+&nbsp;&nbsp;&nbsp; /* These calls store window_name and icon_name into XTextProperty
+&nbsp;&nbsp;&nbsp;&nbsp; * structures and set their other fields properly */
+&nbsp;&nbsp;&nbsp; if (XStringListToTextProperty(&amp;window_name, 1, &amp;windowName) == 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf( stderr, "%s: structure allocation for windowName \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; failed.\n", argv[0]);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(-1);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if (XStringListToTextProperty(&amp;icon_name, 1, &amp;iconName) == 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf( stderr, "%s: structure allocation for iconName \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; failed.\n", argv[0]);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(-1);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; class_hints.res_name = argv[0];
+&nbsp;&nbsp;&nbsp; class_hints.res_class = "Basicwin";
+&nbsp;&nbsp;&nbsp; XSetWMProperties(display, calcWin, &amp;windowName, &amp;iconName,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; argv, argc, &amp;sizehints, &amp;wmhints,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;class_hints);
+#endif
+&nbsp;&nbsp;&nbsp; /* Create the buttons as subwindows */
+&nbsp;&nbsp;&nbsp; attributes.background_pixmap = lgrayPixmap;
+&nbsp;&nbsp;&nbsp; attributes.border_pixel = foreground;
+&nbsp;&nbsp;&nbsp; for (i = 0; i &lt; NBUTTONS; i++)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch (windata[i].color) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case WHITE:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Buttons[i].self = XCreateSimpleWindow(display, calcWin,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Buttons[i].x, Buttons[i].y,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Buttons[i].width, Buttons[i].height,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1, foreground, background);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case BLACK:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Buttons[i].self = XCreateSimpleWindow(display, calcWin,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Buttons[i].x, Buttons[i].y,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Buttons[i].width, Buttons[i].height,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1, background, foreground);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case LIGHTGRAY:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Buttons[i].self = XCreateWindow(display, calcWin,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Buttons[i].x, Buttons[i].y,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Buttons[i].width, Buttons[i].height,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1, CopyFromParent, InputOutput, CopyFromParent,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CWBorderPixel|CWBackPixmap, &amp;attributes);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; /* The display window is distinguished */
+&nbsp;&nbsp;&nbsp; dispWin = Buttons[0].self;
+&nbsp;&nbsp;&nbsp; /* Initialize event catching */
+&nbsp;&nbsp;&nbsp; selectEvents ();
+&nbsp;&nbsp;&nbsp; /* Map the calculator and subwindows */
+&nbsp;&nbsp;&nbsp; XMapSubwindows(display, calcWin);
+&nbsp;&nbsp;&nbsp; XMapWindow(display, calcWin);
+}
+/* Draw a single button with its text */
+drawButton (win, exposeEvent)
+register int win;
+{
+&nbsp;&nbsp;&nbsp; register char *string;
+&nbsp;&nbsp;&nbsp; register int x, y;
+&nbsp;&nbsp;&nbsp; struct windata *winp;
+&nbsp;&nbsp;&nbsp; char *measure;
+&nbsp;&nbsp;&nbsp; XSetWindowAttributes attributes;
+&nbsp;&nbsp;&nbsp; unsigned long valuemask;
+&nbsp;&nbsp;&nbsp; GC gc;
+&nbsp;&nbsp;&nbsp; winp = &amp;windata[win];
+&nbsp;&nbsp;&nbsp; x = winp->x;
+&nbsp;&nbsp;&nbsp; y = winp->y;
+&nbsp;&nbsp;&nbsp; string = winp->text;
+&nbsp;&nbsp;&nbsp; switch (windata[win].color) {
+&nbsp;&nbsp;&nbsp; case WHITE:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gc = fgGC;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; attributes.background_pixel = background;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; attributes.border_pixel = foreground;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; valuemask = CWBackPixel|CWBorderPixel;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case BLACK:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gc = bgGC;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; attributes.background_pixel = foreground;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; attributes.border_pixel = background;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; valuemask = CWBackPixel|CWBorderPixel;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case LIGHTGRAY:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gc = bgGC;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; attributes.background_pixmap = lgrayPixmap;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; attributes.border_pixel = foreground;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; valuemask = CWBackPixmap|CWBorderPixel;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if (!exposeEvent){
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XChangeWindowAttributes(display, Buttons[win].self,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; valuemask, &amp;attributes);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XClearWindow(display, Buttons[win].self);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; XDrawString (display, Buttons[win].self, gc, x, y, string,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; strlen (string));
+&nbsp;&nbsp;&nbsp; if (win == 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch (Base) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 10:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 8:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; measure = Octmeasure;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; default:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 16:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case&nbsp; 2:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; measure = Hexmeasure;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XDrawString (display, dispWin, gc, 7, 6, measure, 31);
+&nbsp;&nbsp;&nbsp; }
+}
+static unsigned int LastDisp = 1;
+/* Do the operation corresponding to a key press */
+winPressed (win)
+{
+&nbsp;&nbsp;&nbsp; register int type;
+&nbsp;&nbsp;&nbsp; type = windata[win].type;
+&nbsp;&nbsp;&nbsp; switch (type) {
+&nbsp;&nbsp;&nbsp; case WTYP_CONV:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; convButton (win);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; displayVal (LastDisp == 1 ? Value : Accum);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case WTYP_DIG:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; digitButton (win);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; displayVal (Value);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LastDisp = 1;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case WTYP_OPER:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (operButton (win) == 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; displayVal (Accum);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LastDisp = 2;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; displayVal (Value);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LastDisp = 1;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case WTYP_SPEC:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; specButton (win);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; displayVal (LastDisp == 1 ? Value : Accum);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LastDisp = 1;
+&nbsp;&nbsp;&nbsp; }
+}
+/* Handle a conversion button */
+convButton (win)
+{
+&nbsp;&nbsp;&nbsp; register int i, NewBase, Diff, Digit;
+&nbsp;&nbsp;&nbsp; register int HiBase, LowBase;
+&nbsp;&nbsp;&nbsp; NewBase = windata[win].value;
+&nbsp;&nbsp;&nbsp; windata[Winbase].color = unpressedColor;
+&nbsp;&nbsp;&nbsp; drawButton (Winbase, 0);
+&nbsp;&nbsp;&nbsp; windata[win].color = pressedColor;
+&nbsp;&nbsp;&nbsp; Diff = NewBase - Base;
+&nbsp;&nbsp;&nbsp; if (Diff) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (NewBase > Base) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LowBase = Base;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; HiBase = NewBase;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LowBase = NewBase;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; HiBase = Base;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (i = 1; i &lt; NBUTTONS; i++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (windata[i].type == WTYP_DIG) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Digit = windata[i].value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Digit >= LowBase &amp;&amp; Digit &lt; HiBase) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Diff &lt; 0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[i].color = disabledColor;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[i].color = unpressedColor;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; drawButton (i, 0);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; Winbase = win;
+&nbsp;&nbsp;&nbsp; Base = NewBase;
+}
+/* Handle a digit button */
+digitButton (win)
+{
+&nbsp;&nbsp;&nbsp; register unsigned long Temp;
+&nbsp;&nbsp;&nbsp; if (CalcReset) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CalcReset = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Value = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LastOpt = OPR_ADD;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; Digit = windata[win].value;
+&nbsp;&nbsp;&nbsp; if (Unsigned)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Temp = (unsigned)Value * (unsigned)Base + Digit;
+&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Temp = Value * Base + Digit;
+&nbsp;&nbsp;&nbsp; if ((unsigned)Temp/Base != (unsigned)Value) {&nbsp;&nbsp;&nbsp; /* Overflow? */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Flash the display since the character didn't register */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[0].color =
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (displayColor == WHITE) ? BLACK : WHITE;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; drawButton (0, 0);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XFlush(display);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Delay ();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[0].color = displayColor;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; drawButton (0, 0);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; Value = Temp;
+}
+/* Handle a special operator */
+specButton (win)
+{
+&nbsp;&nbsp;&nbsp; register int oper;
+&nbsp;&nbsp;&nbsp; oper = windata[win].value;
+&nbsp;&nbsp;&nbsp; switch (oper) {
+&nbsp;&nbsp;&nbsp; case OPR_CLRD:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (LastOpt == OPR_ASGN)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Value = (unsigned)Value / Base;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case OPR_CLRE:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Value = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case OPR_CLRA:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Value = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LastOpt = OPR_ADD;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case OPR_UNS:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Unsigned = !Unsigned;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].text = Unsigned ? "U" : "S";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].color = pressedColor;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; drawButton (win, 0);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; }
+}
+/* Handle an operator */
+operButton (win)
+{
+&nbsp;&nbsp;&nbsp; register int oper;
+&nbsp;&nbsp;&nbsp; oper = LastOpt;
+&nbsp;&nbsp;&nbsp; LastOpt = windata[win].value;
+&nbsp;&nbsp;&nbsp; CalcReset = 0;
+&nbsp;&nbsp;&nbsp; switch (LastOpt) {
+&nbsp;&nbsp;&nbsp; case OPR_NEG:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Value = -Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((LastOpt = oper) == OPR_ASGN)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum = Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return 1;
+&nbsp;&nbsp;&nbsp; case OPR_NOT:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Value = ~Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((LastOpt = oper) == OPR_ASGN)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum = Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return 1;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; switch (oper) {
+&nbsp;&nbsp;&nbsp; case OPR_ADD:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Unsigned)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum = (unsigned)Accum + (unsigned)Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum += Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case OPR_SUB:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Unsigned)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum = (unsigned)Accum - (unsigned)Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum -= Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case OPR_MUL:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Unsigned)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum = (unsigned)Accum * (unsigned)Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum *= Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case OPR_DIV:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Value == 0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Unsigned)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum = (unsigned)Accum / (unsigned)Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum /= Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case OPR_MOD:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Value == 0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Unsigned)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum = (unsigned)Accum % (unsigned)Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum %= Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case OPR_OR:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum |= Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case OPR_AND:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum &amp;= Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case OPR_SHR:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Unsigned)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum = (unsigned)Accum >> (unsigned)Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum >>= Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case OPR_SHL:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Unsigned)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum = (unsigned)Accum &lt;&lt; (unsigned)Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum &lt;&lt;= Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case OPR_XOR:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Accum ^= Value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case OPR_ASGN:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if (LastOpt == OPR_ASGN) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Value = Accum;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CalcReset = 1;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return 1;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; Value = 0;
+&nbsp;&nbsp;&nbsp; return 0;
+}
+/* Display a number in the display window */
+displayVal (number)
+register long number;
+{
+&nbsp;&nbsp;&nbsp; register char *Fmt;
+&nbsp;&nbsp;&nbsp; register char *cp;
+&nbsp;&nbsp;&nbsp; register int i;
+&nbsp;&nbsp;&nbsp; switch (Base) {
+&nbsp;&nbsp;&nbsp; case 16:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Fmt = "%32x";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case 10:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Fmt = "%32d";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case 8:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Fmt = "%32o";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case 2:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Fmt = "%032b";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; cp = windata[0].text;
+&nbsp;&nbsp;&nbsp; for (i=32; --i >= 0; )
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *cp++ = ' ';
+&nbsp;&nbsp;&nbsp; *cp = '';
+&nbsp;&nbsp;&nbsp; Sprintf (windata[0].text, Fmt, number);
+&nbsp;&nbsp;&nbsp; drawButton (0, 0);
+}
+/* Translate a key code to a corresponding window */
+keyToWin (str, n)
+register char *str;
+register unsigned n;
+{
+&nbsp;&nbsp;&nbsp; register int value = -1;
+&nbsp;&nbsp;&nbsp; register struct KeyCode *KeyCodePtr;
+&nbsp;&nbsp;&nbsp; register char ch;
+&nbsp;&nbsp;&nbsp; register int i;
+&nbsp;&nbsp;&nbsp; if (n > (unsigned) 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ch = *str;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (islower(ch) &amp;&amp; isxdigit(ch))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; value = 10 + ch - 'a';
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (isdigit(ch))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; value = ch - '0';
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (value >= 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (i = 1; i &lt; NBUTTONS; i++)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (windata[i].type == WTYP_DIG &amp;&amp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[i].value == value)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return Buttons[i].self;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Do some translations -- these should be driven
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * from the user's terminal erase, kill, etc */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch (ch) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 'U':
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Unsigned)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return -1;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; str = "S";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; n = 1;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 'S':
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!Unsigned)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return -1;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; str = "U";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; n = 1;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case '\r':
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case '\n':
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; str = "=";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; n = 1;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; default:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (ch == QuitChar) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XCloseDisplay(display);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit (1);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; KeyCodePtr = KeyCodes;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; while ((n = KeyCodePtr->kc_len) > (unsigned) 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (ch == KeyCodePtr->kc_char) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; str = KeyCodePtr->kc_func;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; KeyCodePtr++;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (n == 0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; n = 1;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (i = 1; i &lt; NBUTTONS; i++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (windata[i].type != WTYP_DIG &amp;&amp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; strncmp (windata[i].text, str, (int) n) == 0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return Buttons[i].self;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; return None;
+}
+/*
+&nbsp;* Specialized version of C Library sprintf.
+&nbsp;*
+&nbsp;* %u %d %o %x %b (binary) are recognized.
+&nbsp;* %0W... - where 0 means pad with zeros otherwise blanks
+&nbsp;*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - if W, the minimum field width is larger than
+&nbsp;*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - the number
+&nbsp;*/
+Sprintf(cp, fmt, x1)
+register char *cp;
+register char *fmt;
+unsigned x1;
+{
+&nbsp;&nbsp;&nbsp; register int c, b, sign;
+&nbsp;&nbsp;&nbsp; register char&nbsp;&nbsp;&nbsp; *s;
+&nbsp;&nbsp;&nbsp; register unsigned short fw;
+&nbsp;&nbsp;&nbsp; char *printInBase();
+&nbsp;&nbsp;&nbsp; char pad;
+&nbsp;&nbsp;&nbsp; while ((c = *fmt++) != '%') {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (c == '') {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *cp = c;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return;&nbsp;&nbsp; /* to displayVal */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *cp++ = c;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; c = *fmt++;
+&nbsp;&nbsp;&nbsp; if (c == '0') {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pad = '0';
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; c = *fmt++;
+&nbsp;&nbsp;&nbsp; } else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pad = ' ';
+&nbsp;&nbsp;&nbsp; /* Calculate minimum field width */
+&nbsp;&nbsp;&nbsp; fw = 0;
+&nbsp;&nbsp;&nbsp; while (c >= '0' &amp;&amp; c &lt;= '9') {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fw = fw * 10 + (c - '0');
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; c = *fmt++;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; sign = 0;
+&nbsp;&nbsp;&nbsp; switch (c) {
+&nbsp;&nbsp;&nbsp; case 'x':
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; b = 16;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case 'd':
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!Unsigned)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sign = 1;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /*&nbsp; falls through into 'u' case */
+&nbsp;&nbsp;&nbsp; case 'u':
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; b = 10;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case 'o':
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; b = 8;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case 'b':
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; b = 2;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; default:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /*
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * Unknown format
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; b = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if (b)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; cp = printInBase (cp, x1, b, fw, pad, sign);
+&nbsp;&nbsp;&nbsp; break;
+/* Print a number n in base b into string cp;
+&nbsp;* minimum field width = fw, pad character = pad */
+char *
+printInBase (cp, n, b, fw, pad, sign)
+register char *cp;
+register long n;
+register b;
+register int fw, pad;
+{
+&nbsp;&nbsp;&nbsp; register i, nd, c;
+&nbsp;&nbsp;&nbsp; int&nbsp;&nbsp;&nbsp; flag;
+&nbsp;&nbsp;&nbsp; int&nbsp;&nbsp;&nbsp; plmax;
+&nbsp;&nbsp;&nbsp; char d[33];
+&nbsp;&nbsp;&nbsp; c = 1;
+&nbsp;&nbsp;&nbsp; if (sign)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; flag = n &lt; 0;
+&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; flag = 0;
+&nbsp;&nbsp;&nbsp; if (flag)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; n = (-n);
+&nbsp;&nbsp;&nbsp; if (b==2)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; plmax = 32;
+&nbsp;&nbsp;&nbsp; else if (b==8)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; plmax = 11;
+&nbsp;&nbsp;&nbsp; else if (b==10)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; plmax = 10;
+&nbsp;&nbsp;&nbsp; else if (b==16)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; plmax = 8;
+&nbsp;&nbsp;&nbsp; if (b==10) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (flag == 0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sign = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; flag = 0;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; for (i=0;i&lt;plmax;i++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (flag == 0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; nd = (unsigned)n%b;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; nd = n%b;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (flag) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; nd = (b - 1) - nd + c;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (nd >= b) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; nd -= b;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; c = 1;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; c = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; d[i] = nd;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (flag == 0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; n = (unsigned)n/b;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; n = n/b;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((n==0) &amp;&amp; (flag==0))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if (i==plmax)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; i--;
+&nbsp;&nbsp;&nbsp; if (sign) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fw--;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (pad == '0')
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *cp++ = '-';
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if (fw > i+1) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (fw -= i+1; fw > 0; fw--)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *cp++ = pad;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if (sign &amp;&amp; pad != '0')
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *cp++ = '-';
+&nbsp;&nbsp;&nbsp; for (;i>=0;i--)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *cp++ = "0123456789ABCDEF"[d[i]];
+&nbsp;&nbsp;&nbsp; *cp = '';
+&nbsp;&nbsp;&nbsp; return cp;
+}
+/* Delay a little while */
+Delay ()
+{
+&nbsp;&nbsp;&nbsp; long tic;
+&nbsp;&nbsp;&nbsp; for (tic = 0; tic &lt; 50000; tic++)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

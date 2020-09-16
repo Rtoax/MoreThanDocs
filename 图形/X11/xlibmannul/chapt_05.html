@@ -1,0 +1,1913 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_04.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_06.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H1>
+The Graphics Context</H1>
+The graphics primitives supplied with X are quite simple.
+Most of the details about how graphics are to be drawn are stored in a
+resource called a graphics context (GC). GCs are stored in the server,
+thus reducing the amount of information that needs to be transmitted for
+each graphics request. This chapter describes how to use GCs and provides
+details on each member of the XGCValues structure. Everyone should read
+this chapter.
+
+<P>The X routines that draw graphics are called <I>graphics
+primitives</I>. They draw dots, lines, text, images, and tile or fill areas,
+and will be described fully in Chapter 6, <I>Drawing Graphics and Text</I>.
+But a given graphics primitive does not contain all the information needed
+to draw a particular graphic. A server resource called a <I>graphics context</I>
+(GC) contains values for variables that apply to each graphics primitive.
+The appearance of everything that is drawn <I>by a program</I> is controlled
+by the GC that is specified with each graphics primitive. (The border and
+background of a window are not affected or controlled by the GC--they are
+controlled by window attributes, and are drawn <I>by the server</I>.) What
+is drawn into a pixmap is also controlled by the GC used in the drawing
+to the pixmap and, again, possibly with a different GC, if the pixmap is
+copied into a window. To draw, you must first create a GC and set its values,
+then specify that GC as an argument in the graphics primitive.
+
+<P>There are two performance-related reasons X was designed
+to use GCs. First, they reduce the traffic between Xlib and the server
+because the GC information is held in the server and needs to be sent only
+once before the first graphics request. Each subsequent primitive that
+specifies the same GC will use the same values. When a few settings of
+the GC need to be changed, only the selected few need to be sent, not the
+entire GC. Second, you can create several GCs and then simply specify which
+GC you want applied to each graphics request. This has important performance
+benefits on servers that are capable of caching multiple GCs in their display
+hardware.
+
+<P>The GC also allows for more convenient programming, since
+to provide the same flexibility without the GC, you would need to specify
+an absurd number of arguments every time you called a graphics primitive.
+
+<P>A few more words are needed regarding the distinction
+between the roles of the graphics primitive and the GC. You can think of
+a graphics primitive as specifying the general shape to be drawn, while
+the GC specifies how to draw it. For example, a primitive that draws a
+filled rectangle specifies the top-left corner of the rectangle in the
+drawable and its dimensions, while the GC specifies its color or the pattern
+applied to it (among other things). Note that both the graphics primitive
+and the GC play a role in selecting exactly which pixels are drawn. For
+example, the graphics primitive specifies the start and end points for
+lines (including unfilled arcs, rectangles, and polygons), while the GC
+specifies the width of the line and the shape of the joints and ends of
+the lines. Other components of the GC affect pixel selection with other
+graphics primitives. For all primitives, the GC includes a clip mask that
+you can use to restrict which pixels are drawn.
+
+<P>To predict the effect of particular GC settings on a particular
+graphics primitive, it is useful to visualize the drawing process in a
+number of stages, even though in reality the drawing of each bit of each
+pixel is performed by the server in a single equation.
+<OL>
+<LI>
+The first stage is pixel selection. As we just described,
+pixel selection is specified by the graphics primitive, in some cases along
+with the <B>line_width</B>, <B>clip_mask</B>, and other elements in the
+GC. The result of the first stage is a bitmap--a single rectangle of bits,
+with the pixels to be drawn set to one and the pixels not to be drawn set
+to zero.</LI>
+
+<LI>
+The second stage applies one or two colors or a pattern to
+the results of the first stage, resulting in a pixmap which has the same
+depth (number of bits per pixel) as the drawable. The output of the second
+stage is referred to later in this chapter as the <I>source</I>.</LI>
+
+<LI>
+In the third stage, a plane mask may be applied to select
+which planes of the drawable can be affected by the graphics request. This
+is done to play tricks with color, such as to draw temporary graphics that
+can be erased without erasing other things already drawn in a window, as
+demonstrated in Chapter 7, <I>Color</I>. By default, the plane mask is
+all ones and therefore has no effect on what is drawn.</LI>
+
+<LI>
+In the fourth stage, the pixel values resulting from stage
+three can be combined with what is already on the screen using so-called
+<I>logical functions</I>. Most graphics are drawn by simply overwriting
+the existing graphics using a logical function of <B>GXcopy</B>, but there
+are useful tricks that can be played by using certain other logical functions.
+One such effect is called <I>rubber-banding</I>; the window manager uses
+this technique to show you the outline of a window you are moving or resizing.</LI>
+</OL>
+Figure 5-1 illustrates these four stages used in drawing
+a wide line, and the GC elements that can be used to control each stage.
+The sections below that describe the various members of the GC are organized
+according to the stage that they affect. This information is summarized
+in one of the GC-at-a-glance tables inside the back cover of Volume Two,
+<I>Xlib Reference Manual</I>.
+
+<P>Since we are not yet using any of the tricks that require
+use of the <B>plane_mask</B> or logical <B>function</B>, the third and
+fourth stages in Figure 5-1 use the default values of these GC elements.
+They therefore do not modify the result of the graphics primitive.
+
+<P>To make this overview complete, it's important to mention
+that the GC also has the following two features (described more completely
+in Section 5.6, "Graphics Exposure" and Section 5.7, "Subwindow Mode"):
+<UL>
+<LI>
+The <B>graphics_exposures</B> member lets you select <B>GraphicsExpose</B>
+and <B>NoExpose</B> events, to indicate whether areas being copied using
+<B>XCopyArea()</B> and <B>XCopyPlane()</B> requests are visible or invisible.
+(This is important because invisible areas cannot be copied, and must be
+drawn some other way.)</LI>
+
+<LI>
+The <B>subwindow_mode</B> member lets you specify whether
+subwindows obscure graphics drawn on the parent. The default is <B>True</B>,
+and usually needs changing only for rubber-banding.</LI>
+</UL>
+Now we will discuss how to create and set the GC, before
+moving on to details of individual members of the GC.
+
+<P><B>Four stages in drawing a line</B>
+
+<P><IMG SRC="imgs/fig.5.01.gif" ALT="fig.5.01.gif" BORDER=0  ALIGN=ABSCENTER>&nbsp;
+<HR>
+<H2>
+Creating and Setting a Graphics Context</H2>
+Before a GC can be used, you must create it by calling <B>XCreateGC()</B>.
+<B>XCreateGC()</B> requires only four arguments: display, drawable, values,
+and valuemask.
+<UL>
+<LI>
+The display argument (pointer to a <B>Display</B> structure)
+should be familiar by now; it specifies the connection to the X server.
+The display argument is used in virtually every Xlib routine.</LI>
+
+<LI>
+The drawable argument is a window or pixmap ID. You might
+think that the drawable argument specifies which window or pixmap the GC
+is to be used in, but this is not necessarily the case. It really indicates
+which screen the GC resource is associated with and the depth of windows
+it can be used with. A GC can be used on any window or pixmap of the same
+depth and on the same screen as the drawable specified. (Drawables were
+introduced in Section 2.3.3, "Pixmaps and Drawables.") This implies that
+if you want to draw into a pixmap of depth one, you need to create that
+pixmap first, and then use it as the drawable argument in creating the
+GC. A <B>BadMatch</B> error when drawing usually indicates you did not
+use the right drawable when creating the GC.</LI>
+
+<LI>
+The values argument is an <B>XGCValues</B> structure (shown
+in Example 5-1) filled with the desired settings for the GC.</LI>
+
+<LI>
+The valuemask argument specifies which members of the <B>XGCValues</B>
+structure are actually read. The members not represented by a bit set to
+one in the valuemask are given the default values listed in Section 5.10,
+"Querying the Graphics Context." The symbols used to make this bitmask
+correspond to the members of <B>XGCValues</B> shown in Table 5-1.</LI>
+</UL>
+The GC is set very much like the window attributes are set,
+described in Section 4.2, "The Window Attribute Structures." Of course,
+there is a different structure and there are different masks for specifying
+which members are to be set. One other difference in practice is that every
+member of the GC can be set with an individual "convenience routine." You
+may prefer, therefore, to create a default GC and then modify it with the
+individual routines rather than to set all the members in both the structure
+and the mask before you call <B>XCreateGC()</B> or <B>XChangeGC()</B>.
+Both approaches are demonstrated below.
+
+<P>Example 5-1 and Table 5-1 present the <B>XGCValues</B>
+structure and the masks used when calling <B>XCreateGC()</B> or <B>XChangeGC()</B>.
+
+<P><B>The GCValues structure</B>
+<BLOCKQUOTE>
+<PRE><TT>/* Data structure for setting graphics context&nbsp; */
+typedef struct {
+&nbsp;&nbsp; int function;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Logical function */
+&nbsp;&nbsp; unsigned long plane_mask;&nbsp;&nbsp; /* Plane mask */
+&nbsp;&nbsp; unsigned long foreground;&nbsp;&nbsp; /* Foreground pixel */
+&nbsp;&nbsp; unsigned long background;&nbsp;&nbsp; /* Background pixel */
+&nbsp;&nbsp; int line_width;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Line width */
+&nbsp;&nbsp; int line_style;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* LineSolid, LineOnOffDash,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * LineDoubleDash */
+&nbsp;&nbsp; int cap_style;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* CapNotLast, CapButt, CapRound,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * CapProjecting */
+&nbsp;&nbsp; int join_style;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* JoinMiter, JoinRound, JoinBevel */
+&nbsp;&nbsp; int fill_style;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* FillSolid, FillTiled, FillStippled,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * FillOpaqueStippled */
+&nbsp;&nbsp; int fill_rule;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* EvenOddRule, WindingRule */
+&nbsp;&nbsp; int arc_mode;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* ArcChord, ArcPieSlice */
+&nbsp;&nbsp; Pixmap tile;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Tile pixmap for tiling operations */
+&nbsp;&nbsp; Pixmap stipple;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Pixmap of depth 1 */
+&nbsp;&nbsp; int ts_x_origin;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Offset for tile or stipple operations */
+&nbsp;&nbsp; int ts_y_origin;
+&nbsp;&nbsp; Font font;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Font for text operations (except
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * XDrawText) */
+&nbsp;&nbsp; int subwindow_mode;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* ClipByChildren, IncludeInferiors */
+&nbsp;&nbsp; Bool graphics_exposures;&nbsp;&nbsp;&nbsp; /* Should events be generated on
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * XCopyArea, XCopyPlane&nbsp; */
+&nbsp;&nbsp; int clip_x_origin;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Origin for clipping */
+&nbsp;&nbsp; int clip_y_origin;
+&nbsp;&nbsp; Pixmap clip_mask;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Bitmap for clipping */
+&nbsp;&nbsp; int dash_offset;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Patterned/dashed line information */
+&nbsp;&nbsp; char dashes;
+} XGCValues;</TT></PRE>
+</BLOCKQUOTE>
+The meaning and possible values for each member are described
+in Sections 5.3 through 5.7.
+
+<P>Table 5-1 shows the symbols used to specify which members
+of the <B>XGCValues</B> structure actually contain meaningful values. The
+valuemask is made up of these symbols combined by means of a bitwise OR
+(<I>|</I>).
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 5-1 : </B>Symbols for Setting the XGCValues
+Structure</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Member</TH>
+
+<TH>Mask</TH>
+
+<TH>Set Bit</TH>
+
+<TH>Default</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>function</B></TD>
+
+<TD><B>GCFunction</B></TD>
+
+<TD>0</TD>
+
+<TD><B>GXcopy</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>plane_mask</B></TD>
+
+<TD><B>GCPlaneMask</B></TD>
+
+<TD>1</TD>
+
+<TD>all <B>1</B> 's</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>foreground</B></TD>
+
+<TD><B>GCForeground</B></TD>
+
+<TD>2</TD>
+
+<TD><B>0</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>background</B></TD>
+
+<TD><B>GCBackground</B></TD>
+
+<TD>3</TD>
+
+<TD><B>1</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>line_width</B></TD>
+
+<TD><B>GCLineWidth</B></TD>
+
+<TD>4</TD>
+
+<TD><B>0</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>line_style</B></TD>
+
+<TD><B>GCLineStyle</B></TD>
+
+<TD>5</TD>
+
+<TD><B>LineSolid</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>cap_style</B></TD>
+
+<TD><B>GCCapStyle</B></TD>
+
+<TD>6</TD>
+
+<TD><B>CapButt</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>join_style</B></TD>
+
+<TD><B>GCJoinStyle</B></TD>
+
+<TD>7</TD>
+
+<TD><B>JoinMiter</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>fill_style</B></TD>
+
+<TD><B>GCFillStyle</B></TD>
+
+<TD>8</TD>
+
+<TD><B>FillSolid</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>fill_rule</B></TD>
+
+<TD><B>GCFillRule</B></TD>
+
+<TD>9</TD>
+
+<TD><B>EvenOddRule</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>arc_mode</B></TD>
+
+<TD><B>GCArcMode</B></TD>
+
+<TD>22</TD>
+
+<TD><B>ArcPieSlice</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>tile</B></TD>
+
+<TD><B>GCTile</B></TD>
+
+<TD>10</TD>
+
+<TD>pixmap filled with foreground pixel</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>stipple</B></TD>
+
+<TD><B>GCStipple</B></TD>
+
+<TD>11</TD>
+
+<TD>pixmap filled with <B>1</B> 's</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ts_x_origin</B></TD>
+
+<TD><B>GCTileStipXOrigin</B></TD>
+
+<TD>12</TD>
+
+<TD><B>0</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ts_y_origin</B></TD>
+
+<TD><B>GCTileStipYOrigin</B></TD>
+
+<TD>13</TD>
+
+<TD><B>0</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>font</B></TD>
+
+<TD><B>GCFont</B></TD>
+
+<TD>14</TD>
+
+<TD>(implementation dependent)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>subwindow_mode</B></TD>
+
+<TD><B>GCSubwindowMode</B></TD>
+
+<TD>15</TD>
+
+<TD><B>ClipByChildren</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>graphics_exposures</B></TD>
+
+<TD><B>GCGraphicsExposures</B></TD>
+
+<TD>16</TD>
+
+<TD><B>True</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>clip_x_origin</B></TD>
+
+<TD><B>GCClipXOrigin</B></TD>
+
+<TD>17</TD>
+
+<TD><B>0</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>clip_y_origin</B></TD>
+
+<TD><B>GCClipYOrigin</B></TD>
+
+<TD>18</TD>
+
+<TD><B>0</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>clip_mask</B></TD>
+
+<TD><B>GCClipMask</B></TD>
+
+<TD>19</TD>
+
+<TD><B>None</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>dash_offset</B></TD>
+
+<TD><B>GCDashOffset</B></TD>
+
+<TD>20</TD>
+
+<TD><B>0</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>dashes</B></TD>
+
+<TD><B>GCDashList</B></TD>
+
+<TD>21</TD>
+
+<TD><B>4</B> (i.e., the list [4, 4])</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>Table 5-1 lists the default values for each element of
+the GC. A useful quick reference to the graphics context is provided inside
+the back cover of <I>Volume Two, Xlib Reference Manual</I>.
+
+<P>A valuemask composed of the symbols shown in Table 5-1
+is used in <B>XChangeGC()</B>, <B>XCopyGC()</B>, and <B>XCreateGC()</B>.
+In <B>XCopyGC()</B>, though, the valuemask indicates which members are
+copied from the source GC to the destination GC, and the rest of the members
+in the destination are left unchanged. In <B>XChangeGC()</B>, the specified
+members are changed and the rest are left unchanged.
+
+<P>Example 5-2 shows a simple way to set some of the values
+for a GC before creating it. This example uses the default values except
+for the foreground and background pixel values. You must always set at
+least the foreground component of the GC, and also the background component
+if it is used in what you intend to draw. This is because the default values
+for the foreground and background components, zero and one respectively,
+are not guaranteed to be black and white or even contrasting. (The relationship
+between pixel values and colors is explained in Chapter 7, <I>Color</I>.)
+
+<P><B>Example of setting a GC while creating it</B>
+<BLOCKQUOTE>
+<PRE><TT>GC gc;
+XGCValues values;
+unsigned long valuemask;
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+/* Open display, create window, etc. */
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+values.foreground = BlackPixel(display,screen_num);
+values.background = WhitePixel(display,screen_num);
+gc = XCreateGC(display, RootWindow(display, screen_num),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (GCForeground | GCBackground), &amp;values);
+/* Now you can use gc in drawing routines */</TT></PRE>
+</BLOCKQUOTE>
+In Example 5-2, the foreground pixel value is set to the
+value returned by the <B>BlackPixel()</B> macro. This will result in a
+color of black if the default colormap is installed (more on this in Chapter
+7, "Color"). To obtain a pixel value that represents any color other than
+black or white, you will need to allocate the color as described in Chapter
+7, "Color."
+
+<P>Convenience functions are also available to change most
+elements of a GC after it is created. These functions are listed in Sections
+5.3 through 5.7, which describe each GC element in detail. Example 5-3
+performs the same functions as Example 5-2 but by creating a default GC
+and then modifying the contents with convenience functions.
+
+<P><B>Example of setting default GC then changing it</B>
+<BLOCKQUOTE>
+<PRE><TT>GC gc;
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+/* Open display, create window, etc. */
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+gc = XCreateGC(display, RootWindow(display, screen_num), 0, NULL);
+XSetForeground(display, gc, BlackPixel(display,screen_num));
+XSetBackground(display, gc, WhitePixel(display,screen_num));
+/* Now you can use gc in drawing routines */</TT></PRE>
+</BLOCKQUOTE>
+You may wonder which of these two ways is more efficient,
+setting the <B>XGCValues</B> and <B>valuemask</B>, or calling the convenience
+functions. Actually, there is not much difference, since in both cases,
+the individual requests to change the same GC are packaged into a single
+protocol request before being sent to the server. This optimization is
+implemented by Xlib. The method you should choose is mainly a matter of
+personal preference.
+
+<P>Also note that Xlib provides the function <B>XFlushGC()</B>
+to defeat Xlib's caching of GC changes by sending them to the server immediately
+instead of waiting until the GC is needed. <B>XFlushGC()</B> is used mainly
+in extensions that have drawing requests which otherwise would not trigger
+Xlib's cache.
+<BR>
+<HR>
+<H2>
+Switching Between Graphics Contexts</H2>
+One purpose of the GC is to store information about how to
+interpret graphics requests so that the same information does not have
+to be sent with every request. Another useful feature of the GC concept
+is that you can create several GCs with the different characteristics you
+need and then switch between them. Example 5-4 demonstrates how this is
+done. It creates two slightly different GCs with swapped foreground and
+background pixel values.
+
+<P><B>Example of switching graphics contexts</B>
+<BLOCKQUOTE>
+<PRE><TT>GC gc1, gc2;
+XGCValues values;
+unsigned long valuemask;
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+/* Open display, create window, etc. */
+values.foreground = BlackPixel(display,screen_num);
+values.background = WhitePixel(display,screen_num);
+gc1 = XCreateGC(display, RootWindow(display, screen_num),
+&nbsp;&nbsp; (GCForeground | GCBackground), &amp;values);
+values.foreground = WhitePixel(display,screen_num);
+values.background = BlackPixel(display,screen_num);
+gc2 = XCreateGC(display, RootWindow(display, screen_num),
+&nbsp;&nbsp; (GCForeground | GCBackground), &amp;values);
+/* Now you can use either gc in drawing routines, thereby
+&nbsp;* quickly swapping the foreground and background colors */</TT></PRE>
+</BLOCKQUOTE>
+Whether it is faster to switch between GCs or to modify a
+few values of a single GC depends on the particular server implementation.
+On some types of display hardware, several or many GCs can be cached. On
+these servers, it is faster to switch between GCs than to change members
+of them. On servers that do not cache or that cache only one GC, it is
+faster to change one or two elements of the GC than to switch between two
+slightly different GCs. There is no way for the application to tell which
+of these two server types is in use. Therefore, accepted practice is to
+compromise by creating a small number of GCs (more on this in Section 5.9,
+"GCs and Server Efficiency").
+
+<P>Now that you know how to create, set, and modify the GC,
+and how to set up multiple GCs, we can go into more detail about each element
+of the GC. The following sections describe each member of the graphics
+context, grouped according to the how they affect the drawing process:
+Pixel Selection, Coloring and Patterning, and Graphics Tricks.
+<BR>
+<HR>
+<H2>
+Controlling Pixel Selection</H2>
+As previously described, pixel selection can be thought of
+as the first of four stages in the drawing process. The pixels drawn are
+selected by a combination of the graphics primitive and various members
+of the graphics context. This section describes those GC elements.
+<H3>
+Line Characteristics</H3>
+Six of the graphics context components are line characteristics.
+These components obviously affect the graphics primitives that draw lines,
+but they also affect those that draw unfilled rectangles, arcs, and polygons.
+Here are the six line characteristics:
+<DL>
+<DT>
+<B>line_width</B></DT>
+
+<DD>
+Specifies the width of the line in pixels. Zero means to
+draw using the server's fastest algorithm with a line width of one pixel,
+with some loss of accuracy.</DD>
+
+<DT>
+<B>line_style</B></DT>
+
+<DD>
+Specifies whether the line is solid in foreground, dashed
+in foreground, or alternating foreground and background. Possible values
+are <B>LineSolid</B>, <B>LineOnOffDash</B>, or <B>LineDoubleDash</B>.</DD>
+
+<DT>
+<B>cap_style</B></DT>
+
+<DD>
+Controls the appearance of the ends of a line and in some
+cases the ends of dashes in a line. Possible values are <B>CapButt</B>,
+<B>CapNotLast</B>, <B>CapProjecting</B>, and <B>CapRound</B>.</DD>
+
+<DT>
+<B>join_style</B></DT>
+
+<DD>
+Controls the appearance of joints between consecutive lines
+drawn within a single graphics primitive. Possible values are <B>JoinBevel</B>,
+<B>JoinMiter</B>, and <B>JoinRound</B>.</DD>
+
+<DT>
+<B>dashes</B></DT>
+
+<DD>
+Specifies a pattern of dash lengths for custom-designed dashed
+lines. (Used only if the <B>line_style</B> is <B>LineOnOffDash</B> or <B>LineDoubleDash</B>.)</DD>
+
+<DT>
+<B>dash_offset</B></DT>
+
+<DD>
+Specifies the starting point of the dash pattern for custom-designed
+dashed lines. (Used only if the <B>line_style</B> is <B>LineOnOffDash</B>
+or <B>LineDoubleDash</B>.)</DD>
+</DL>
+The <B>line_width</B>, <B>line_style</B>, <B>cap_style</B>,
+and <B>join_style</B> components can be set using <B>XSetLineAttributes()</B>,
+while <B>dashes</B> and <B>dash_offset</B> can be set with <B>XSetDashes()</B>.
+Now we'll describe each of these line characteristics in more detail, followed
+by an example that sets them.
+<H4>
+Line Width</H4>
+The <B>line_width</B> member of <B>XGCValues</B> is measured
+in pixels. The line width can be set with <B>XSetLineAttributes()</B>.
+
+<P>A <B>line_width</B> greater than or equal to 1 is considered
+a <I>wide</I> line, and the value 0 is a special case, considered a <I>thin</I>
+line. Wide and thin lines often use different drawing algorithms. The thin
+line is intended to be a fast algorithm for drawing a line of width 1 but
+may not be as uniform as a wide line between different servers.
+
+<P>Wide lines are drawn centered on the path described by
+the graphics request. A wide line drawn from [<B>x1</B>,<B>y1</B>] to [<B>x2</B>,<B>y2</B>]
+always draws the same pixels as a wide line drawn from [<B>x2</B>,<B>y2</B>]
+to [<B>x1</B>,<B>y1</B>], not counting cap and join styles. This is not
+necessarily the case for thin lines.
+
+<P>Unless otherwise specified by the join or cap style, the
+bounding box of a wide line with endpoints <B>[x1</B>,<B>y1]</B>, <B>[x2</B>,<B>y2]</B>
+and width <I>w</I> is a rectangle with vertices at the following real coordinates:
+<BLOCKQUOTE>
+<PRE><TT>Lower Left:&nbsp;&nbsp;&nbsp; [x1-(w*sin(q)/2), y1+(w*cos(q)/2)]
+Upper Right:&nbsp;&nbsp; [x1+(w*sin(q)/2), y1-(w*cos(q)/2)]
+Lower Left:&nbsp;&nbsp;&nbsp; [x2-(w*sin(q)/2), y2+(w*cos(q)/2)]
+Lower Right:&nbsp;&nbsp; [x2+(w*sin(q)/2), y2-(w*cos(q)/2)]</TT></PRE>
+</BLOCKQUOTE>
+where is the angle of the line measured from horizontal.
+
+<P>A pixel is drawn if the center of the pixel is fully inside
+the bounding box (which is viewed as having infinitely thin edges). If
+the center of the pixel is exactly on the bounding box, it is part of the
+line only if the interior of the box is immediately to the pixel's right.
+Pixels with centers on a horizontal edge are part of the line only if the
+interior of the box is immediately below the pixel.
+
+<P>Thin lines (<B>line_width == 0</B>) are one-pixel-wide
+lines drawn using an unspecified, device-dependent fast algorithm. The
+set of points comprising thin lines will not be affected by clipping.
+
+<P>A wide line of width 1 and a thin line with <B>line_width</B>
+0 drawn between the same two points may not be exactly alike. Because of
+their different drawing algorithms, thin lines may not mix well with wide
+lines, aesthetically speaking. For precise and uniform results across all
+displays, use a <B>line_width</B> of 1 rather than 0. If speed is the goal,
+use a <B>line_width</B> of 0.
+<H4>
+Line Style</H4>
+The <B>line_style</B> member of <B>XGCValues</B> defines
+which sections of a line are drawn and in which pixel value, as shown in
+Figure 5-2. The line style can be set with <B>XSetLineAttributes()</B>.
+The actual length of each dash and gap is set by the <B>dashes</B> member
+of <B>XGCValues</B>, described in Section 5.3.1.5, "Dash List and Offset."
+The constants used to set <B>line_style</B> are as follows:
+<DL>
+<DT>
+<B>LineSolid</B></DT>
+
+<DD>
+Specifies that the full path of the line is drawn using the
+foreground pixel value.</DD>
+
+<DT>
+<B>LineOnOffDash</B></DT>
+
+<DD>
+Specifies that only the dashes are drawn, with the foreground
+pixel value, and <B>cap_style</B> applied to the ends of each dash (except
+that <B>CapNotLast</B> is treated as <B>CapButt</B> for dash ends).</DD>
+
+<DT>
+<B>LineDoubleDash</B></DT>
+
+<DD>
+Specifies that the full path of the line is drawn, dashes
+with the foreground pixel value, gaps with the background pixel values,
+and <B>CapButt</B> style always used where dashes and gaps meet.</DD>
+</DL>
+<B>The line styles</B>
+
+<P><IMG SRC="imgs/fig.5.02.gif" ALT="fig.5.02.gif" BORDER=0  ALIGN=ABSCENTER>
+<H4>
+Cap Style</H4>
+The <B>cap_style</B> member of <B>XGCValues</B> defines how
+the endpoints of lines are drawn, as shown in Figure 5-3. The cap style
+can be set with <B>XSetLineAttributes()</B>. The constants used to set
+<B>cap_style</B> are as follows:
+<DL>
+<DT>
+<B>CapNotLast</B></DT>
+
+<DD>
+Is equivalent to <B>CapButt</B>, except that for a <B>line_width</B>
+of 0 or 1, the final endpoint is not drawn. If specified with <B>line_styleLineOnOffDash</B>
+or <B>LineDoubleDash</B>, the ends of the dashes or where even and odd
+dashes meet are treated as <B>CapButt</B>.</DD>
+
+<DT>
+<B>CapButt</B></DT>
+
+<DD>
+Specifies that lines will be square at the endpoint with
+no projection beyond. The end is perpendicular to the slope of the line.</DD>
+
+<DT>
+<B>CapRound</B></DT>
+
+<DD>
+Specifies that lines will be terminated by a circular arc
+with the diameter equal to the <B>line_width</B>, centered on the endpoint
+(equivalent to <B>CapButt</B> for <B>line_width</B> of 0 or 1).</DD>
+
+<DT>
+<B>CapProjecting</B></DT>
+
+<DD>
+Specifies that lines will be square at the end but with the
+path continuing beyond the endpoint for a distance equal to half the <B>line_width</B>
+(equivalent to <B>CapButt</B> for <B>line_width</B> of 0 or 1).</DD>
+</DL>
+
+<H4>
+Join Style</H4>
+The <B>join_style</B> member of <B>XGCValues</B> defines
+how corners are drawn for wide lines drawn within a single graphics primitive,
+as shown in Figures 5-4 and 5-5. The join style can be set with <B>XSetLineAttributes()</B>.
+The constants used to set <B>join_style</B> are as follows:
+<DL>
+<DT>
+<B>JoinMiter</B></DT>
+
+<DD>
+Specifies that the outer edges of the two lines should extend
+to meet at an angle. If the angle between the two lines is less than 11
+degrees, <B>JoinBevel</B> is used.</DD>
+
+<DT>
+<B>JoinRound</B></DT>
+
+<DD>
+Specifies that lines should be joined by a circular arc with
+diameter equal to the <B>line_width</B>, centered on the join point.</DD>
+
+<DT>
+<B>JoinBevel</B></DT>
+
+<DD>
+Specifies <B>CapButt</B> endpoint styles, with the triangular
+notch filled.</DD>
+</DL>
+<B>The line cap (end) styles</B>
+
+<P><IMG SRC="imgs/fig.5.03.gif" ALT="fig.5.03.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P><B>The line join styles</B>
+
+<P><IMG SRC="imgs/fig.5.04.gif" ALT="fig.5.04.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P><B>Detail of JoinRound for 8-pixel-wide lines</B>
+
+<P><IMG SRC="imgs/fig.5.05.gif" ALT="fig.5.05.gif" BORDER=0  ALIGN=ABSCENTER>
+<H4>
+Dash List and Offset</H4>
+The <B>dashes</B> member of <B>XGCValues</B> can only be
+directly set to a single, nonzero value specifying the length in pixels
+of both the dashes and the gaps. More complicated patterns can be set only
+with <B>XSetDashes()</B>.
+
+<P>In <B>XSetDashes()</B>, the dash_list argument is a real
+list, with each value representing the length of a single dash or gap in
+the line. The initial and alternating members of dash_list are the length
+of the <I>even</I> dashes; the others are the <I>odd</I> dashes (gaps).
+All members must be nonzero. The length of the dash_list is also an argument
+to <B>XSetDashes()</B>. The <B>dashes</B> element of <B>XGCValues</B> is
+equivalent to specifying a two-member dash_list [N, N] in <B>XSetDashes()</B>,
+where <I>N</I> is the single value specified in <B>XGCValues.dashes</B>.
+
+<P>The <B>dash_offset</B> for <B>XSetDashes()</B> defines
+the phase of the pattern, specifying how many pixels into the pattern the
+line should actually begin. Figure 5-6 shows the same line drawn with and
+without offset to demonstrate its effect.
+
+<P>Example 5-5 shows a code segment that creates and sets
+the line dashes of five GCs. Figure 5-6 shows the lines that result from
+drawing with these GCs.
+
+<P><B>Code segment specifying five styles of dashed line
+in five GCs</B>
+<BLOCKQUOTE>
+<PRE><TT>#define NUMLINES 5
+#define DOTTED_LIST_LENGTH 2
+#define DOT_DASHED_LIST_LENGTH 4
+#define SHORT_DASHED_LIST_LENGTH 2
+#define LONG_DASHED_LIST_LENGTH 2
+#define ODD_DASHED_LIST_LENGTH 3
+void main(argc, argv)
+int argc;
+char **argv;
+{
+&nbsp;&nbsp; GC gca[NUMLINES];
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; /* Open display, create windows, etc. */
+&nbsp;&nbsp; set_dashes(gca);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; while (1)&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNextEvent(display, &amp;report);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch&nbsp; (report.type) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case Expose:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (report.xexpose.count == 0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; draw_lines(win, gca, width, height);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+}
+set_dashes(gca)
+GC gca[];
+{
+&nbsp;&nbsp; XGCValues gcv;
+&nbsp;&nbsp; int i;
+&nbsp;&nbsp; static int dash_list_length[] = {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DOTTED_LIST_LENGTH,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DOT_DASHED_LIST_LENGTH,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SHORT_DASHED_LIST_LENGTH,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LONG_DASHED_LIST_LENGTH,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ODD_DASHED_LIST_LENGTH
+&nbsp;&nbsp; };
+&nbsp;&nbsp; /* Must be at least one element in each list */
+&nbsp;&nbsp; static unsigned char dotted[DOTTED_LIST_LENGTH] =
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {3, 1};
+&nbsp;&nbsp; static unsigned char dot_dashed[DOT_DASHED_LIST_LENGTH] =
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {3, 4, 3, 1};
+&nbsp;&nbsp; static unsigned char short_dashed[SHORT_DASHED_LIST_LENGTH] =
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {4, 4};
+&nbsp;&nbsp; static unsigned char long_dashed[LONG_DASHED_LIST_LENGTH] =
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {4, 7};
+&nbsp;&nbsp; static unsigned char odd_dashed[ODD_DASHED_LIST_LENGTH] =
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {1, 2, 3};
+&nbsp;&nbsp; static unsigned char *dash_list[] = {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; dotted,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; dot_dashed,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; short_dashed,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; long_dashed,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; odd_dashed,
+&nbsp;&nbsp; };
+&nbsp;&nbsp; int dash_offset = 0;
+&nbsp;&nbsp; /* Open display, create window, etc. */
+&nbsp;&nbsp; gcv.line_style = LineOnOffDash;
+&nbsp;&nbsp; for (i = 0 ; i &lt; NUMLINES; i++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gca[i] = XCreateGC(display, RootWindow(display, screen_num),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GCLineStyle, &amp;gcv);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSetDashes(display, gca[i], dash_offset, dash_list[i],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; dash_list_length[i]);
+&nbsp;&nbsp; }
+}
+draw_lines(win, gca, window_width, window_height)
+Window win;
+GC gca[];
+unsigned int window_width, window_height;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int i;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (i=0;i &lt; NUMLINES; i++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XDrawLine(display, win, gca[i],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; window_width/4, 40 + (10 * i),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3 * (window_width/4), 40 + (10 * i));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+}</TT></PRE>
+</BLOCKQUOTE>
+<B>Lines drawn with GCs set in Example 5-5</B>
+
+<P><IMG SRC="imgs/fig.5.06.gif" ALT="fig.5.06.gif" BORDER=0  ALIGN=ABSCENTER>
+<H4>
+Example of Setting Line Characteristics</H4>
+Example 5-6 demonstrates how to set the line characteristics
+with <B>XSetLineAttributes()</B>. This routine and <B>XSetDashes()</B>
+(which sets dashes, demonstrated in Example 5-5) are the only ways to set
+line characteristics, other than with <B>XCreateGC()</B> or <B>XChangeGC()</B>.
+
+<P><B>Setting line characteristics in a GC</B>
+<BLOCKQUOTE>
+<PRE><TT>set_line_attributes(gc)
+GC gc;
+{
+&nbsp;&nbsp; unsigned int line_width = 3;&nbsp;&nbsp;&nbsp; /* 0 would be fast line of width 1 */
+&nbsp;&nbsp; int line_style = LineSolid;&nbsp;&nbsp;&nbsp;&nbsp; /* If LineOnOffDash or LineDoubleDash,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * must set dashes */
+&nbsp;&nbsp; int cap_style = CapRound;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* else CapNotLast, CapButt, or
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * CapProjecting */
+&nbsp;&nbsp; int join_style = JoinRound;&nbsp;&nbsp;&nbsp;&nbsp; /* else JoinMiter or JoinBevel */
+&nbsp;&nbsp; XSetLineAttributes(display, gc, line_width, line_style,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; cap_style, join_style);
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+The Font</H3>
+The <B>font</B> member of a GC specifies which font will
+be used in text-drawing graphics primitives that use this GC, and can be
+set with <B>XSetFont()</B>. If the specified font has not been loaded by
+this client, a graphics primitive that tries to draw text will not fail;
+it just will not draw. Therefore, you should make sure you load the font.
+
+<P>The X server actually loads a requested font into memory
+only when <B>XLoadFont()</B> or <B>XLoadQueryFont()</B> is called and if
+the specified font has not already been loaded by another client. A font
+is unloaded when the last program using the font exits or unloads it. Duplicate
+copies of a font are never stored in the server.
+
+<P>There are several ways to deal with fonts. Most programs
+will use <B>XLoadQueryFont()</B> to load a font and get information about
+the dimensions of each character. <B>XLoadQueryFont()</B> returns a pointer
+to an <B>XFontStruct</B>. The font in the GC can then be set to <B>XFontStruct.fid</B>.
+(See Chapter 6, "Drawing Graphics and Text," for details.)
+
+<P>The default font is always loaded, but it is not the same
+on all servers. Section 6.2.2, "Loading Fonts" describes how a program
+can find out about the default font on the particular server it is connected
+to.
+<H3>
+Fill Rule</H3>
+The <B>fill_rule</B> member of <B>XGCValues</B> defines which
+pixels are drawn for paths given in <B>XFillPolygon()</B> requests. The
+fill_rule is also an argument to <B>XPolygonRegion()</B>, which is described
+in Section 6.3, "Regions." The <B>fill_rule</B> in the GC is set with <B>XSetFillRule()</B>.
+The <B>fill_rule</B> may be <B>EvenOddRule</B> (the default in the GC)
+or <B>WindingRule</B>.
+
+<P>As shown in Figure 5-7, <B>EvenOddRule</B> means that
+if areas overlap an odd number of times, they are not drawn. Technically,
+it specifies that a point is drawn if an infinite ray with the point as
+origin crosses the path an odd number of times.
+
+<P><B>WindingRule</B>, also shown in Figure 5-7, means that
+overlapping areas are always filled, regardless of how many times they
+overlap. Technically, this rule specifies that a point is inside the filled
+area if an infinite ray with the point as origin crosses an unequal number
+of clockwise- and counterclockwise-directed path segments.
+
+<P>Since polygons are drawn as a series of points connected
+by lines, the order of the points determines the direction of each line.
+A clockwise-directed path segment is one which crosses the ray from left
+to right as observed from the point. A counterclockwise-directed segment
+is one which crosses the ray from right to left as observed from the point.
+The case where a directed line segment is coincident with the ray is uninteresting,
+because you can simply choose a different ray that is not coincident with
+a segment.
+
+<P>All calculations are performed on infinitely small points,
+so that if any point within a pixel is considered inside, the entire pixel
+is drawn. Pixels with centers exactly on vertical boundaries are considered
+inside only if the filled area is to the right. On horizontal boundaries,
+the pixel is considered inside only if the filled area is below the pixel.
+
+<P><B>fill_rule constants for filling closed polygons</B>
+
+<P><IMG SRC="imgs/fig.5.07.gif" ALT="fig.5.07.gif" BORDER=0  ALIGN=ABSCENTER>
+<H3>
+Arc Mode (for Filling)</H3>
+The <B>arc_mode</B> member of <B>XGCValues</B> controls filling
+of arcs drawn with <B>XFillArc</B> and <B>XFillArcs()</B>. The <B>arc_mode</B>
+is set with <B>XSetArcMode()</B>.
+
+<P>An arc is specified for <B>XFillArc</B> or <B>XFillArcs()</B>
+as follows:
+<UL>
+<LI>
+The arc is bounded by a rectangle whose center is the center
+of the arc.</LI>
+
+<LI>
+The position of the upper-left corner of the rectangle is
+relative to the origin of the destination drawable.</LI>
+
+<LI>
+Two angles indicate the starting and stopping position of
+the arc. These are measured in sixty-fourths of a degree starting from
+the three-o'clock position, with positive angles indicating counterclockwise
+measurement.</LI>
+</UL>
+The meanings of the arc specifications are demonstrated in
+Figure 6-1.
+
+<P>The <B>arc_mode</B> can be either <B>ArcPieSlice</B> or
+<B>ArcChord</B>. Figure 5-8 demonstrates the two modes. For <B>ArcChord</B>,
+the arc and the single line segment joining the endpoints of the arc create
+a closed figure to fill. For <B>ArcPieSlice</B>, the arc and the two line
+segments joining the endpoints of the arc with the center point create
+a closed figure to fill.
+
+<P><B>arc_mode constants for filling arcs</B>
+
+<P><IMG SRC="imgs/fig.5.08.gif" ALT="fig.5.08.gif" BORDER=0  ALIGN=ABSCENTER>
+<H3>
+Clip Mask</H3>
+Clipping allows you to limit the effect of graphics requests
+to a particular area or to particular pixels of the window or pixmap. The
+<B>clip_mask</B> member of <B>XGCValues</B> is a bitmap that indicates
+which pixels of the destination drawable are to be affected by graphics
+requests. By default, all pixels in the destination drawable are affected.
+
+<P>Pixels not represented by a set bit in the clip mask will
+not be drawn. The <B>clip_mask</B> can be set with <B>XSetClipMask()</B>,
+<B>XSetClipRectangles()</B>, or <B>XSetRegion()</B>. <B>XSetClipMask()</B>
+sets a clip mask composed of an arbitrary set of bits. <B>XSetClipRectangles()</B>
+specifies an array of rectangles that will collectively be used as a clip
+mask. <B>XSetRegion()</B> is another way to set the clip mask to a set
+of rectangles, sometimes more convenient than <B>XSetClipRectangles()</B>.
+<B>XUnionRectWithRegion()</B> can be used to add the rectangle from an
+<B>Expose</B> event into a region. Then <B>XSetRegion()</B> sets the GC
+to clip output to those areas. This is useful for redrawing only the areas
+that have been exposed. See Example 3-15, which uses this technique. Figure
+5-9 shows a rectangular <B>clip_mask</B>, which could be set with <B>XSetClipMask()</B>,
+<B>XSetClipRectangles()</B>, or <B>XSetRegion()</B>.
+
+<P>If the <B>clip_mask</B> is set manually with <B>XSetClipMask()</B>
+or while creating the GC, a pixmap of depth 1 must be used. Then the only
+pixels drawn are those for which the <B>clip_mask</B> has a set bit. This
+pixmap must have the same root as the GC, or a <B>BadMatch</B> error will
+be generated.
+
+<P><B>Use of clip origin to locate the clip_mask relative
+to drawable</B>
+
+<P><IMG SRC="imgs/fig.5.09.gif" ALT="fig.5.09.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;The clip origin, which places the <B>clip_mask</B>
+relative to the destination drawable, is specified by two other members
+of the GC structure: <B>clip_x_origin</B> and <B>clip_y_origin</B>. Figure
+5-9 shows how these coordinates specify the upper-left corner of the clip
+mask relative to the upper-left corner of the destination drawable specified
+in the graphics request. The origin of the <B>clip_mask</B> can be set
+with <B>XSetClipOrigin()</B>. The gray area in the figure represents the
+data to be drawn. The rectangle filled with unshaded squares represents
+the clip mask, which has all bits set to one. The lighter gray at the bottom
+shows the area outside the clip mask; this data will not be drawn.
+<BR>
+<HR>
+<H2>
+Controlling Coloring and Patterning</H2>
+The first stage of the drawing process (pixel selection)
+results in a bitmap with bits set to one indicating the pixels to be drawn.
+However, a window on a color display (or a pixmap to be copied to a color
+display) must have multiple bits per pixel to represent colors. The second
+stage of the drawing process colors the pixels.
+
+<P>There are four ways of coloring the pixels, controlled
+by the <B>fill_style</B> member of the GC. One of them uses a single color,
+and the other three apply patterns in different ways. You can pattern anything
+you can draw, including text, although lines of width 0 are not patterned.
+
+<P>We will begin by discussing the simple case, drawing with
+only the foreground color using <B>fill_style</B> of <B>FillSolid</B>.
+Then, to understand the effect of the patterning values for the <B>fill_style</B>,
+we must digress into a short description of tiles and stipples, followed
+by a discussion of the three styles of patterning.
+<H3>
+Drawing in Foreground Only</H3>
+Basic drawing is done using the <B>foreground</B> member
+of the GC. The <B>foreground</B> specifies the pixel value to be applied
+to the pixels selected by the graphics primitive, when the <B>fill_style</B>
+is <B>FillSolid</B>. The uses of the background color are restricted and
+are described in Section 5.4.5, "Drawing in Foreground and Background."
+You can set the <B>foreground</B> with <B>XSetForeground()</B>.
+
+<P>Figure 5-10 shows the use of the <B>foreground</B> pixel
+value when drawing a character with <B>XDrawString()</B>. We will contrast
+this later with a string drawn using <B>XDrawImageString()</B>, which will
+also draw the bounding box with the <B>background</B> pixel value.
+
+<P><B>Use of foreground in XDrawString() character</B>
+
+<P><IMG SRC="imgs/fig.5.10.gif" ALT="fig.5.10.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;Now we move on to describe patterning. If you are
+familiar with tiles and stipples, you can skip Sections 5.4.2 and 5.4.3
+and jump to Section 5.4.4, "Fill Style."
+<H3>
+Tiles</H3>
+A tile is a pixmap used to pattern the pixels selected by
+the first stage of the drawing process. The <B>tile</B> member of the GC
+can be set with <B>XSetTile()</B>.
+
+<P>Tiles are so named because they are laid out next to each
+other in an array like bathroom tile. The origin of the first tile is specified
+with <B>ts_x_origin</B> and <B>ts_y_origin</B>, which are relative to the
+origin of the destination drawable. These members of the GC are set with
+<B>XSetTSOrigin()</B>. Only pixels specified by set bits in the first stage
+bitmap are tiled. Figure 5-11 shows how tiles are used to pattern an area.
+Instead of being filled with a solid color (or shade of gray), the area
+is filled with the tile pattern.
+
+<P><B>Tiling an area</B>
+
+<P><IMG SRC="imgs/fig.5.11.gif" ALT="fig.5.11.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;Creating a tile is described in Section 6.1.5, "Creating
+Bitmaps, Pixmaps, Tiles, and Stipples." The tile pixmap must be created
+on the same root window and have the same depth as the destination drawable.
+If these conditions are not satisfied, a <B>BadMatch</B> error is generated.
+If a pixmap is used simultaneously in a graphics request both as a destination
+and as a tile, the results are not defined.
+
+<P>Note that on monochrome displays, tiles are often used
+to simulate different levels of gray. For example, a checkerboard tile
+of black and white dots will appear gray on the screen. With 4 &times;
+4 tile pixmaps with different arrangements of black and white dots, it
+is possible to develop several distinguishable levels of gray.
+<H3>
+Stipples</H3>
+Stippling is similar to tiling, except that a stipple is
+a pixmap of depth 1, not of the depth of the drawable. The pixel values
+used to draw the pattern are the <B>foreground</B> and <B>background</B>
+in the GC.
+
+<P>Just like tiles, stipples are laid out starting from the
+position specified with <B>ts_x_origin</B> and <B>ts_y_origin</B>, which
+are relative to the origin of the destination drawable.
+
+<P>Creating a pixmap of depth one to be used as a stipple
+is described in Section 6.1.5, "Creating Bitmaps, Pixmaps, Tiles, and Stipples."
+The stipple pixmap must be created on the same root window and have the
+same depth as the destination drawable. If these conditions are not satisfied,
+a <B>BadMatch</B> error is generated. If a pixmap is used simultaneously
+in a graphics request both as a destination and as a stipple, the results
+are not defined.
+
+<P>The <B>stipple</B> member of the GC may be changed with
+<B>XSetStipple()</B>. If both the <B>stipple</B> and <B>tile</B> members
+of the GC are set, the <B>fill_style</B> determines which is used. Both
+cannot be used in a single graphics request.
+<H3>
+Fill Style</H3>
+We have demonstrated the simplest case, drawing using the
+foreground only with <B>fill_style</B> of <B>FillSolid</B>. Now that you
+know about tiles and stipples, we can describe the values for the <B>fill_style</B>
+that cause patterning. The <B>fill_style</B> member of <B>XGCValues</B>
+controls whether the source graphics are drawn with a solid color, a tile,
+or one of the two techniques using a stipple. The <B>fill_style</B> member
+of the GC may be changed with <B>XSetFillStyle()</B>.
+
+<P>Remember that only the bits that are set to one in the
+first stage bitmap are affected by coloring or patterning. The <B>fill_style</B>
+affects all line, text, and fill requests except lines drawn with <B>line_width</B>
+zero. Possible values are:
+<DL>
+<DT>
+<B>FillSolid</B></DT>
+
+<DD>
+Specifies that graphics should be drawn using the <B>foreground</B>
+pixel value and in some cases also the <B>background</B> pixel value.</DD>
+
+<DT>
+<B>FillTiled</B></DT>
+
+<DD>
+Specifies that graphics should be drawn using the <B>tile</B>
+pixmap.</DD>
+
+<DT>
+<B>FillStippled</B></DT>
+
+<DD>
+Specifies that graphics should be drawn using the <B>foreground</B>
+pixel value masked by <B>stipple</B>. In other words, bits set in the source
+and <B>stipple</B> are drawn in the <B>foreground</B> pixel value.</DD>
+
+<DT>
+<B>FillOpaqueStippled</B></DT>
+
+<DD>
+Specifies that graphics should be drawn using <B>stipple</B>,
+using the <B>foreground</B> pixel value for set bits in stipple and the
+<B>background</B> pixel value for unset bits in stipple.</DD>
+</DL>
+When the depth of the drawable is one, there is no difference
+between tiling with <B>fill_style</B> of <B>FillTiled</B> and stippling
+with <B>fill_style</B> of <B>FillOpaqueStippled</B>.
+
+<P>Figure 5-12 demonstrates the four fill styles demonstrated
+on small pixmaps.
+
+<P><B>fill_style demonstrated on small pixmaps</B>
+
+<P><IMG SRC="imgs/fig.5.12.gif" ALT="fig.5.12.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;Odd dashes (numbering starting from zero) in dotted
+lines are a special case. For the gaps (odd dashes) in lines with <B>line_style</B>
+of <B>LineDoubleDash</B>, <B>FillSolid</B> means to draw the gaps in the
+<B>background</B> pixel value, and <B>FillStippled</B> means to draw in
+the <B>background</B> pixel value masked by <B>stipple</B>. With a <B>line_style</B>
+of <B>LineDoubleDash</B>, <B>FillTiled</B> and <B>FillStippled</B> have
+the effect of wiping out the odd dashes, so that the line looks like <B>LineOnOffDash</B>
+with the specified fill style.
+<H3>
+Drawing in Foreground and Background</H3>
+The <B>background</B> is used for unset bits in the first
+stage output in just four situations: when using <B>XDrawImageString()</B>
+(see Section 6.2.5, "Positioning of Text"), using <B>XCopyPlane()</B> (see
+Section 6.1.6, "Copying and Clearing Areas"), drawing with <B>line_style</B>
+of <B>LineDoubleDash</B> (see Section 5.3.1.2, "Line Style"), and with
+any primitive when the <B>fill_style</B> is <B>FillOpaqueStippled</B> (see
+Section 5.4.4, "Fill Style").
+
+<P>Figure 5-13 shows the use of the <B>foreground</B> and
+<B>background</B> values when drawing a character with <B>XDrawImageString()</B>.
+This primitive draws both the character and its bounding box. The character
+itself is drawn in the foreground pixel value; the remainder of the pixels
+in the bounding box are drawn with the background pixel value.
+
+<P><B>Use of foreground and background in XDrawImageString()
+character</B>
+
+<P><IMG SRC="imgs/fig.5.13.gif" ALT="fig.5.13.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;The <B>background</B> member of the GC is set with
+<B>XSetBackground()</B>.
+<H4>
+Tile and Stipple Sizes</H4>
+A pixmap of any size can be used for tiling or stippling,
+but on some types of hardware, particular tile or stipple sizes run much
+faster than arbitrary sizes. <B>XQueryBestSize()</B> returns the closest
+tile or stipple size to the one you specify and also the largest allowable
+cursor. <B>XQueryBestTile()</B> and <B>XQueryBestStipple()</B> perform
+the same functions, but only for tiles and stipples, respectively.
+
+<P>Section 6.1.5, "Creating Bitmaps, Pixmaps, Tiles, and
+Stipples" explains how to create a tile or stipple.
+<BR>
+<HR>
+<H2>
+Controlling Graphics Tricks</H2>
+The GC provides a flexible way to control exactly which planes
+are affected by graphics requests and how the source and old destination
+pixel values are used to compute the new destination pixel values. These
+features are needed only for playing certain tricks like rubber-banding,
+and nondestructively overlaying graphics. We will demonstrate these techniques
+later in the book (in Chapters 14 and 7 respectively), but describe the
+corresponding GC components here.
+
+<P>Example 5-7 shows the types of the logical operation and
+plane mask components of the GC.
+
+<P><B>Members of XGCValues that control combining of source
+and destination pixels</B>
+<BLOCKQUOTE>
+<PRE><TT>int function;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Logical function */
+unsigned long plane_mask;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Plane mask */</TT></PRE>
+</BLOCKQUOTE>
+The source (result of stage 2 of the drawing process) and
+existing destination pixels are combined by performing a logical function
+on the corresponding bits for each pixel. The <B>plane_mask</B> restricts
+the operation to a subset of planes, so that some bits in the source may
+be excluded from the computation. The <B>clip_mask</B> restricts the operation
+to a subset of the pixels, likewise eliminating some pixels from the result.
+
+<P>The source, destination, and <B>plane_mask</B> are combined
+using the algorithm shown below to yield the new destination pixel values.
+For each bit in each pixel that has been selected and colored in the first
+two drawing stages, the following expression defines whether that bit is
+set in the destination drawable:
+<BLOCKQUOTE>
+<PRE><TT>((src FUNC dst) AND plane_mask) OR (dst AND (NOT plane_mask))</TT></PRE>
+</BLOCKQUOTE>
+That is, if the <B>plane_mask</B> bit is set, the source
+and existing destination pixels are combined using the logical function
+represented by <B>FUNC</B>. If the <B>plane_mask</B> bit is not set, the
+existing bit in the destination is not changed.
+
+<P>In the next two sections, we'll look at the actual values
+that can be specified for these members.
+<H3>
+Logical Function</H3>
+The <B>function</B> member of the GC selects a logical function.
+<I>Logical functions</I> control how the <I>source</I> pixel values generated
+by a graphics request are combined with the <I>old destination</I> pixel
+values already present on the screen or drawable to result in the <I>final
+destination</I> pixel values. Logical functions are also sometimes called
+<I>raster operations</I>, <I>raster ops</I>, or <I>display functions</I>.
+The logical function can be changed by a call to <B>XSetFunction()</B>.
+
+<P>The source is the output of a graphics primitive or an
+area of the screen or drawable (for an <B>XCopyArea()</B>); the destination
+is the area of the drawable or window that is to receive the output. The
+16 logical functions defined in &lt;<I>X11/X.h</I> > are shown in Table
+5-2.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 5-2 : </B>Logical Functions in the GC</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Logical Function</TH>
+
+<TH>Hex Code</TH>
+
+<TH>Definition</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>GXclear</B></TD>
+
+<TD><B>0x0</B></TD>
+
+<TD>0</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>GXand</B></TD>
+
+<TD><B>0x1</B></TD>
+
+<TD>src AND dst</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>GXandReverse</B></TD>
+
+<TD><B>0x2</B></TD>
+
+<TD>src AND (NOT dst)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>GXcopy</B></TD>
+
+<TD><B>0x3</B></TD>
+
+<TD>src</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>GXandInverted</B></TD>
+
+<TD><B>0x4</B></TD>
+
+<TD>(NOT src) AND dst</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>GXnoop</B></TD>
+
+<TD><B>0x5</B></TD>
+
+<TD>dst</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>GXxor</B></TD>
+
+<TD><B>0x6</B></TD>
+
+<TD>src XOR dst</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>GXor</B></TD>
+
+<TD><B>0x7</B></TD>
+
+<TD>src OR dst</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>GXnor</B></TD>
+
+<TD><B>0x8</B></TD>
+
+<TD>(NOT src) AND (NOT dst)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>GXequiv</B></TD>
+
+<TD><B>0x9</B></TD>
+
+<TD>(NOT src) XOR dst</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>GXinvert</B></TD>
+
+<TD><B>0xa</B></TD>
+
+<TD>(NOT dst)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>GXorReverse</B></TD>
+
+<TD><B>0xb</B></TD>
+
+<TD>src OR (NOT dst)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>GXcopyInverted</B></TD>
+
+<TD><B>0xc</B></TD>
+
+<TD>(NOT src)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>GXorInverted</B></TD>
+
+<TD><B>0xd</B></TD>
+
+<TD>(NOT src) OR dst</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>GXnand</B></TD>
+
+<TD><B>0xe</B></TD>
+
+<TD>(NOT src) OR (NOT dst)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>GXset</B></TD>
+
+<TD><B>0xf</B></TD>
+
+<TD>1</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>Figures 5-14a, 5-14b, and 5-14c illustrate the effect
+of three logical functions on a single pixel of an eight-plane screen given
+a particular set of source and destination pixel values.
+
+<P><B>The effect of logical function GXcopy</B>
+
+<P><IMG SRC="imgs/fig.5.14a.gif" ALT="fig.5.14a.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;<B>GXcopy</B>, the default logical function, is
+the most frequently used because it copies without reference to the existing
+destination pixels, with predictable effects on both monochrome and color
+displays. <B>GXxor</B> and <B>GXinvert</B> are also used quite frequently.
+Rarely, programs may use other functions in concert with particular planes
+of a color display. Here is some more detail on the most frequently used
+logical functions:
+<DL>
+<DT>
+<B>GXcopy</B></DT>
+
+<DD>
+Ignores the bits already in the destination drawable. It
+is used for both monochrome and color.</DD>
+
+<DT>
+<B>GXinvert</B></DT>
+
+<DD>
+Ignores the source and inverts the old destination. This
+logical function is used to change black to white and vice versa when modifying
+only one plane. This can be used for highlighting on monochrome or color
+screens, but is not as good as <B>GXxor</B> on color screens.</DD>
+
+<DT>
+<B>GXxor</B></DT>
+
+<DD>
+Combines the source and existing bits in such a way that,
+if the operation is repeated, the drawable is returned to its condition
+just before the two operations. It is important that these two operations
+occur without intervening manipulation of the selected bits (for windows,
+the server should be grabbed but for a very short time).&nbsp; Otherwise,
+the second XOR operation will not leave the drawable unchanged. <B>GXxor</B>
+has these properties on both monochrome and color screens.</DD>
+</DL>
+<B>The effect of logical function GXxor</B>
+
+<P><IMG SRC="imgs/fig.5.14b.gif" ALT="fig.5.14b.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P><B>The effect of logical function GXand</B>
+
+<P><IMG SRC="imgs/fig.5.14c.gif" ALT="fig.5.14c.gif" BORDER=0  ALIGN=ABSCENTER>
+<H3>
+Plane Mask</H3>
+The <B>plane_mask</B> member of <B>XGCValues</B> determines
+which planes of the destination drawable are modified. By default, all
+planes are modified. The <B>plane_mask</B> can be changed by a call to
+<B>XSetPlaneMask()</B>.
+
+<P>Destination planes represented by a bit set to 1 in the
+<B>plane_mask</B> can be changed by the graphics primitive, and the other
+planes cannot. The defined constant <B>AllPlanes()</B> provides a <B>plane_mask</B>
+with all bits set, which can be used when every plane is to be affected
+(this is also the default). A <B>plane_mask</B> of 0 cancels the effect
+of the graphics primitive. A <B>plane_mask</B> with only 1 bit set is useful
+for highlighting on both color and monochrome displays. Other tricks using
+the <B>plane_mask</B> are described in Chapter 7, <I>Color</I>. The macro
+<B>DisplayPlanes()</B> returns the number of planes available on the screen.
+However, the depth of the window is the upper limit on the number of meaningful
+bits in the <B>plane_mask</B>. Figure 5-15 illustrates the effect of the
+<B>plane_mask</B>.
+
+<P><B>The effect of the plane_mask on a 12-plane display</B>
+
+<P><IMG SRC="imgs/fig.5.15.gif" ALT="fig.5.15.gif" BORDER=0  ALIGN=ABSCENTER>&nbsp;
+<HR>
+<H2>
+Graphics Exposure</H2>
+When using <B>XCopyArea()</B> and <B>XCopyPlane()</B> to
+copy data from one drawable to another, it is possible that certain portions
+of the source region will be obscured, unmapped, or otherwise unavailable.
+If this is the case, it may be desirable to generate an event to signal
+the client that one or more areas in the destination window could not be
+copied to and should be redrawn some other way.
+
+<P>The <B>graphics_exposures</B> flag in the GC specifies
+whether or not events should be generated in such a case. There are actually
+two event types that can be generated if <B>graphics_exposures</B> is set
+to <B>True</B>:
+<UL>
+<LI>
+One or more <B>GraphicsExpose</B> events are sent when a
+destination region cannot be completely drawn because the source region
+was obscured, unmapped, or otherwise unavailable.</LI>
+
+<LI>
+A single <B>NoExpose</B> event occurs when the specified
+source region is completely available.</LI>
+</UL>
+These event types are not selected by <B>XSelectInput()</B>
+or in the <B>event_mask</B> attribute; setting <B>graphics_exposures</B>
+to <B>True</B> is the only way to select them. The <B>graphics_exposures</B>
+member of the GC can be set with <B>XSetGraphicsExposures()</B>.
+
+<P>Figure 5-16 shows a typical <B>XCopyArea()</B> request
+where the source region is obscured. It shows the areas that would be specified
+in the <B>GraphicsExpose</B> events generated.
+
+<P>As shown in Figure 5-16, a single <B>XCopyPlane()</B>
+or <B>XCopyArea()</B> can result in more than one <B>GraphicsExpose</B>
+event, since the resulting area to be redrawn may be composed of several
+rectangles. A copy such as the one shown in Figure 5-16 would generate
+two <B>GraphicsExpose</B> events. One rectangle is specified by each event.
+If windows A and B are removed and the copy repeated, a single <B>NoExpose</B>
+event is generated.
+
+<P>When <B>graphics_exposures</B> is <B>False</B>, neither
+of these events is sent under any circumstances. By default, <B>graphics_exposures</B>
+is <B>True</B>.
+
+<P><B>Copying a partially unavailable area</B>
+
+<P><IMG SRC="imgs/fig.5.16.gif" ALT="fig.5.16.gif" BORDER=0  ALIGN=ABSCENTER>&nbsp;
+<HR>
+<H2>
+Subwindow Mode</H2>
+The <B>subwindow_mode</B> member of <B>XGCValues</B> controls
+whether subwindows obscure their parent for purposes of drawing on the
+parent. This member is set with <B>XSetSubwindowMode()</B>.
+
+<P>The value <B>ClipByChildren</B> sets the default condition,
+in which drawing into the area of a window obscured by its visible children
+produces no effect.
+
+<P>If the <B>subwindow_mode</B> is set to <B>IncludeInferiors</B>,
+drawing appears through visible children even when they have opaque backgrounds.
+The use of <B>IncludeInferiors</B> on a window of depth 1 with mapped inferiors
+of differing depth is not illegal, but the results are not defined in standard
+Xlib.
+
+<P>One familiar use of <B>IncludeInferiors</B> is the window
+manager's "rubber banding" of window outlines while they are being moved
+or resized. The outline is drawn on the root window with the GC set to
+<B>IncludeInferiors</B>.
+<BR>
+<HR>
+<H2>
+Sharing GCs Between Clients</H2>
+Despite the fact that a GC is a server resource and theoretically
+shareable, separate clients should not attempt to share GCs, because of
+the way GCs are implemented.
+<BR>
+<HR>
+<H2>
+GCs and Server Efficiency</H2>
+Some servers can cache a limited number of GCs in their display
+hardware. These systems achieve highest performance when the number of
+GCs created by an application is less than the number that can be cached
+at one time. Furthermore, each GC takes up some amount of server memory.
+Therefore, it is a general principle that an application should create
+as few GCs as reasonably possible.
+
+<P>However, this should not be taken to extremes. For example,
+all applications could be written to use only one GC, changing it frequently
+every time different characteristics are needed. But this defeats two of
+the purposes of the GC, which are to reduce network traffic and simplify
+programming. There are also performance costs when GCs are changed too
+often.
+
+<P>Deciding how many GCs to create and when to change them
+is a trade-off between the benefits of a more efficient server against
+the benefits of reduced network traffic and simpler programming. The designers
+of X still think that using a small number of GCs is, overall, the best
+approach.
+<BR>
+<HR>
+<H2>
+Querying the Graphics Context</H2>
+When you call a number of the GC convenience routines, such
+as <B>XSetForeground()</B> and <B>XSetLineAttributes()</B>, you might expect
+each to generate a separate protocol request to change the GC. But this
+is not what happens. Xlib saves up the changes in an internal structure
+and makes a single request to the server just before the GC is actually
+used by a drawing request.
+
+<P>The type <B>GC</B> is a pointer to this internal structure.
+All Xlib routines use a pointer to this internal structure, not a integer
+ID, as we have previously implied. However, this fact does not impact how
+you write Xlib code at all. In practice, a pointer to an opaque structure
+and an integer ID such as a window ID are treated exactly the same.
+
+<P>In R4, the <B>XGetGCValues()</B> function has been added
+to allow clients to read Xlib's cache of the fields in each GC. This can
+save an application from having to maintain its own cache of GC values,
+when it needs to change the GC in several different places in ways that
+depend on the current contents.
+
+<P>Note that <B>XGetGCValues()</B> is not a true round-trip
+query to the server--there is no protocol request that actually asks the
+server for these values. This has good and bad consequences. The good part
+is that <B>XGetGCValues()</B> is fast because it is not subject to network
+delays. The bad side is that the values in Xlib's cache do not include
+the default values for certain of the GC members. The <B>tile</B>, <B>stipple</B>,
+and <B>font</B> fields contain invalid IDs when <B>XGetGCValues()</B> is
+called on a default GC. Therefore, even though there is actually a default
+font that is always loaded on a server, you cannot use <B>XGetGCValues()</B>
+to find out its ID. To get information about the default font, pass the
+default GC to <B>XQueryFont()</B> and it will get information about the
+default font. Neither is there any obvious reason for needing the IDs of
+the tile and stipple in the default GC.
+
+<P>Also note that the <B>clip_mask</B> and <B>dashes</B>
+members of the GC cannot be queried.
+<BR>
+<HR>
+<H2>
+The Default GC Versus Default Values of a GC</H2>
+The server creates one GC, called the default GC, when it
+starts up. This GC is returned by the <B>XDefaultGC()</B> and the <B>DefaultGC()</B>
+macro. It contains foreground and background colors that are guaranteed
+contrasting (but not necessarily black and white), and it contains a default
+font that is guaranteed to be loaded, but is not necessarily the same font
+on all servers. The values in the default GC must not be changed.
+
+<P>The default GC can be used in simple applications. But
+it is not very useful since all applications should provide user customization
+of fonts and colors, and few can avoid the need to modify other GC components
+as well.
+
+<P>When you create a GC of your own, its default values are
+slightly different from the values of the default GC. Its foreground and
+background values are 0 and 1, respectively, so they are not necessarily
+black and white or contrasting. That's why you must always set foreground
+and background when you create a GC. Also, the default font is implementation
+dependent, and it may not be loaded. Therefore, you must always load the
+font before attempting to draw with it.
+
+<P>Table 5-3 shows the default values for all members of
+a graphics context you create.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 5-3 : </B>The Default Values of a Graphics
+Context</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Component</TH>
+
+<TH>Value</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>function</B></TD>
+
+<TD><B>GXcopy</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>plane_mask</B></TD>
+
+<TD>all <B>1</B> 's</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>foreground</B></TD>
+
+<TD><B>0</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>background</B></TD>
+
+<TD><B>1</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>line_width</B></TD>
+
+<TD><B>0</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>line_style</B></TD>
+
+<TD><B>LineSolid</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>cap_style</B></TD>
+
+<TD><B>CapButt</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>join_style</B></TD>
+
+<TD><B>JoinMiter</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>fill_style</B></TD>
+
+<TD><B>FillSolid</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>fill_rule</B></TD>
+
+<TD><B>EvenOddRule</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>arc_mode</B></TD>
+
+<TD><B>ArcPieSlice</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>tile</B></TD>
+
+<TD>Pixmap filled with foreground pixel</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>stipple</B></TD>
+
+<TD>Pixmap filled with <B>1</B> 's</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ts_x_origin</B></TD>
+
+<TD><B>0</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ts_y_origin</B></TD>
+
+<TD><B>0</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>font</B></TD>
+
+<TD>(Implementation dependent)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>subwindow_mode</B></TD>
+
+<TD><B>ClipByChildren</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>graphics_exposures</B></TD>
+
+<TD><B>True</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>clip_x_origin</B></TD>
+
+<TD><B>0</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>clip_y_origin</B></TD>
+
+<TD><B>0</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>clip_mask</B></TD>
+
+<TD><B>None</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>dash_offset</B></TD>
+
+<TD><B>0</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>dashes</B></TD>
+
+<TD><B>4</B> (i.e., the list [4, 4])</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>A useful quick reference to the graphics context is provided
+inside the back cover of <I>Volume Two, Xlib Reference Manual</I>.
+<BR>
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

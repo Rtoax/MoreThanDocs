@@ -1,0 +1,1344 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_13.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_15.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H1>
+A Complete Application</H1>
+While the simple application in Chapter 3 demonstrated the
+most important X programming techniques, it was far from a complete application.
+This chapter describes a calculator program that provides for calculations
+in several bases. This program has a more robust event loop than the simple
+application in Chapter 3 and demonstrates the use of the resource manager
+routines for integrating user preferences.
+
+<P>Our basic window program in Chapter 3, "Basic Window Program,"
+did not do all the things an application normally should do. We should
+have more complete communication with the window manager, parse the command
+line, and merge these options with the user's defaults to set up user-preferred
+colors and miscellaneous options. This chapter describes and demonstrates
+these techniques with a real application, <I>basecalc</I>.
+
+<P>The <I>basecalc</I> application is a programmer's calculator
+that allows integer calculations in binary, octal, decimal, and hexadecimal
+and conversions between these bases. It is not quite as complicated as
+<I>xcalc</I>, the standard calculator for X, but it demonstrates X techniques
+just as well. <I>basecalc</I> also does base conversions, logical operations,
+and unsigned arithmetic, which <I>xcalc</I> does not.
+
+<P>Only the sections of the program that illustrate X concepts
+are shown and described in this chapter. The entire program is shown in
+Appendix D, <I>The basecalc Application</I>.
+
+<P>This program has one characteristic that is not strictly
+correct in the X environment. It has only one allowable size. If the window
+manager refuses its request for that size or its main window is reduced
+in size by the user, it should print a message indicating that it cannot
+operate in that space. Luckily, most window managers honor the application's
+size hints and refuse to resize the window.
+<BR>
+<HR>
+<H2>
+Description of basecalc</H2>
+Figure 14-1 shows <I>basecalc</I> on the screen. It is a
+calculator which can perform integer math in decimal, octal, hexadecimal,
+or binary and can convert values between any of these bases. The calculator
+may be operated with the pointer by pressing any pointer button on the
+calculator pads or with the keyboard by typing the same symbols shown on
+the calculator face.
+
+<P>See the <I>Preface</I> for information on how to get the
+example source code.
+
+<P><B>The basecalc application on the screen</B>
+
+<P><IMG SRC="imgs/fig.14.01.gif" ALT="fig.14.01.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;The long horizontal window along the top of the
+calculator is the display, in which the values punched on the calculator
+and the results are displayed. The digits (0 to 9) and letters (A to F)
+in the left-hand portion of the calculator keypad are for entering values.
+The top row of the right-hand portion of the keypad is for base selection.
+These can be used either to set the current base of calculations or to
+convert a value between bases. Only one of the base indicators is highlighted
+at a time.
+
+<P>Only valid numbers in the current base are allowed to
+be entered. Valid pads are black, while invalid ones are light gray. When
+a pad is triggered by pressing a pointer button, it flashes white, and
+the operation or value indicated by the pad is executed if the pointer
+button is released in the same pad. The pad also responds to the pointer
+entering or leaving the window while a pointer button is pressed.
+
+<P>The calculator also operates from the keyboard. Numbers,
+letters, and special characters can be typed in (or pasted from another
+application) to represent all the functions except Clear Entry (CE). The
+Backspace key also performs this function.
+
+<P>This application runs on any X system, since it uses only
+the colors black and white. It achieves the appearance of different levels
+of gray by creating a pattern with differing amounts of black and white.
+It also provides command line arguments for colors and uses them if the
+user specifies them and if connected to a color screen.
+
+<P>Here is the list of available functions and how they are
+used. If you do not plan to be using <I>basecalc</I>, skip to Section 14.2,
+"Include Files," because you will not need to know how to use <I>basecalc</I>
+from the desktop.
+
+<P>All operations work in all bases. You may shift bases
+at any point in any calculation. The last of any series of consecutive
+operators pressed will be acted upon.
+<DL>
+<DT>
++, -, *, /</DT>
+
+<DD>
+Normal addition, subtraction, multiplication, and division.
+A number is entered, then one of these operators, then another number,
+and finally the equal sign, Enter key, or any operator. The result will
+then be displayed in the window. If the last character entered was an operator,
+you can continue specifying numbers and operators in alternation.</DD>
+
+<DT>
+| , &amp;</DT>
+
+<DD>
+AND and OR. Used just like the addition operator. The "<I>|</I>"
+and "<I>&amp;</I>" symbols on the keyboard trigger this function.</DD>
+
+<DT>
+&lt;&lt; , >></DT>
+
+<DD>
+Shift Left and Shift Right. Used just like the addition operator.
+Enter the number to be shifted, then the "<I>>></I>" or "<I>&lt;&lt;</I>"
+pad (or the "<I>></I>" or "<I>&lt;</I>" keys), and then the number of bits
+to shift the number, followed by the "<I>=</I>" or Enter key.</DD>
+
+<DT>
+^</DT>
+
+<DD>
+Exclusive OR. Used just like the addition operator. Sets
+all bits that are in either number but not both. Available from the caret
+(<I>^</I>) key.</DD>
+
+<DT>
+%</DT>
+
+<DD>
+Mod (remainder after division). Used like the addition operator.
+Available on the percent (<I>%</I>) key.</DD>
+
+<DT>
+`</DT>
+
+<DD>
+Change sign. This is a unary operator, since it performs
+its function immediately on the current contents of the display. Its results
+depend on whether the calculator is in signed or unsigned mode. If in unsigned
+mode, the result is the unsigned equivalent of a negative number. This
+function is available from the left single quote key.</DD>
+
+<DT>
+~</DT>
+
+<DD>
+One's complement. This is a unary operator. It changes all
+the bits in the value.</DD>
+
+<DT>
+CE</DT>
+
+<DD>
+Clear Entry. Erases the last value entered. The Backspace
+key also performs this function.</DD>
+
+<DT>
+CD</DT>
+
+<DD>
+Clear Digit. Erases the last digit entered.</DD>
+
+<DT>
+CA</DT>
+
+<DD>
+Clear All. Clears all operator and value registers.</DD>
+
+<DT>
+U or S</DT>
+
+<DD>
+Unsigned or Signed. Specifies whether all other operations
+should be performed in signed or unsigned mode.</DD>
+
+<DT>
+=</DT>
+
+<DD>
+Compute. The Return key also performs this function.</DD>
+</DL>
+These mathematical operations have nothing to do with X,
+and how they are implemented is not described here. They are provided so
+that you can use the program if you have the code and so you can more easily
+understand the complete code in Appendix D, <I>The basecalc Application</I>.
+In this chapter, we are going to concentrate on the aspects of the program
+that are standard to X applications. On that note...
+<BR>
+<HR>
+<H2>
+Include Files</H2>
+The include files used in Example 14-1 are the standard ones,
+except for the few needed to perform system calls to get the user's home
+directory, current Rubout key, etc. The &lt;<I>X11/Xresource.h</I>> file
+is necessary to use the resource manager.
+
+<P><B>basecalc -- include files</B>
+<BLOCKQUOTE>
+<PRE><TT>#include &lt;X11/Xlib.h>
+#include &lt;X11/Xutil.h>
+#include &lt;X11/Xresource.h>
+#include &lt;X11/cursorfont.h>
+#include &lt;stdio.h>
+#ifdef SysV
+#include &lt;termio.h>
+#else
+#include &lt;sgtty.h>
+#include &lt;sys/ttychars.h>
+#endif SysV
+#include &lt;ctype.h>
+#include &lt;pwd.h>
+/* Global declarations file for this application */
+#include "basecalc.h"</TT></PRE>
+</BLOCKQUOTE>
+The constant definitions and global variables declared or
+defined in <I>./basecalc.h</I> are shown above the routines in which they
+are used in the <I>basecalc</I> example program. You can take a look at
+the entire include file in Appendix D, <I>The basecalc Application</I>.
+<BR>
+<HR>
+<H2>
+The Main of basecalc</H2>
+The main is a very short and straightforward outline for
+the major routines to follow.
+
+<P><B>basecalc -- the main</B>
+<BLOCKQUOTE>
+<PRE><TT>char myDisplayName[256];
+/* X11 Integer Programmer's Calculator with base conversions */
+main (argc, argv)
+int argc;
+register char *argv[];
+{
+&nbsp;&nbsp; /* So we can use the resource manager data merging functions */
+&nbsp;&nbsp; XrmInitialize();
+&nbsp;&nbsp; /* Parse command line first so we can open display, store any
+&nbsp;&nbsp;&nbsp; * options in a database */
+&nbsp;&nbsp; parseOpenDisp (&amp;argc, argv);
+&nbsp;&nbsp; /* Get server defaults, program defaults, .Xdefaults;
+&nbsp;&nbsp;&nbsp; * merge them and finally the command line */
+&nbsp;&nbsp; mergeDatabases();
+&nbsp;&nbsp; /* Extract values from database and convert to form usable
+&nbsp;&nbsp;&nbsp; * by this program */
+&nbsp;&nbsp; extractOpts ();
+&nbsp;&nbsp; /* Load font, make pixmaps, set up arrays of windows */
+&nbsp;&nbsp; initCalc ();
+&nbsp;&nbsp; /* Get keyboard settings for interrupt, delete, etc. */
+&nbsp;&nbsp; initTty ();
+&nbsp;&nbsp; /* Make a standard cursor */
+&nbsp;&nbsp; makeCursor ();
+&nbsp;&nbsp; /* Set standard properties, create and map windows */
+&nbsp;&nbsp; makeWindows (argc, argv);
+&nbsp;&nbsp; /* Get events */
+&nbsp;&nbsp; takeEvents ();
+&nbsp;&nbsp; /* Bow out gracefully */
+&nbsp;&nbsp; XCloseDisplay(display);
+&nbsp;&nbsp; exit (1);
+}</TT></PRE>
+</BLOCKQUOTE>
+<B>initTty</B> is not shown in this chapter, but it is included
+in Appendix D, <I>The basecalc Application</I>. It simply performs a few
+system calls to determine which keys are being used for erase, delete,
+and interrupt.
+
+<P>The following sections describe each routine called in
+the main. Each section will begin with a brief description of the routine,
+followed by the declarations from <I>basecalc.h</I> that are needed with
+that routine and then the code.
+<BR>
+<HR>
+<H2>
+Getting User Preferences</H2>
+This section describes and demonstrates the use of the resource
+manager in a typical application. For an additional theoretical description
+of the resource manager, see Chapter 13, "Managing User Preferences."
+<H3>
+User Defaults for basecalc</H3>
+As described in Chapter 13, "Managing User Preferences,"
+the user's default values for options are normally found in the <B>XA_RESOURCE_MANAGER</B>
+property on the root window. That property is normally set by the user
+with the <I>xrdb</I> program. For compatibility, if there is no <B>XA_RESOURCE_MANAGER</B>
+property defined (either because <I>xrdb</I> was not run or if the property
+was removed), your program should assume that the defaults can be found
+in a file called <I>.Xdefaults</I> in the user's home directory.
+
+<P>Note that <B>XGetDefault()</B>, described in Chapter 13,
+"Managing User Preferences," only deals with some of this complexity. It
+does not read the <B>XA_RESOURCE_MANAGER</B> property, and it does not
+merge in the command line arguments. That is why, in this example, we have
+used a different, more thorough technique, using the native resource manager
+calls.
+
+<P>Example 14-3 shows a sample resource database file with
+two options for <I>basecalc</I>.
+
+<P><B>A sample .Xdefaults file</B>
+<BLOCKQUOTE>
+<PRE><TT>basecalc.base:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2
+basecalc.unsigned:&nbsp;&nbsp; False</TT></PRE>
+</BLOCKQUOTE>
+For a complete description of preference matching rules,
+see Chapter 13, "Managing User Preferences." The <B>basecalc.base</B> preference
+sets the base with which the calculator will start and is here specified
+as binary (base 2). The <B>basecalc.unsigned</B> preference specifies whether
+the calculator should start up in signed mode or unsigned mode.
+<H3>
+Parsing the Command Line</H3>
+<B>XrmInitialize()</B> must be called before any other resource
+manager function. (It simply sets up a default <B>XrmRepresentation</B>
+type for strings, but that fact does not affect how the resource manager
+is used in applications.) After that, the first thing to be done is to
+parse the command line so that we can read the display argument out of
+it before opening the display. <B>parseOpenDisp</B> does this, loading
+all the command line options that match resources in the option table into
+a database for later merging with the user's defaults. Take a look at the
+code in Example 14-4, and then we'll explain it.
+
+<P><B>basecalc -- the parseOpenDisp routine</B>
+<BLOCKQUOTE>
+<PRE><TT>/* Global variables */
+Display *display;
+int screen_num;
+char myDisplayName[256];
+/* Command line options table; we don't do anything with many
+&nbsp;* of these resources, but the program is ready for expansion
+&nbsp;* to allow variable sizes, fonts, etc. */
+#define GEOMETRY&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "*geometry"
+#define ICONGEOMETRY&nbsp;&nbsp;&nbsp; "*iconGeometry"
+#define UNSIGNED&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "*unsigned"
+#define BASE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "*base"
+#define ICONSTARTUP&nbsp;&nbsp;&nbsp;&nbsp; "*iconStartup"
+static int opTableEntries = 25;
+static XrmOptionDescRec opTable[] = {
+{"-unsigned",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; UNSIGNED,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionNoArg,&nbsp;&nbsp;&nbsp;&nbsp; (caddr_t) "off"},
+{"-x",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BASE,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionNoArg,&nbsp;&nbsp;&nbsp;&nbsp; (caddr_t) "16"},
+{"-hex",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BASE,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionNoArg,&nbsp;&nbsp;&nbsp;&nbsp; (caddr_t) "16"},
+{"-dec",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BASE,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionNoArg,&nbsp;&nbsp;&nbsp;&nbsp; (caddr_t) "10"},
+{"-oct",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BASE,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionNoArg,&nbsp;&nbsp;&nbsp;&nbsp; (caddr_t) "8"},
+{"-binary",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BASE,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionNoArg,&nbsp;&nbsp;&nbsp;&nbsp; (caddr_t) "2"},
+{"-geometry",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GEOMETRY,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp;&nbsp; (caddr_t) NULL},
+{"-iconGeometry",&nbsp;&nbsp; ICON_GEOMETRY,&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp;&nbsp; (caddr_t) NULL},
+{"-iconic",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ICONSTARTUP,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionNoArg,&nbsp;&nbsp;&nbsp;&nbsp; (caddr_t) "on"},
+{"-background",&nbsp;&nbsp;&nbsp;&nbsp; "*background",&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp;&nbsp; (caddr_t) NULL},
+{"-bg",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "*background",&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp;&nbsp; (caddr_t) NULL},
+{"-fg",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "*foreground",&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp;&nbsp; (caddr_t) NULL},
+{"-foreground",&nbsp;&nbsp;&nbsp;&nbsp; "*foreground",&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp;&nbsp; (caddr_t) NULL},
+{"-xrm",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; NULL,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionResArg,&nbsp;&nbsp;&nbsp; (caddr_t) NULL},
+{"-display",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ".display",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp;&nbsp; (caddr_t) NULL},
+/* Remainder not currently supported: */
+{"-bd",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "*borderColor",&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp;&nbsp; (caddr_t) NULL},
+{"-bordercolor",&nbsp;&nbsp;&nbsp; "*borderColor",&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp;&nbsp; (caddr_t) NULL},
+{"-borderwidth",&nbsp;&nbsp;&nbsp; ".borderWidth",&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp;&nbsp; (caddr_t) NULL},
+{"-bw",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ".borderWidth",&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp;&nbsp; (caddr_t) NULL},
+{"-fn",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "*font",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp;&nbsp; (caddr_t) NULL},
+{"-font",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "*font",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp;&nbsp; (caddr_t) NULL},
+{"-name",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ".name",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp;&nbsp; (caddr_t) NULL},
+{"-title",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ".title",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp;&nbsp; (caddr_t) NULL},
+};
+static XrmDatabase commandlineDB;
+/* Get command line options */
+parseOpenDisp (argc, argv)
+int *argc;
+register char *argv[];
+{
+&nbsp;&nbsp; XrmValue value;
+&nbsp;&nbsp; char *str_type[20];
+&nbsp;&nbsp; myDisplayName[0] = '\0';
+&nbsp;&nbsp; XrmParseCommand(&amp;commandlineDB, opTable, opTableEntries, argv[0],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; argc, argv);
+&nbsp;&nbsp; /* Check for any arguments left */
+&nbsp;&nbsp; if (*argc != 1) Usage();
+&nbsp;&nbsp; /* Get display now, because we need it to get other databases */
+&nbsp;&nbsp; if (XrmGetResource(commandlineDB, "basecalc.display",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Basecalc.Display", str_type, &amp;value)== True) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) strncpy(myDisplayName, value.addr, (int) value.size);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Open display */
+&nbsp;&nbsp; if (!(display = XOpenDisplay(myDisplayName))) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "%s: Can't open display '%s'\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; argv[0], XDisplayName(myDisplayName));
+&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; screen_num = DefaultScreen(display);
+&nbsp;&nbsp; visual = DefaultVisual(display, screen_num);
+&nbsp;&nbsp; colormap = DefaultColormap(display, screen_num);
+}</TT></PRE>
+</BLOCKQUOTE>
+The large options table (<B>opTable</B>) defines all the
+command line arguments that <B>XrmParseCommand()</B> is going to look for.
+It describes not only what flag to look for but also the style of each
+option. Some options are a simple flag, others are a flag followed by a
+value with no space or with a space, and so on. The options table also
+specifies what to call each option when searching for it in the database.
+
+<P>Example 14-5 shows the structure that defines the options
+table.
+
+<P><B>XrmOptionDescRec, XrmOptionDescList, and XrmOptionKind
+declarations</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; char *option;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Option specification string in argv */
+&nbsp;&nbsp; char *resourceName;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Binding and resource name (without
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * application name) */
+&nbsp;&nbsp; XrmOptionKind argKind;&nbsp;&nbsp; /* Which style of option it is */
+&nbsp;&nbsp; caddr_t value;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Value to provide if XrmoptionNoArg */
+} XrmOptionDescRec, *XrmOptionDescList;
+typedef enum {
+&nbsp;&nbsp; XrmoptionNoArg,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Value is specified in
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * OptionDescRec.value */
+&nbsp;&nbsp; XrmoptionIsArg,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Value is the option string itself */
+&nbsp;&nbsp; XrmoptionStickyArg,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Value is chars immediately following
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * option */
+&nbsp;&nbsp; XrmoptionSepArg,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Value is next argument in argv */
+&nbsp;&nbsp; XrmoptionResArg,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Resource and value in next argument
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * in argv */
+&nbsp;&nbsp; XrmoptionSkipArg,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Ignore this option and next argument
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * in argv */
+&nbsp;&nbsp; XrmoptionSkipLine&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Ignore this option and the rest of
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * argv */
+} XrmOptionKind;</TT></PRE>
+</BLOCKQUOTE>
+The styles of command line arguments allowed are as follows:
+<DL>
+<DT>
+<B>XrmoptionNoArg</B></DT>
+
+<DD>
+If this flag is present, take the value in the <B>value</B>
+member (the last column) of the options table. For example, the <I>-u</I>
+(unsigned) option for the calculator indicates that the value should be
+<B>off</B> and the calculator should begin in unsigned mode.</DD>
+
+<DT>
+<B>XrmoptionIsArg</B></DT>
+
+<DD>
+The flag itself indicates something without any additional
+information. In the case of the calculator, <I>-x</I> or <I>-h</I> indicates
+that it should start up in hexadecimal mode.</DD>
+
+<DT>
+<B>XrmoptionStickyArg</B></DT>
+
+<DD>
+The value is the characters immediately following the option
+with no white space intervening. This is not used in the calculator, but
+it is like the arguments for <I>uucico</I>, where <I>-sventure</I> means
+to call system <I>venture</I>.</DD>
+
+<DT>
+<B>XrmoptionSepArg</B></DT>
+
+<DD>
+The next item after the white space after this flag is the
+value of the option. For example, the option <I>-fg blue</I> would be of
+this type and would indicate that blue is the value for the resource specified
+by <I>-fg</I>.</DD>
+
+<DT>
+<B>XrmoptionResArg</B></DT>
+
+<DD>
+The resource name and its value are the next argument in
+<B>argv</B> after the white space after this flag. For example, the flag
+might be <I>-res</I> and the resource name/value might be <B>basecalc*background:white</B>.</DD>
+
+<DT>
+<B>XrmoptionSkipArg</B></DT>
+
+<DD>
+Ignore this option and the next argument in <B>argv</B>.</DD>
+
+<DT>
+<B>XrmoptionSkipLine</B></DT>
+
+<DD>
+Ignore this option and the rest of <B>argv</B>.</DD>
+</DL>
+As <B>XrmParseCommand()</B> parses the command line, it removes
+arguments that it finds in the options table from <B>argv</B> and <B>argc</B>.
+Therefore, if <B>argc</B> is nonzero after <B>XrmParseCommand()</B>, at
+least one of the command line arguments was illegal. The best thing to
+do is print both the illegal options (by printing <B>argv</B>) and the
+correct option syntax.
+
+<P>If all the options were correctly parsed, then it is time
+to extract the display name so that we can connect with the display. We
+need to connect now because we want to get the user's resource database
+from the server to merge with the command line arguments we already have.
+If there was no display specified on the command line, we use <B>NULL</B>
+as usual to connect to the server indicated in the UNIX environment variable
+DISPLAY. We set the global variable <B>screen_num</B> to the default screen
+number so that we can use it in future macro calls.
+
+<P>It would be possible (and actually preferable) to search
+the other local databases, namely the <I>app-defaults/*</I> and <I>.Xdefaults</I>
+files, for a display name before connecting to the display. This was not
+done in <I>basecalc</I> because of an oversight.
+<H3>
+Getting the Databases</H3>
+The <B>mergeDataBases</B> routine shown in Example 14-6 reads
+in options from four sources, merges them together in the proper order,
+and then merges in the database obtained from the command line. As described
+in Chapter 13, "Managing User Preferences," we will use the R4 set of resource
+files and merging order since it's a lot less complicated than the R5 order
+defined by the Xt Intrinsics:
+<UL>
+<LI>
+<I>Classname</I> file in the <I>app-defaults</I> directory.</LI>
+
+<LI>
+<I>Classname</I> file in the directory specified by the XUSERFILESEARCHPATH
+or XAPPLRESDIR environment variables.</LI>
+
+<LI>
+Property set using <I>xrdb</I>, accessible through the <B>XResourceManagerString()</B>
+macro or, if that is empty, the <I>.Xdefaults</I> file.</LI>
+
+<LI>
+XENVIRONMENT environment variable or, if not set, <I>.Xdefaults-hostname</I>
+file.</LI>
+
+<LI>
+Command line arguments.</LI>
+</UL>
+Example 14-6 shows the global declarations and the routine.
+This routine is quite similar to the routine in the Xt Toolkit that performs
+the same function (that was its origin).
+
+<P><B>basecalc -- the GetUsersDataBase routine</B>
+<BLOCKQUOTE>
+<PRE><TT>Display *display;
+XrmDatabase rDB;&nbsp;&nbsp;&nbsp; /* For final merged database */
+/* Get program's and user's defaults */
+mergeDatabases()
+{
+&nbsp;&nbsp; XrmDatabase homeDB, serverDB, applicationDB;
+&nbsp;&nbsp; char filenamebuf[1024];
+&nbsp;&nbsp; char *filename = &amp;filenamebuf[0];
+&nbsp;&nbsp; char *environment;
+&nbsp;&nbsp; char *classname = "Basecalc";
+&nbsp;&nbsp; char name[255];
+&nbsp;&nbsp; (void) strcpy(name, "/usr/lib/X11/app-defaults/");
+&nbsp;&nbsp; (void) strcat(name, classname);
+&nbsp;&nbsp; /* Get application defaults file, if any */
+&nbsp;&nbsp; applicationDB = XrmGetFileDatabase(name);
+&nbsp;&nbsp; (void) XrmMergeDatabases(applicationDB, &amp;rDB);
+&nbsp;&nbsp; /* Merge server defaults, created by xrdb, loaded as a
+&nbsp;&nbsp;&nbsp; * property of the root window when the server initializes
+&nbsp;&nbsp;&nbsp; * and loaded into the display structure on XOpenDisplay;
+&nbsp;&nbsp;&nbsp; * if not defined, use .Xdefaults */
+&nbsp;&nbsp; if (XResourceManagerString(display) != NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; serverDB = XrmGetStringDatabase(XResourceManagerString
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (display));
+&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Open .Xdefaults file and merge into existing database */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) GetHomeDir(filename);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) strcat(filename, "/.Xdefaults");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; serverDB = XrmGetFileDatabase(filename);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; XrmMergeDatabases(serverDB, &amp;rDB);
+&nbsp;&nbsp; /* Open XENVIRONMENT file or, if not defined, the .Xdefaults,
+&nbsp;&nbsp;&nbsp; * and merge into existing database */
+&nbsp;&nbsp; if ((environment = getenv("XENVIRONMENT")) == NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int len;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; environment = GetHomeDir(filename);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) strcat(environment, "/.Xdefaults-");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; len = strlen(environment);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) gethostname(environment+len, 1024-len);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; homeDB = XrmGetFileDatabase(environment);
+&nbsp;&nbsp; XrmMergeDatabases(homeDB, &amp;rDB);
+&nbsp;&nbsp; /* Command line takes precedence over everything */
+&nbsp;&nbsp; XrmMergeDatabases(commandlineDB, &amp;rDB);
+}</TT></PRE>
+</BLOCKQUOTE>
+<B>XrmGetFileDatabase()</B> reads the application defaults
+file and loads it into a database, returning a pointer to the database.
+This database should contain the default values for each configurable variable
+used in the program. This file should look just like a user preference
+file, and it should parallel every option in the command line options table.
+In case this file is unavailable, the application should also have hardcoded
+defaults for all these values, but it should not have to use them.
+
+<P>Note that Example 14-6 gets the user's database set by
+<I>xrdb</I> from the value returned by the <B>XResourceManagerString()</B>
+function. This function returns a pointer to a string stored in the <B>Display</B>
+structure. This string is set by <B>XOpenDisplay()</B> to the value of
+the <B>XA_RESOURCE_MANAGER</B> property on the root window of screen 0.&nbsp;
+This string can easily be translated into a database with <B>XrmGetStringDatabase()</B>.
+<H3>
+Getting Options from the Database</H3>
+The <B>extractOpts</B> routine performs the final merging
+of the defaults database with the command line database and then reads
+options out of the database and sets program variables appropriately. The
+program in Example 14-7 does not take advantage of all the options supported
+in the options table, but it is ready to be expanded to do so.
+
+<P><B>basecalc -- the extractOpts routine</B>
+<BLOCKQUOTE>
+<PRE><TT>extractOpts()
+{
+&nbsp;&nbsp; char *str_type[20];
+&nbsp;&nbsp; char buffer[20];
+&nbsp;&nbsp; long flags;
+&nbsp;&nbsp; XrmValue value;
+&nbsp;&nbsp; int x, y, width, height;
+&nbsp;&nbsp; XColor screen_def;
+&nbsp;&nbsp; /* Get geometry */
+&nbsp;&nbsp; if (XrmGetResource(rDB, "basecalc.geometry",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Basecalc.Geometry", str_type, &amp;value)== True) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) strncpy(Geostr, value.addr, (int) value.size);
+&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Geostr[0] = NULL;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; if (XrmGetResource(rDB, "basecalc.iconGeometry",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Basecalc.IconGeometry", str_type, &amp;value)== True) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) strncpy(iconGeostr, value.addr, (int) value.size);
+&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iconGeostr[0] = NULL;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; if (XrmGetResource(rDB, "basecalc.unsigned", "Basecalc.Unsigned",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; str_type, &amp;value)== True)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (strncmp(value.addr, "False", (int) value.size) == 0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Unsigned = False;
+&nbsp;&nbsp; if (XrmGetResource(rDB, "basecalc.base", "Basecalc.Base",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; str_type, &amp;value)== True) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) strncpy(buffer, value.addr, (int) value.size);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; buffer[value.size] = NULL;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Base = atoi(buffer);
+&nbsp;&nbsp; } else Base = 10;
+&nbsp;&nbsp; if (XrmGetResource(rDB, "basecalc.foreground",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Basecalc.Foreground", str_type, &amp;value)== True) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) strncpy(buffer, value.addr, (int) value.size);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (XParseColor(display, colormap, buffer,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;screen_def) == 0)&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "basecalc: fg color \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; specification %s invalid", buffer);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreground = BlackPixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Accessing visual is cheating, but in the
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * interests of brevity, we'll do it anyway */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((visual->class == StaticGray) ||
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (visual->class == GrayScale))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreground = BlackPixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if (XAllocColor(display, colormap, &amp;screen_def) ==
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreground = BlackPixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "basecalc: couldn't allocate \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color: %s.\n", buffer);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreground = screen_def.pixel;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp; } else {
+&nbsp;&nbsp; foreground = BlackPixel(display, screen_num);
+}
+&nbsp;&nbsp; if (XrmGetResource(rDB, "basecalc.background",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Basecalc.Background", str_type, &amp;value)== True) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) strncpy(buffer, value.addr, (int) value.size);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (XParseColor(display, colormap, buffer,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;screen_def) == 0)&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "basecalc: bg color \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; specification %s invalid", buffer);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background = WhitePixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((visual->class == StaticGray) ||
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (visual->class == GrayScale))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background = WhitePixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if (XAllocColor(display, colormap, &amp;screen_def) ==
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background = WhitePixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "basecalc: couldn't allocate \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; color: %s.\n", buffer);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background = screen_def.pixel;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp; } else {
+&nbsp;&nbsp; background = WhitePixel(display, screen_num);
+}
+&nbsp;&nbsp; /* One last check to make sure the colors are different! */
+&nbsp;&nbsp; if (background == foreground) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background = WhitePixel(display, screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreground = BlackPixel(display, screen_num);
+&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; /* Get window geometry information */
+&nbsp;&nbsp; if (Geostr != NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; flags = XParseGeometry(Geostr,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;x, &amp;y, &amp;width, &amp;height);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((WidthValue|HeightValue) &amp; flags)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Usage ();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (XValue &amp; flags) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (XNegative &amp; flags)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x = DisplayWidth(display, screen_num) +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x - sizehints.width;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sizehints.flags |= USPosition;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sizehints.x = x;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (YValue &amp; flags) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (YNegative &amp; flags)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; y = DisplayHeight(display, screen_num) +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x - sizehints.width;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sizehints.flags |= USPosition;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sizehints.y = y;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; /* Get icon geometry information */
+&nbsp;&nbsp; if (iconGeostr != NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iconGeostr[0] = '=';
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; flags = XParseGeometry(iconGeostr,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;x, &amp;y, &amp;width, &amp;height);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((WidthValue|HeightValue) &amp; flags)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Usage ();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (XValue &amp; flags) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (XNegative &amp; flags)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x = DisplayWidth(display, screen_num) +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x - iconsizehints.width;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iconsizehints.flags |= USPosition;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; wmhints.flags |= IconPositionHint;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; wmhints.icon_x = x;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iconsizehints.x = x;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (YValue &amp; flags) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (YNegative &amp; flags)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; y = DisplayHeight(display, screen_num) +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x - iconsizehints.width;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iconsizehints.flags |= USPosition;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; wmhints.flags |= IconPositionHint;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; wmhints.icon_y = y;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iconsizehints.y = y;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp; }
+}</TT></PRE>
+</BLOCKQUOTE>
+The variables that are used to access the data returned from
+the database are <B>background</B>, <B>Base</B>, <B>iconGeostr</B>, <B>iconOnly</B>,
+<B>foreground</B>, <B>Geostr</B>, and <B>Unsigned</B>. The routine then
+calls <B>XrmGetResource()</B> for each resource, which places the data
+which resulted from the combination of the command line and the resource
+database into user-accessible variables. <B>Geostr</B> and <B>iconGeostr</B>
+are used to set up the window manager size hints. Later in the code, the
+variables <B>background</B>, <B>Base</B>, <B>foreground</B>, <B>iconOnly</B>,
+and <B>Unsigned</B> will also be used.
+
+<P>The next step is to get the standard geometry strings
+from the database, parse them, and use these or the defaults to set the
+window manager hints to match. This program repeats this process for the
+main window and for the icon. Strictly speaking, it is not necessary to
+set window manager hints for the icon, and they are not used for that purpose
+in this program.
+
+<P><B>XParseGeometry()</B> returns a bitmask which indicates
+which parts of the geometry string were actually set on the command line
+or in the resource database. There are symbols to indicate each bit in
+this mask, and they are:
+<DL>
+<DT>
+<B>XValue</B>, <B>YValue</B></DT>
+
+<DD>
+Position of window or icon.</DD>
+
+<DT>
+<B>WidthValue</B>, <B>HeightValue</B></DT>
+
+<DD>
+Dimensions of window or icon.</DD>
+
+<DT>
+<B>XNegative</B>, <B>YNegative</B></DT>
+
+<DD>
+Indicates whether <B>XValue</B> or <B>YValue</B> is negative.</DD>
+</DL>
+
+<HR>
+<H2>
+Printing a Usage Message</H2>
+<B>GetOpts</B> calls <B>Usage</B> when the user tries to
+specify dimensions for the main window or icon, since this program cannot
+deal with that complexity.
+
+<P><B>basecalc -- the Usage routine</B>
+<BLOCKQUOTE>
+<PRE><TT>/* Print message to stderr and exit */
+Usage ()
+{
+&nbsp;&nbsp; fprintf (stderr,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "%s: [-iconic] [-unsigned] [-hex|x|dec|oct|binary]\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [-display &lt;display>] [-geometry &lt;geometrystring>]\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [-iconGeometry &lt;icongeometrystring>\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; calcName ? calcName : "basecalc");
+&nbsp;&nbsp; exit (1);
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<HR>
+<H2>
+Initializing the Calculator</H2>
+The <B>initCalc</B> routine in Example 14-9 performs three
+major functions: it loads the font to be used in all text, creates GCs
+for foreground and background of the calculator, and then sets the initial
+pixmaps for all pads. The windows for each pad do not exist yet.
+
+<P>Again, we'll begin with the declarations that are used
+in the routine.
+
+<P><B>basecalc -- declarations for initCalc</B>
+<BLOCKQUOTE>
+<PRE><TT>/* Pattern for disabled buttons (Light Gray) */
+#define lgray_width 16
+#define lgray_height 16
+static char lgray_bits[] = {
+&nbsp;&nbsp; 0x88, 0x88, 0x22, 0x22, 0x88, 0x88, 0x22, 0x22,
+&nbsp;&nbsp; 0x88, 0x88, 0x22, 0x22, 0x88, 0x88, 0x22, 0x22,
+&nbsp;&nbsp; 0x88, 0x88, 0x22, 0x22, 0x88, 0x88, 0x22, 0x22,
+&nbsp;&nbsp; 0x88, 0x88, 0x22, 0x22, 0x88, 0x88, 0x22, 0x22};
+/* Background pattern for calculator (Dark Gray) */
+#define gray_width 16
+#define gray_height 16
+static char gray_bits[] = {
+&nbsp;&nbsp; 0xaa, 0xaa, 0x55, 0x55, 0xaa, 0xaa, 0x55, 0x55,
+&nbsp;&nbsp; 0xaa, 0xaa, 0x55, 0x55, 0xaa, 0xaa, 0x55, 0x55,
+&nbsp;&nbsp; 0xaa, 0xaa, 0x55, 0x55, 0xaa, 0xaa, 0x55, 0x55,
+&nbsp;&nbsp; 0xaa, 0xaa, 0x55, 0x55, 0xaa, 0xaa, 0x55, 0x55};
+#define&nbsp;&nbsp; WHITE&nbsp;&nbsp;&nbsp;&nbsp; 0
+#define&nbsp;&nbsp; BLACK&nbsp;&nbsp;&nbsp;&nbsp; 1
+#define&nbsp;&nbsp; DARKGRAY&nbsp; 2
+#define&nbsp;&nbsp; LIGHTGRAY 3
+int pressedColor =&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WHITE;
+int unpressedColor =&nbsp;&nbsp; BLACK;
+int disabledColor =&nbsp;&nbsp; LIGHTGRAY;
+int displayColor =&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WHITE;
+#define NBUTTONS 38
+struct windata {
+&nbsp;&nbsp; int&nbsp;&nbsp; color;&nbsp;&nbsp; /* Color */
+&nbsp;&nbsp; char&nbsp;&nbsp; *text;&nbsp;&nbsp; /* Pointer to the text string */
+&nbsp;&nbsp; int&nbsp;&nbsp; x;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* x coordinate of text */
+&nbsp;&nbsp; int&nbsp;&nbsp; y;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* y coordinate of text */
+&nbsp;&nbsp; int&nbsp;&nbsp; value;&nbsp;&nbsp; /* 0 to 16 for number, symbol for operator */
+&nbsp;&nbsp; int&nbsp;&nbsp; type;&nbsp;&nbsp; /* Digit, operator, conversion, or special */
+} windata[NBUTTONS] = {
+&nbsp;&nbsp; { 1, "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0 ", 2, 3, 0, WTYP_DISP },
+&nbsp;&nbsp; { 0, "C", 5, 3, 12, WTYP_DIGIT },
+&nbsp;&nbsp; { 0, "D", 5, 3, 13, WTYP_DIGIT },
+&nbsp;&nbsp; { 0, "E", 5, 3, 14, WTYP_DIGIT },
+&nbsp;&nbsp; { 0, "F", 5, 3, 15, WTYP_DIGIT },
+&nbsp;&nbsp; { 0, "8", 5, 3,&nbsp; 8, WTYP_DIGIT },
+&nbsp;&nbsp; { 0, "9", 5, 3,&nbsp; 9, WTYP_DIGIT },
+&nbsp;&nbsp; { 0, "A", 5, 3, 10, WTYP_DIGIT },
+&nbsp;&nbsp; { 0, "B", 5, 3, 11, WTYP_DIGIT },
+&nbsp;&nbsp; { 0, "4", 5, 3, 4, WTYP_DIGIT },
+&nbsp;&nbsp; { 0, "5", 5, 3, 5, WTYP_DIGIT },
+&nbsp;&nbsp; { 0, "6", 5, 3, 6, WTYP_DIGIT },
+&nbsp;&nbsp; { 0, "7", 5, 3, 7, WTYP_DIGIT },
+&nbsp;&nbsp; { 0, "0", 5, 3, 0, WTYP_DIGIT },
+&nbsp;&nbsp; { 0, "1", 5, 3, 1, WTYP_DIGIT },
+&nbsp;&nbsp; { 0, "2", 5, 3, 2, WTYP_DIGIT },
+&nbsp;&nbsp; { 0, "3", 5, 3, 3, WTYP_DIGIT },
+&nbsp;&nbsp; { 0, "CA", 6, 3, OPR_CLRA, WTYP_SPECIAL },
+&nbsp;&nbsp; { 0, "CE", 6, 3, OPR_CLRE, WTYP_SPECIAL },
+&nbsp;&nbsp; { 0, "CD", 6, 3, OPR_CLRD, WTYP_SPECIAL },
+&nbsp;&nbsp; { 0, "=", 17, 2, OPR_ASGN, WTYP_OPERATOR },
+&nbsp;&nbsp; { 0,&nbsp; "+", 5, 3, OPR_ADD, WTYP_OPERATOR },
+&nbsp;&nbsp; { 0,&nbsp; "-", 5, 3, OPR_SUB, WTYP_OPERATOR },
+&nbsp;&nbsp; { 0,&nbsp; "*", 5, 4, OPR_MUL, WTYP_OPERATOR },
+&nbsp;&nbsp; { 0,&nbsp; "/", 5, 3, OPR_DIV, WTYP_OPERATOR },
+&nbsp;&nbsp; { 0,&nbsp; "%", 5, 3, OPR_MOD, WTYP_OPERATOR },
+&nbsp;&nbsp; { 0,&nbsp; "|", 5, 3, OPR_OR,&nbsp; WTYP_OPERATOR },
+&nbsp;&nbsp; { 0,&nbsp; "&amp;", 5, 3, OPR_AND, WTYP_OPERATOR },
+&nbsp;&nbsp; { 0,&nbsp; ">>",1, 3, OPR_SHR, WTYP_OPERATOR },
+&nbsp;&nbsp; { 0,&nbsp; "&lt;&lt;",0, 3, OPR_SHL, WTYP_OPERATOR },
+&nbsp;&nbsp; { 0,&nbsp; "^", 5, 3, OPR_XOR, WTYP_OPERATOR },
+&nbsp;&nbsp; { 0, "HEX", 2, 3, 16, WTYP_CONVERSION },
+&nbsp;&nbsp; { 0, "DEC", 2, 3, 10, WTYP_CONVERSION },
+&nbsp;&nbsp; { 0, "OCT", 2, 3,&nbsp; 8, WTYP_CONVERSION },
+&nbsp;&nbsp; { 0, "BIN", 2, 3,&nbsp; 2, WTYP_CONVERSION },
+&nbsp;&nbsp; { 0, "U",&nbsp; 5, 3,&nbsp; OPR_UNS, WTYP_SPECIAL },
+&nbsp;&nbsp; { 0, "`",&nbsp; 5, 3,&nbsp; OPR_NEG, WTYP_OPERATOR },
+&nbsp;&nbsp; { 0, "~",&nbsp; 5, 3,&nbsp; OPR_NOT, WTYP_OPERATOR },
+};
+/* Font for all numbers and text */
+char *myFontName =&nbsp;&nbsp;&nbsp; "8x13";
+/* For keeping track of colors */
+GC&nbsp;&nbsp;&nbsp; fgGC;
+GC&nbsp;&nbsp;&nbsp; bgGC;</TT></PRE>
+</BLOCKQUOTE>
+The data in <B>lgray</B> and <B>gray</B> are for making pixmaps
+for tiling in various shades of gray. This program is written to operate
+correctly on any kind of display. If the display is simple monochrome without
+grays, you can still get gray shades by creating different pixmaps with
+slightly different ratios of black and white pixels. The light gray pixmap
+is used for disabled pads, which are not valid in the current base. The
+dark gray pixmap is used for the background of the calculator. Simple pixel
+values of <B>BlackPixel()</B> and <B>WhitePixel()</B> are used for valid
+and selected pads. The symbols <B>BLACK</B>, <B>WHITE</B>, <B>DARKGRAY</B>,
+and <B>LIGHTGRAY</B> are defined to clarify the code. If foreground and
+background colors are specified on the command line, they will also be
+used in the pixmaps, and their colors will be mixed.
+
+<P>The <B>windata</B> structure provides information about
+each subwindow on the calculator: the color, text, position relative to
+the individual pad subwindows, value (digit or symbol), and type of pad.
+The first window in the list of data is the display window, where the entered
+values and results are shown. As you can see, the data for all the windows
+is initialized, except for the color, which is set in <B>initCalc</B>.
+None of these values change during the operation of the program except
+the color and the value in the display window.
+
+<P>The <B>type</B> member of <B>windata</B> indicates which
+of the four major classes of pads the window fits in. These are <B>WTYP_CONVERSION</B>,
+<B>WTYP_DIGIT</B>, <B>WTYP_OPERATOR</B>, and <B>WTYP_SPECIAL</B> and represent
+digits, operators, conversions (bases), and special keys. The special keys
+are Clear All (CA), Clear Digit (CD), Clear Entry (CE), and Unsigned (U).
+Each pad within each type is identified with the <B>value</B> member of
+<B>windata</B>. For digits, this is the digit itself, and for operators,
+conversions, and special keys, it is a symbol representing each key.
+
+<P>Last but not least, <B>fgGC</B> and <B>bgGC</B> are two
+GCs which are used to save the colors between which the pads are changed.
+The pads have to change back and forth between black and white frequently,
+and having one GC for each reduces the traffic to the server.
+
+<P>Without further ado, Example 14-10 shows the <B>initCalc</B>
+routine.
+
+<P><B>basecalc -- the initCalc routine</B>
+<BLOCKQUOTE>
+<PRE><TT>/* Initialize calculator options */
+initCalc ()
+{
+&nbsp;&nbsp; register int win;
+&nbsp;&nbsp; register int found = -1;
+&nbsp;&nbsp; XGCValues values;
+&nbsp;&nbsp; extern char lgray_bits[];
+&nbsp;&nbsp; if ((theFont = XLoadQueryFont (display, myFontName)) == NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "basecalc: can't open font %s\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; myFontName);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(-1);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Make the utility pixmaps */
+&nbsp;&nbsp; grayPixmap = makePixmap(gray_bits, gray_width, gray_height);
+&nbsp;&nbsp; lgrayPixmap = makePixmap(lgray_bits, lgray_width, lgray_height);
+&nbsp;&nbsp; /* Make the utility gc's */
+&nbsp;&nbsp; values.font = theFont->fid;
+&nbsp;&nbsp; values.foreground = foreground;
+&nbsp;&nbsp; fgGC = XCreateGC(display, DefaultRootWindow(display),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GCForeground|GCFont, &amp;values);
+&nbsp;&nbsp; values.foreground = background;
+&nbsp;&nbsp; values.function = GXcopy;
+&nbsp;&nbsp; bgGC = XCreateGC(display, DefaultRootWindow(display),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GCForeground|GCFont|GCFunction, &amp;values);
+&nbsp;&nbsp; /* Loop through buttons, setting disabled buttons
+&nbsp;&nbsp;&nbsp;&nbsp; * to Color Light Gray; also, find the window which
+&nbsp;&nbsp;&nbsp;&nbsp; * corresponds to the starting display base; also
+&nbsp;&nbsp;&nbsp;&nbsp; * add ascent to y position of text */
+&nbsp;&nbsp; for (win = 1; win &lt; NBUTTONS; win++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (windata[win].type == WTYP_CONV &amp;&amp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].value == Base) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; found = win;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (windata[win].type == WTYP_DIG &amp;&amp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].value >= Base) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].color = disabledColor;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (windata[win].type == WTYP_SPEC &amp;&amp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].value == OPR_UNS) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Unsigned)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].text = "U";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].text = "S";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].color = pressedColor;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].color = unpressedColor;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].y += theFont->max_bounds.ascent;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; windata[0].y += theFont->max_bounds.ascent;
+&nbsp;&nbsp; if (found >= 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; winBase = found;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[found].color = pressedColor;
+&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "basecalc: can't use base %d\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Base);
+&nbsp;&nbsp; exit(-1);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; windata[0].color = displayColor;
+}</TT></PRE>
+</BLOCKQUOTE>
+The first action in this routine is to load the font. The
+process of loading and using a font should be familiar to you from the
+discussion and examples in Chapter 6, "Drawing Graphics and Text."
+
+<P>The routine then calls <B>makePixmap</B> to make pixmaps
+out of the <B>lgray</B> and <B>gray</B> data in the include file. This
+routine calls <B>XCreatePixmapFromBitmapData()</B> to convert a single-plane
+pixmap into a pixmap with depth suitable for tiling. Then <B>initCalc</B>
+creates two GCs, each with a different foreground color. These are used
+later in <B>drawButton</B>.
+
+<P>Now <B>initCalc</B> begins a loop through all the window
+data set up in the array of structures called <B>windata</B>. The first
+operation within the loop is to adjust the position of text in each button
+according to the font information. Then the pad colors are set according
+to the <B>Base</B> and <B>Unsigned</B> variables. These variables have
+default values (10 and U), but they may have been updated according to
+the command line or the resource database.
+
+<P>Finally, <B>initCalc</B> sets the color of the display
+window and the current base pad. If the base is not valid, this will not
+have been caught until now, so the routine prints out a message and exits.
+<BR>
+<HR>
+<H2>
+Making Windows</H2>
+The <B>makeWindows</B> routine creates a cursor, sets up
+attributes, and creates the main window, all the pad windows, and the display
+window. It also creates the icon pixmap from data and then uses it as the
+background attribute for creating the icon window. The icon will be tiled
+with this pixmap independent of the icon size. Finally, all the standard
+properties and window manager hints are set.
+
+<P>There is nothing in <B>makeWindows</B> that you have not
+seen in previous examples, so we will not show it here. Look at the code
+in Appendix D, <I>The basecalc Application</I>, if you are interested.
+<BR>
+<HR>
+<H2>
+Selecting Events</H2>
+<B>selectEvents</B> selects events for all the windows of
+the application.
+
+<P><B>basecalc -- the selectEvents routine</B>
+<BLOCKQUOTE>
+<PRE><TT>selectEvents ()
+{
+&nbsp;&nbsp; int win;
+&nbsp;&nbsp; /* Window behind calculator */
+&nbsp;&nbsp; XSelectInput (display, calcWin, KeyPressMask|KeyReleaseMask);
+&nbsp;&nbsp; /* Where results are drawn */
+&nbsp;&nbsp; XSelectInput (display, dispWin, ExposureMask);
+&nbsp;&nbsp; /* Pad windows */
+&nbsp;&nbsp; for (win = 1; win &lt; NBUTTONS; win++)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSelectInput (display, Buttons[win].ID,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ExposureMask|ButtonPressMask|ButtonReleaseMask|
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; EnterWindowMask|LeaveWindowMask);
+}</TT></PRE>
+</BLOCKQUOTE>
+The entire calculator window requires key events, because
+we want to be able to operate the calculator from the keyboard as well
+as with the pointer.
+
+<P>The display window (<B>dispWin</B>) requires exposure
+events, because it must be able to refresh itself for the usual reasons.
+
+<P>All other windows (pads) require exposure events for refresh,
+button events for selection, and border crossing events so that the button
+only needs to be released within a pad to activate the pad. This last feature
+makes it easier to work quickly with the calculator.
+<BR>
+<HR>
+<H2>
+Processing Events</H2>
+The routine in Example 14-12 processes events. The top portion
+of <B>takeEvents</B> converts key events to the corresponding button event,
+and then the bottom sets the colors and flags and draws the button in the
+new color. Key codes are mapped to ASCII with <B>XLookupString()</B>, and
+<B>keyToWin</B> is called to get the offset into <B>windata</B> that is
+represented by this key. When key events occur, the appropriate pad is
+flashed.
+
+<P><B>basecalc -- the takeEvents routine</B>
+<BLOCKQUOTE>
+<PRE><TT>takeEvents ()
+{
+&nbsp;&nbsp; XEvent Event;
+&nbsp;&nbsp; register int win;
+&nbsp;&nbsp; register int Pressed = False;
+&nbsp;&nbsp; register int inWindow = False;
+&nbsp;&nbsp; char buffer[10];
+&nbsp;&nbsp; register char *keyChars = buffer;
+&nbsp;&nbsp; register int keyDown = False;
+&nbsp;&nbsp; int i, nbytes;
+&nbsp;&nbsp; while (1) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Get event if key not down */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!keyDown)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNextEvent (display, &amp;Event);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Event.type = KeyRelease;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Map keyboard events to window events */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Event.type == KeyPress || Event.type == KeyRelease) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; nbytes = XLookupString (&amp;Event, buffer,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sizeof(buffer), NULL, NULL);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Event.type == KeyPress)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Event.type = ButtonPress;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; keyDown = True;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (i=0; i&lt;60000; i++)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ; /* Wait */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Event.type = ButtonRelease;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((Event.xbutton.window =
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; keyToWin (keyChars, nbytes)) == None){
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; keyDown = False;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; continue;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (win=0; win &lt; NBUTTONS; win++)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Buttons[win].ID == Event.xbutton.window)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch (Event.type) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ButtonPress:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (windata[win].color == disabledColor)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Pressed = win;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!keyDown)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; inWindow = True;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].color = pressedColor;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; drawButton (win, 0);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case LeaveNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Pressed != win)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; inWindow = False;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].color = unpressedColor;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; drawButton (win, 0);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case EnterNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (Pressed != win)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; inWindow = True;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].color = pressedColor;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; drawButton (win, 0);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ButtonRelease:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (windata[win].color == disabledColor ||
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Pressed != win) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; keyDown = False;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Pressed = False;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windata[win].color = unpressedColor;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (keyDown || inWindow)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; winPressed (win);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; keyDown = False;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; inWindow = False;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; drawButton (win, 0);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case Expose:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; drawButton (win, 1);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XFlush(display);
+&nbsp;&nbsp; }
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<HR>
+<H2>
+Drawing a Pad</H2>
+This routine simply sets colors and draws the text in a pad.
+Example 14-13 shows the <B>drawButton</B> routine.
+
+<P><B>basecalc -- the drawButton routine</B>
+<BLOCKQUOTE>
+<PRE><TT>/* Draw a single pad with its text */
+drawButton (win, exposeEvent)
+register int win;
+{
+&nbsp;&nbsp; register char *string;
+&nbsp;&nbsp; register int x, y;
+&nbsp;&nbsp; struct windata *winp;
+&nbsp;&nbsp; char *Measure;
+&nbsp;&nbsp; XSetWindowAttributes attributes;
+&nbsp;&nbsp; unsigned long valuemask;
+&nbsp;&nbsp; GC gc;
+&nbsp;&nbsp; winp = &amp;windata[win];
+&nbsp;&nbsp; x = winp->x;
+&nbsp;&nbsp; y = winp->y;
+&nbsp;&nbsp; string = winp->text;
+&nbsp;&nbsp; switch (windata[win].color) {
+&nbsp;&nbsp; case WHITE:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gc = fgGC;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; attributes.background_pixel = background;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; attributes.border_pixel = foreground;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; valuemask = CWBackPixel|CWBorderPixel;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; case BLACK:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gc = bgGC;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; attributes.background_pixel = foreground;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; attributes.border_pixel = background;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; valuemask = CWBackPixel|CWBorderPixel;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; case LIGHTGRAY:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gc = bgGC;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; attributes.background_pixmap = lgrayPixmap;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; attributes.border_pixel = foreground;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; valuemask = CWBackPixmap|CWBorderPixel;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; if (!exposeEvent){
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XChangeWindowAttributes(display, Buttons[win].self,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; valuemask, &amp;attributes);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XClearWindow(display, Buttons[win].self);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; XDrawString (display, Buttons[win].self, gc, x, y, string,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; strlen (string));
+&nbsp;&nbsp; if (win == 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch (Base) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 10:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 8:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Measure = Octmeasure;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; default:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 16:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case&nbsp; 2:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Measure = Hexmeasure;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XDrawString (display, dispWin, gc, 7, 6, Measure, 31);
+&nbsp;&nbsp; }
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<HR>
+<H2>
+Routines Not Shown</H2>
+The following is a brief description of all the subroutines
+of <I>basecalc</I> that were not shown in this chapter. All of these can
+be seen in full in Appendix D, <I>The basecalc Application</I>.
+<DL>
+<DT>
+<B>convButton</B></DT>
+
+<DD>
+Changes the current base and converts a value, if any.</DD>
+
+<DT>
+<B>digitButton</B></DT>
+
+<DD>
+Gets a digit and assigns it to <B>Value</B>.</DD>
+
+<DT>
+<B>displayVal</B></DT>
+
+<DD>
+Calculates appropriate format string for base.</DD>
+
+<DT>
+<B>initTty</B></DT>
+
+<DD>
+Performs system calls to get user's current erase, delete,
+and interrupt characters.</DD>
+
+<DT>
+<B>keyToWin</B></DT>
+
+<DD>
+Translates a keycode as if a pad had been selected.</DD>
+
+<DT>
+<B>makePixmap</B></DT>
+
+<DD>
+Makes a pixmap from bitmap data, shown and described in Chapter
+6, "Drawing Graphics and Text."</DD>
+
+<DT>
+<B>operButton</B></DT>
+
+<DD>
+An operation. Either does it or waits for next value and
+= .</DD>
+
+<DT>
+<B>printInBase</B></DT>
+
+<DD>
+Composes the string that should be displayed. Called from
+<B>Sprintf</B>.</DD>
+
+<DT>
+<B>specButton</B></DT>
+
+<DD>
+Clears a digit, an entry, or all, or toggles unsigned mode.</DD>
+
+<DT>
+<B>Sprintf</B></DT>
+
+<DD>
+A modified version of <B>sprintf</B>, the standard C utility,
+which does not print in binary. <B>Sprintf</B> calls <B>printInBase</B>.</DD>
+
+<DT>
+<B>winPressed</B></DT>
+
+<DD>
+Determines whether pad pressed was a digit, an operator,
+a conversion, or a special pad.</DD>
+</DL>
+
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

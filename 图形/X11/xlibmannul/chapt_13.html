@@ -1,0 +1,1433 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_12.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_14.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H1>
+Managing User Preferences</H1>
+It is a fundamental part of the X philosophy that the user,
+not the application, should be in control of the way things work. For this
+reason, applications should allow the user to specify window geometry and
+many other characteristics both via command line options and in a file
+that specifies default preferences. This chapter discusses the use of the
+resource manager, which helps an application to evaluate and merge its
+own default with user preferences. While the information in this chapter
+is not essential for X programming, it is essential for writing programs
+that will work in ways that users will come to expect. For additional information
+on the resource manager at work, see Chapter 12.
+
+<P>Applications can and should be made user customizable.
+Every application should provide command line options for the most important
+configurable elements of the application, such as colors or patterns for
+the window border and background, foreground colors for drawing, desired
+geometry of the application, fonts, and so on. Furthermore, an application
+should allow users to set all options through the resource database.
+
+<P>A <I>resource</I> is a configurable program option (completely
+different from a server resource, such as a window). There are a set of
+<I>resource files</I> and <I>resource properties</I> that may contain settings
+for program options. When all the resource files and properties are merged
+into a single database by Xlib, the result is called the <I>resource database</I>.
+Each setting for a resource in any of these files or properties or in the
+resource database is called a <I>resource specification</I>. The routines
+and database structures used for managing user preferences are collectively
+referred to as the <I>resource manager</I>.
+
+<P>Prior to X11 Release 2, users stored their resource specifications
+in a file in their home directory called <I>.Xdefaults</I>. Additional
+resource specifications could be stored in a file pointed to by the shell
+environment variable XENVIRONMENT or in a host-specific file called <I>.Xdefaults-host</I>,
+where <I>host</I> is the name of the system where the client is running.
+
+<P>However, experience showed that this approach caused problems
+for users running clients from multiple machines across the network. A
+separate <I>.Xdefaults</I> file had to be maintained for each machine.
+For this reason, the <I>xrdb</I> program was designed to install the user's
+preferences in the <B>XA_RESOURCE_MANAGER</B> property on the root window
+of the current server. In this way, all clients running on the same server
+share the same user preferences. The old mechanism is still supported for
+compatibility, but <I>.Xdefaults</I> is read only if the <B>XA_RESOURCE_MANAGER</B>
+property has not be set with <I>xrdb</I>. Another advantage of having the
+user's resource specifications set with <I>xrdb</I> is that they are stored
+in a property instead of a file, and therefore, they can be more easily
+managed by the session manager (although none of these exist yet), since
+changing a property from a program is much easier than editing a file from
+a program.
+
+<P><B>XGetDefault()</B> provides a simplified interface that
+applications can use to read options from the resource database. However,
+there is also a complete set of resource manager routines, which were originally
+developed for the Xt Toolkit, which can be used to process resources in
+a more thorough and expandable way. The Xt Toolkit resource manager was
+merged into Xlib because the task of managing user preferences is common
+to all X applications. By making the resource manager part of Xlib, the
+developers ensured that all toolkits layered on Xlib will use the same
+mechanism, providing users with a consistent interface. In the Xt Toolkit,
+all objects (called <I>widgets</I>) are configurable through the resource
+database. And as you will see, the object-oriented nature of the Xt Toolkit
+is also apparent in the resource manager. Even though most Xlib applications
+are not object-oriented and therefore cannot take full advantage of the
+capabilities of the resource manager, they can still benefit from using
+it.
+
+<P>All resource manager routines except <B>XGetDefault()</B>
+have names beginning with <I>Xrm</I>, so they are conveniently grouped
+together in <I>Volume Two, Xlib Reference Manual</I>. You must include
+&lt;<I>X11/Xresource.h</I>> to use <B>XGetDefault()</B> or the other resource
+manager functions.
+
+<P>In the following sections, we'll talk about handling user
+preferences using <B>XGetDefault()</B> and using the resource manager routines.
+We'll also talk about how to use <B>XParseGeometry()</B> and <B>XGeometry</B>,
+which parses the standard format for window size and placement preferences
+(whether specified on the command line or in a resource file or property).
+
+<P>After that, we'll discuss the format of the data in the
+resource manager database. The rules for specifying preferences are fairly
+complex, although for most Xlib applications, using them is quite simple.
+
+<P>Finally, we'll talk briefly about some more advanced resource
+manager routines.
+<BR>
+<HR>
+<H2>
+Using XGetDefault()</H2>
+<B>XGetDefault()</B> allows a program to determine a value
+for an option by searching the resource database. In R5 and later, use
+of <B>XGetDefault()</B> is discouraged because it does not read all the
+current resource files and properties; the low level routines described
+in Section 13.2, "Using the Low-level Resource Manager Routines" should
+be used instead.
+
+<P><B>XGetDefault()</B> reads the resource specifications
+from the <B>XA_RESOURCE_MANAGER</B> property in the server or, if that
+is not set, the user's <I>.Xdefaults</I> file. Next, if there is an XENVIRONMENT
+environment variable, then the file specified in it is loaded as well.
+The value returned by <B>XGetDefault()</B> for a particular program/option
+key will be the last match found in this list.
+
+<P>Actually, the <B>XA_RESOURCE_MANAGER</B> property is automatically
+copied from the server into the <B>Display</B> structure returned by <B>XOpenDisplay()</B>.
+Therefore, each call to <B>XGetDefault()</B> does not really read that
+property directly but, instead, a local copy of it. Therefore, <B>XGetDefault()</B>
+does not require a round-trip request and is quite fast.
+
+<P>Unfortunately, <B>XGetDefault()</B> does not do the whole
+job of handling program options. <B>XGetDefault()</B> does not parse the
+command line options or read the application-specific resource file. You
+need to use the other resource manager routines to handle these.
+
+<P>Normally, the command line options are read one at a time,
+and if a command line argument is present for a particular option, it overrides
+any value that might be present in the resource database, and therefore
+<B>XGetDefault()</B> does not need to be called. But if no value for a
+particular option is found, <B>XGetDefault()</B> must be called. If <B>XGetDefault()</B>
+returns a non-NULL string, that is the option value, which usually has
+to be converted into a useful type for the program. If <B>XGetDefault()</B>
+returns <B>NULL</B>, your program needs a default value, which it can read
+from a database file in the <I>app-defaults</I> directory using <B>XrmGetFileDatabase()</B>
+and <B>XrmGetResource()</B> or, less desirable but easier, it can hardcode
+the default values.
+
+<P>The sequence of operation for using <B>XGetDefault()</B>
+is shown in Figure 13-2.
+
+<P><B>Procedure for processing user resource specifications
+with XGetDefault()</B>
+
+<P><IMG SRC="imgs/fig.13.01.gif" ALT="fig.13.01.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;Example 13-1 shows the code for one way to handle
+program options using <B>XGetDefault()</B>. It is taken without modification
+from the X demo <I>puzzle</I>.
+
+<P><B>Handling program options with XGetDefault()</B>
+<BLOCKQUOTE>
+<PRE><TT>#define DEFAULT_SPEED&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2
+int&nbsp;&nbsp;&nbsp;&nbsp; PuzzleSize = 4;
+int&nbsp;&nbsp;&nbsp;&nbsp; PuzzleWidth=4, PuzzleHeight=4;
+char&nbsp;&nbsp;&nbsp; *ProgName;
+int&nbsp;&nbsp;&nbsp;&nbsp; UsePicture = 0;
+int&nbsp;&nbsp;&nbsp;&nbsp; CreateNewColormap = 0;
+char&nbsp;&nbsp;&nbsp; *PictureFileName;
+int&nbsp;&nbsp;&nbsp;&nbsp; TilesPerSecond;
+/* Other global declarations */
+main(argc,argv)&nbsp;&nbsp; /* This is complete */
+int argc;
+char *argv[];
+{
+&nbsp;&nbsp; int i, count;
+&nbsp;&nbsp; char *ServerName, *Geometry;
+&nbsp;&nbsp; char *puzzle_size = NULL;
+&nbsp;&nbsp; char *option;
+&nbsp;&nbsp; ProgName = argv[0];
+&nbsp;&nbsp; ServerName = "";
+&nbsp;&nbsp; Geometry&nbsp;&nbsp; = "";
+&nbsp;&nbsp; TilesPerSecond = -1;
+&nbsp;&nbsp; /********************************/
+&nbsp;&nbsp; /** parse command line options **/
+&nbsp;&nbsp; /********************************/
+&nbsp;&nbsp; for (i=1; i&lt;argc; i++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; char *arg = argv[i];
+&nbsp;&nbsp; if (arg[0] == '-') {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch (arg[1]) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 'd':&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* -display host:display */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (++i >= argc) usage ();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ServerName = argv[i];
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; continue;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 'g':&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* -geometry geom */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (++i >= argc) usage ();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Geometry = argv[i];
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; continue;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 's':&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* -size WxH or -speed n */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (arg[2] == 'i') {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (++i >= argc) usage ();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; puzzle_size = argv[i];
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; continue;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else if (arg[2] == 'p') {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (++i >= argc) usage ();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TilesPerSecond = atoi (argv[i]);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; continue;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; usage ();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 'p':&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* -picture filename */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (++i >= argc) usage ();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; UsePicture++;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; PictureFileName = argv[i];
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; continue;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 'c':&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* -colormap */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CreateNewColormap++;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; continue;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; default:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; usage ();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }&nbsp;&nbsp; /* End switch */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; usage ();
+&nbsp;&nbsp; }&nbsp;&nbsp; /* End for */
+&nbsp;&nbsp; /* Open display here */
+&nbsp;&nbsp; SetupDisplay (ServerName);
+&nbsp;&nbsp; if (!Geometry) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Geometry = XGetDefault (display, ProgName, "Geometry");
+&nbsp;&nbsp; }
+&nbsp;&nbsp; if (!puzzle_size) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; option = XGetDefault (display, ProgName, "Size");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; puzzle_size = option ? option : "4x4";
+&nbsp;&nbsp; }
+&nbsp;&nbsp; if (TilesPerSecond &lt;= 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; option = XGetDefault (display, ProgName, "Speed");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TilesPerSecond = option ? atoi (option) : DEFAULT_SPEED;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; if (!UsePicture) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; option = XGetDefault (display, ProgName, "Picture");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (option) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; UsePicture++;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; PictureFileName = option;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp; }
+&nbsp;&nbsp; if (!CreateNewColormap) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; option = XGetDefault (display, ProgName, "Colormap");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (option) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CreateNewColormap++;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp; }
+&nbsp;&nbsp; sscanf (puzzle_size, "%dx%d", &amp;PuzzleWidth, &amp;PuzzleHeight);
+&nbsp;&nbsp; if (PuzzleWidth &lt; 4 || PuzzleHeight &lt; 4) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf (stderr, "%s:&nbsp; Puzzle size must be at least 4x4\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ProgName);
+&nbsp;&nbsp; exit (1);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; PuzzleSize = min((PuzzleWidth/2)*2,(PuzzleHeight/2)*2);
+&nbsp;&nbsp; Setup (Geometry,argc,argv);
+&nbsp;&nbsp; ProcessInput();
+&nbsp;&nbsp; exit (0);
+}
+static char *help_message[] = {
+&nbsp;&nbsp; "where options include:",
+&nbsp;&nbsp; "&nbsp;&nbsp;&nbsp; -display host:display&nbsp;&nbsp;&nbsp;&nbsp; X server to use",
+&nbsp;&nbsp; "&nbsp;&nbsp;&nbsp; -geometry geom&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; geometry of puzzle window",
+&nbsp;&nbsp; "&nbsp;&nbsp;&nbsp; -size WxH&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; number of squares in puzzle",
+&nbsp;&nbsp; "&nbsp;&nbsp;&nbsp; -speed number&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; tiles to move per second",
+&nbsp;&nbsp; "&nbsp;&nbsp;&nbsp; -picture filename&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; image to use for tiles",
+&nbsp;&nbsp; "&nbsp;&nbsp;&nbsp; -colormap&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; create a new colormap",
+&nbsp;&nbsp; NULL
+};
+usage()
+{
+&nbsp;&nbsp; char **cpp;
+&nbsp;&nbsp; fprintf (stderr, "usage:&nbsp; %s [-options ...]\n\n", ProgName);
+&nbsp;&nbsp; for (cpp = help_message; *cpp; cpp++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf (stderr, "%s\n", *cpp);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; fprintf (stderr, "\n");
+&nbsp;&nbsp; exit (1);
+}</TT></PRE>
+</BLOCKQUOTE>
+In Example 13-1, as in most existing applications, the program
+default values are hardcoded. Ideally, they should be taken from a file
+so that the code does not have to be recompiled to change them. Example
+13-2 shows how this could be added to the code in Example 13-1. Only the
+processing of a single option is shown.
+
+<P><B>Processing geometry option using program resource specifications
+file</B>
+<BLOCKQUOTE>
+<PRE><TT>}
+&nbsp;&nbsp; XrmDatabase applicationDB;
+&nbsp;&nbsp; char *classname = "puzzle";
+&nbsp;&nbsp; char name[255];&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Would be 15 for System V */
+&nbsp;&nbsp; char Geometry[20];
+&nbsp;&nbsp; char Geostr[20];
+&nbsp;&nbsp; char *str_type[20];
+&nbsp;&nbsp; XrmValue value;
+&nbsp;&nbsp; unsigned int border_width;
+&nbsp;&nbsp; unsigned int font_width, font_height;
+&nbsp;&nbsp; int pad_x, pad_y;
+&nbsp;&nbsp; XSizeHints *size_hints;
+&nbsp;&nbsp; int x, y;
+&nbsp;&nbsp; unsigned int width, height;
+&nbsp;&nbsp; int gravity;
+&nbsp;&nbsp; if (!(size_hints = XAllocSizeHints())) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "%s: failure allocating memory, progname);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(0);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* set program's default size hints as demonstrated in Chapter 3 */
+&nbsp;&nbsp; for (i=1; i&lt;argc; i++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; char *arg = argv[i];
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (arg[0] == '-') {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch (arg[1]) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 'g':&nbsp;&nbsp; /* -geometry geom */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (++i >= argc) usage ();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Geometry = argv[i];
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; continue;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; usage();
+&nbsp;&nbsp; }
+&nbsp;&nbsp; if (!Geometry) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Geometry = XGetDefault (display, ProgName, "Geometry");
+&nbsp;&nbsp; }
+&nbsp;&nbsp; (void) strcpy(name, "/usr/lib/X11/app-defaults/");
+&nbsp;&nbsp; (void) strcat(name, classname);
+&nbsp;&nbsp; /* Get application resource specifications file, if any */
+&nbsp;&nbsp; if ((applicationDB = XrmGetFileDatabase(name)) == NULL)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "%s: program default file not found",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ProgName);
+&nbsp;&nbsp; /* Get the program default geometry string regardless of
+&nbsp;&nbsp;&nbsp; * whether it has been specified on command line or in
+&nbsp;&nbsp;&nbsp; * resource database, because those specifications may be
+&nbsp;&nbsp;&nbsp; * partial; we're going to use XGeometry to fill in the gaps */
+&nbsp;&nbsp; if (XrmGetResource(applicationDB, "puzzle.geometry",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Puzzle.Geometry",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; str_type, &amp;value) == True) {
+&nbsp;&nbsp; (void) strncpy(Geostr, value.addr, (int) value.size);
+&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "%s: default geometry option not found",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ProgName);
+&nbsp;&nbsp; Geostr[0] = NULL;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; XWMGeometry(display, screen_num, Geometry, Geostr,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (border_width = 0), size_hints,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (pad_x = 0), (pad_y = 0), &amp;x, &amp;y, &amp;width, &amp;height, &amp;gravity);
+&nbsp;&nbsp; /* Now x, y, width, and height are the specs to use when
+&nbsp;&nbsp;&nbsp; * creating the window and nothing has been hardcoded */</TT></PRE>
+</BLOCKQUOTE>
+
+<HR>
+<H2>
+Using the Low-level Resource Manager Routines</H2>
+As you can see, handling program options properly with <B>XGetDefault()</B>
+is not trivial, even though <B>XGetDefault()</B> is supposed to be the
+simple interface to the resource manager. Also, <B>XGetDefault()</B> does
+not read all the resource files and properties that an application should
+use. It is not any easier to use the low-level resource manager calls,
+but they do a more thorough job.
+
+<P>For one, there is a single routine that takes care of
+parsing the command line and loading the values found there into the resource
+database. Secondly, there are several more resource files that <B>XGetDefault()</B>
+does not read but that an application really should. You can mechanize
+the whole process of handling program options by turning every set of options
+into a database, merging them into a single database, and then extracting
+the correct values. The resulting code is easier to expand or modify than
+code that uses <B>XGetDefault()</B>.
+
+<P>First, let's describe the additional resource files that
+we will handle with the low-level resource manager routines.
+<H3>
+Resource Files and Merging</H3>
+All applications need fallback settings for all configurable
+options in case the user does not set these options. Instead of hardcoding
+these as defined constants, they can be placed in another resource file.
+Then if they need to be changed by the application writer, only the resource
+file needs editing, and the application does not need to be recompiled.
+Another advantage of this approach is that it allows all fixed text in
+the application to be specified in resource files instead of in the code,
+and this makes it easier to convert an application to a foreign language.
+The application-specific resource specifications can also be stored in
+a file in the directory <I>/usr/lib/X11/app-defaults</I>. (Each file should
+have the same name as the application itself, except with the first letter
+capitalized, unless the application name begins with an X, in which case
+the first two letters can be capitalized.)
+
+<P>The other additional resource files add flexibility; each
+is intended to be set by either the user, the application writer, or the
+system administrator. More are for foreign language conversion. The user
+will only be expected to use the <I>.Xdefaults</I> file or the property
+set by the <I>xrdb</I> utility. The complete set of resource files and
+properties and the order in which they are merged as of R4 as follows:
+<UL>
+<LI>
+<I>Classname</I> file in the <I>app-defaults</I> directory.</LI>
+
+<LI>
+<I>Classname</I> file in the directory specified by the XUSERFILESEARCHPATH
+or XAPPLRESDIR environment variables.</LI>
+
+<LI>
+Property set using <I>xrdb</I>, accessible through the <B>XResourceManagerString()</B>
+macro or, if that is empty, the <I>.Xdefaults</I> file in the user's home
+directory.</LI>
+
+<LI>
+File specified by the XENVIRONMENT environment variable or,
+if not set, the <I>.Xdefaults-hostname</I> file in the user's home directory.</LI>
+
+<LI>
+Command line arguments.</LI>
+</UL>
+The order in which the various options are merged is important.
+A value for an option in the user's resource specifications should override
+the program's default for that option, but a value on the command line
+would override both the program's and the user's default value.
+
+<P>In R5 and later, the order of merging defined by the Xt
+Intrinsics sets the standard in this area now that <B>XGetDefault()</B>
+is not recommended. For complete information on the order of merging done
+by Xt, see Chapter 6 in the <I>Programmer's Supplement for Release 5</I>
+or <I>Volume Four, X Toolkit Intrinsics Programming Manual</I>.
+<H3>
+Including Files in a Resource File</H3>
+The Xrm functions that read resources from files, <B>XrmGetFileDatabase()</B>
+and <B>XrmCombineFileDatabase()</B> (new in R5), recognize a line of the
+form:
+<BLOCKQUOTE>
+<PRE><TT>#include "filename"</TT></PRE>
+</BLOCKQUOTE>
+as a command to include the named file at that point. The
+directory of the included file is interpreted relative to the directory
+of the file in which the include statement occurred. Included files may
+themselves contain <B>#include</B> directives, and there is no specified
+limit to the depth of this nesting. Note that the C syntax <B>#include</B>
+&lt;filename> is not supported; neither Xlib nor Xt defines a search path
+for included files.
+
+<P>The ability to include files is useful when producing
+a special app-defaults file for use on a color screen, for example, you
+can simply include the monochrome app-defaults file and then set or override
+the color resources as you desire. This technique is particularly useful
+when producing app-defaults files for use with the customization resource
+defined by the Xt Intrinsics. Example 13-3 shows a hypothetical color resource
+file for the "xmail" application.
+
+<P><B>The resource file XMail-color.</B>
+<BLOCKQUOTE>
+<PRE><TT>! include the basic (monochrome) defaults
+#include "XMail"
+! and augment them with color
+*Background: tan
+*Foreground: navy blue
+*Command*Foreground: red
+*to*Background: grey
+*subject*Background: grey</TT></PRE>
+</BLOCKQUOTE>
+Do not confuse this file inclusion syntax with the <B>#include</B>,
+<B>#ifdef</B>, etc. syntax provided by the program <I>xrdb</I>. That program
+invokes the C preprocessor to provide C include, macro, and conditional
+processing. The include functionality described here is provided directly
+by Xlib.
+<H3>
+Resource Properties</H3>
+<B>XResourceManagerString()</B>, returns the contents of
+the <B>RESOURCE_MANAGER</B> property on the root window of the default
+screen of the display. This property contains the user's resource customizations
+in string form, and is usually set with the program <I>xrdb</I>. The contents
+of this property should be merged in when creating the resource database
+to be used by an application. Until R5 this single <B>RESOURCE_MANAGER</B>
+property contained resources for all screens of a display, and there was
+no way for a user to specify different resources for different screens
+(for example, color vs. monochrome).
+
+<P>In R5, <I>xrdb</I> can set resources in the <B>SCREEN_RESOURCES</B>
+property on the root window of each screen of a display. Now the specifications
+in the <B>SCREEN_RESOURCES</B> property should be used to override the
+screen-independent <B>RESOURCE_MANAGER</B> specifications. The resource
+database that is created in this way is the database of the screen, rather
+than the database of the display. If the same application is executed on
+different screens of a display, or if a single application creates top-level
+windows on more than one screen of a display, a resource database will
+be created for each screen, and the application instances or top-level
+windows will find resources in them that are appropriate for that screen.
+
+<P>Two new functions support screen-dependent resources and
+resource databases. The contents of the <B>SCREEN_RESOURCES</B> property
+on the root window of a screen are returned by the function <B>XScreenResourceString()</B>.
+
+<P>The client <I>xrdb</I> has been rewritten for R5 to handle
+the new screen-specific properties. Any load, merge, or query operation
+can now be performed on the global <B>RESOURCE_MANAGER</B> property, a
+specific screen property, all screen properties, or all screen properties
+plus the global property. This last option is the default and "does the
+right thing"--the input file is processed through the C preprocessor once
+for each screen, and resource specifications that would appear in all of
+the per-screen properties are placed in the global property and removed
+from the screen-specific properties. With this new system, a defaults file
+which uses <B>#ifdef COLOR</B> to separate color from monochrome resource
+specifications can be used to correctly set the values of the screen-dependent
+and screen-independent properties for a two-screen monochrome-and-color
+display. An application can then be run on either screen and find the correct
+user defaults for that screen. Example 13-4 shows a user default file that
+takes advantage of the <I>xrdb</I> functionality to set different defaults
+on color and monochrome screens.
+
+<P><B>A user defaults file for color and monochrome screens</B>
+<BLOCKQUOTE>
+<PRE><TT>! generic, non-color resources
+*Font: -*-courier-medium-r-*-*-*-180-75-75-*-*-iso8859-1
+xclock.geometry: -0+0
+#ifdef COLOR
+! resources for color screens here
+*Background: grey
+*Foreground: navy blue
+XTerm*Foreground: maroon
+#else
+! resources for monochrome screens here
+XTerm*reverseVideo: true
+#endif</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+The Low Level Xrm Routines</H3>
+The basic routines that every application that processes
+resources this way will include:
+<DL>
+<DT>
+<B>XrmInitialize()</B></DT>
+
+<DD>
+Initializes the resource manager database. Must be called
+before any other routines.</DD>
+
+<DT>
+<B>XrmParseCommand()</B></DT>
+
+<DD>
+Parses command line options into a data structure compatible
+with other resource manager routines. Various styles of command line options
+(with or without arguments and with various styles of arguments) are supported.</DD>
+
+<DT>
+<B>XrmGetFileDatabase()</B></DT>
+
+<DD>
+Reads a resource file and stores the data in a resource manager
+database structure. This routine can be used to read the <I>.Xdefaults</I>
+file, the <I>app-defaults/*</I> file, and the file (if any) pointed to
+by the XENVIRONMENT environment variable.</DD>
+
+<DT>
+<B>XrmGetStringDatabase()</B></DT>
+
+<DD>
+Reads preferences from a string. This routine can be used
+to read resource specifications from the copy of the <B>XA_RESOURCE_MANAGER</B>
+property stored in the <B>Display</B> structure.</DD>
+
+<DT>
+<B>XrmMergeDatabases()</B></DT>
+
+<DD>
+Merges databases created with other routines into a single
+combined database. This routine is used to combine the separate resource
+databases created with the functions described immediately above. The order
+in which the various databases are merged determines which databases take
+precedence.</DD>
+
+<DT>
+<B>XrmGetResource()</B></DT>
+
+<DD>
+Extract a resource definition from the database so that it
+can be used to set program variables.</DD>
+</DL>
+Several new functions were added to Xlib in R5 to support
+changes in the Xt Intrinsics. Some Xlib applications may find these useful:
+<DL>
+<DT>
+<B>XrmSetDatabase()</B></DT>
+
+<DD>
+Associates a resource database with a display. This function
+is useful in applications that manipulate multiple displays or multiple
+databases. New in R5.</DD>
+
+<DT>
+<B>XrmGetDatabase()</B></DT>
+
+<DD>
+Queries the database of a display. This function is useful
+in applications that manipulate multiple displays or multiple databases.
+New in R5.</DD>
+
+<DT>
+<B>XrmLocaleOfDatabase()</B></DT>
+
+<DD>
+Returns the locale of a resource database (for internationalization).
+New in R5.</DD>
+
+<DT>
+<B>XrmCombineDatabase()</B></DT>
+
+<DD>
+Merge the contents of two resource databases stored in memory.
+New in R5. This is more flexible than <B>XrmMergeDatabases()</B>.</DD>
+
+<DT>
+<B>XrmCombineFileDatabase()</B></DT>
+
+<DD>
+Merge the contents of two databases read from files. New
+in R5. This is more flexible than <B>XrmMergeDatabases()</B>.</DD>
+
+<DT>
+<B>XrmEnumerateDatabase()</B></DT>
+
+<DD>
+Calls a user-supplied procedure once for each entry in a
+resource database that matches any completion of a specified partial name
+and class list. The enumeration can be performed a single level below these
+name and class prefixes, or for all levels below. New in R5.</DD>
+</DL>
+The sequence of operations for a typical R4 application is
+shown in Figure 13-2. For the R5 order of merging resource files and properties,
+see <I>Volume Four, X Toolkit Intrinsics Programming Manual</I>.
+
+<P><B>R4 Procedure for processing resource specifications
+with resource manager functions</B>
+
+<P><IMG SRC="imgs/fig.13.02.gif" ALT="fig.13.02.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;Routines that use these functions are shown and
+described in Chapter 14, "A Complete Application."
+<BR>
+<HR>
+<H2>
+Standard Geometry</H2>
+One of the preferences that must be handled by clients is
+the preferred size and placement of a window or icon. By convention, rather
+than having the user specify various elements of the size and placement
+with separate options, clients accept a single <I>standard geometry string</I>,
+which has the following format:
+<BLOCKQUOTE>
+<PRE><TT>&lt;width>x&lt;height>{+-}&lt;xoffset>{+-}&lt;yoffset></TT></PRE>
+</BLOCKQUOTE>
+Items enclosed in &lt;> are integers, and items enclosed
+in {} are a set from which one item is allowed. The xoffset and yoffset
+values are optional. They determine the position of the window or icon--for
+the top-level window, they are, by convention, interpreted relative to
+the origin of the root window. The convention is that if the sign of xoffset
+or yoffset is positive, they specify that the offset is measured from the
+top or left edge of the application window to the top or left edge of the
+screen. If the sign of xoffset or yoffset is negative, they specify that
+the offset is measured from the bottom or right edge of the application
+window to the bottom or right edge of the screen.
+
+<P>After being read in from the command line or from a preference
+file, this string can be separated into separate <B>x</B>, <B>y</B>, <B>width</B>,
+and <B>height</B> values with <B>XParseGeometry()</B>. See Chapter 14,
+"A Complete Application "for an example that uses <B>XParseGeometry()</B>.
+
+<P>In addition, there is a function called <B>XWMGeometry()</B>
+that can be used to parse a partial geometry specification from the user.
+<B>XWMGeometry()</B> takes a geometry string specified (presumably) by
+the user, which might not be complete, and the set of size hints that define
+the programs desired geometry. If the user-specified string specifies an
+element of the geometry, that value is used; otherwise, the corresponding
+value from program's default geometry string is used. The resulting values
+are used to set the window manager hints.
+
+<P><B>XWMGeometry</B> returns a <B>win_gravity</B> value.
+After calling <B>XWMGeometry</B>, the application should pass this value
+on to <B>XSetWMProperties()</B>, as described in Section 4.3.4, "Window
+Gravity." The values returned can be <B>NorthEastGravity</B>, <B>NorthWestGravity</B>,
+<B>SouthEastGravity</B> or <B>SouthWestGravity</B>.
+
+<P>These functions should not be confused with <B>XGetGeometry()</B>,
+which gets from the server the current geometry string, border width, depth,
+and root window of the specified window.
+<BR>
+<HR>
+<H2>
+Resource Specification and Matching</H2>
+A resource specification consists of an optional name of
+a client, followed by one or more predefined variables that indicate the
+preference to set, followed by a colon, optional white space, and the actual
+value of the preference.
+
+<P>The format of these preference strings is most easily
+seen by looking at a resource database file, such as the one shown in Example
+13-5.
+
+<P><B>A simple resource database file</B>
+<BLOCKQUOTE>
+<PRE><TT>*font:&nbsp;&nbsp; fixed
+.borderWidth:&nbsp;&nbsp; 2
+xterm.scrollBar:&nbsp;&nbsp; on
+xterm.title:&nbsp;&nbsp; xterm
+xterm.windowName:&nbsp;&nbsp; xterm
+xterm.boldFont:&nbsp;&nbsp; 8x13
+xterm.curses:&nbsp;&nbsp; off
+xterm.internalBorder:&nbsp;&nbsp; 2
+xterm.iconStartup:&nbsp;&nbsp; off
+xterm.jumpScroll:&nbsp;&nbsp; on
+xterm.reverseWrap:&nbsp;&nbsp; true
+xterm.saveLines:&nbsp;&nbsp; 700
+xterm.visualBell:&nbsp;&nbsp; off</TT></PRE>
+</BLOCKQUOTE>
+The options which begin with a period apply to all programs
+unless overruled by a program-specific entry with the same resource name.
+The last element between a period or asterisk and the colon is the resource
+name.
+
+<P>This simple example demonstrates the rules as commonly
+practiced in Xlib applications. However, there are a number of additional
+rules that come into play in more complex, object-oriented applications,
+such as those written with the Xt Toolkit. Preferences may apply only to
+a particular subwindow within an application. For example, the <I>xmh</I>
+mail handler allows the user to set preferences for multiple levels of
+windows. These levels can be specified explicitly or by using a wildcard
+syntax denoted by the asterisk.
+
+<P>As a result, you should think of the syntax for preference
+specifications, not as: <I>client.keyword: value</I> but as: <I>object...subobject...resourcename:
+value</I> where the hierarchy of objects and subobjects not only usually
+corresponds to major structures within an application (such as windows,
+panels, menus, scrollbars, and so on) but also can be a class of such objects.
+
+<P>Individual elements in the hierarchy of objects and subobjects
+are called <I>components</I>. Component names can be either <I>instance
+names</I> or <I>class names</I>. By convention, instance names always begin
+with a lowercase letter, while class names always begin with an uppercase
+letter. Instances and classes are concepts in object-oriented programming,
+not normally used in Xlib programming. For a detailed description of instance
+and classes and how they appear in resource specifications, see <I>Volume
+Four, X Toolkit Intrinsics Programming Manual</I>.
+
+<P>Both instance and class names may include either uppercase
+or lowercase letters anywhere but in the starting position; in fact, for
+clarity, a component name is often made up of multiple words concatenated
+without spaces, with an initial capital serving as the word delimiter.
+For example, <B>buttonBox</B> might be the instance name for a window containing
+command buttons, while <B>ButtonBox</B> would be the corresponding class
+name.
+
+<P>For example, consider a hypothetical mail-reading program
+called <I>xmail</I>, which is similar to the current <I>xmh</I> application.&nbsp;
+As shown in Figure 13-3, <I>xmail</I> is designed in such a manner that
+it uses a complex window hierarchy, all the way down to individual command
+buttons which are small subwindows. If each window is properly assigned
+a name and class, it becomes easy for the user to specify attributes of
+any portion of the application.
+
+<P><B>The hypothetical xmail display</B>
+
+<P><IMG SRC="imgs/fig.13.03.gif" ALT="fig.13.03.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;The top-level window is called <B>xmail</B>. It
+contains a series of vertically-stacked windows (panes), one of which contains
+all the command buttons controlling the program's functions. This control
+pane is named <B>toc</B> (table of contents). One of the command buttons
+is used to incorporate (fetch) new mail.
+
+<P>This button needs the following resources:
+<UL>
+<LI>
+Label string</LI>
+
+<LI>
+Font</LI>
+
+<LI>
+Foreground color</LI>
+
+<LI>
+Background color</LI>
+
+<LI>
+Foreground color for its highlighted state</LI>
+
+<LI>
+Background color for its highlighted state</LI>
+</UL>
+A full instance name specifying the background color of the
+include button might be:
+<BLOCKQUOTE>
+<PRE><TT>xmail.toc.includeButton.backgroundColor</TT></PRE>
+</BLOCKQUOTE>
+Defining class names allows the user to set resource values
+more freely. The pane containing the buttons could be of class <B>ButtonBox</B>,
+and the buttons themselves are all of class <B>CommandButton</B>. Therefore,
+the background of all the buttons could be identified with:
+<BLOCKQUOTE>
+<PRE><TT>Xmail.ButtonBox.CommandButton.BackgroundColor</TT></PRE>
+</BLOCKQUOTE>
+The user could do something like this:
+<BLOCKQUOTE>
+<PRE><TT>Xmail.ButtonBox.CommandButton.BackgroundColor:&nbsp; blue
+xmail.toc.includeButton.backgroundColor:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; red</TT></PRE>
+</BLOCKQUOTE>
+which would make all command buttons blue except the one
+instance specified (<B>includeButton</B>), which would be red.
+
+<P>It might not be immediately apparent how you could use
+a class for the name of the application itself. However, consider the emacs
+family of text editors. Microemacs and GNU emacs could both be considered
+members of the class <B>Emacs</B>. Or assume that you were using a toolkit
+to build a group of applications with a similar user interface. It might
+be desirable to let the user specify attributes for features of all these
+applications. You might define a general class of vertically paned applications
+called <B>Vpane</B>.
+
+<P>The distinction between instance names and class names
+becomes important when you are retrieving an option value from the resource
+database. Routines such as <B>XrmGetResource()</B> that retrieve data from
+the database must specify two separate strings (<I>retrieval keys</I>)--one
+made up completely of instance names, and the other of class names. Both
+strings must be fully specified.
+<H3>
+Tight Bindings and Loose Bindings</H3>
+The components in a resource specification can be bound together
+in two ways: by a tight binding (a dot, .) or by a loose binding (an asterisk,
+*). Thus, <B>xmail.toc. background</B> has three name components tightly
+bound together, while <B>Vpane*Command.foreground</B> uses both a loose
+and a tight binding.
+
+<P>Bindings can precede the first component but may not follow
+the last component. By convention, if no binding is specified before the
+first component, a tight binding is assumed. For example, <B>xmail.background</B>
+and <B>.xmail.background</B> both begin with tight bindings before the
+<B>xmail</B>, while <B>*xmail.background</B> begins with a loose binding.
+
+<P>The difference between tight and loose bindings comes
+when a function like <B>XrmGetResource()</B> is comparing two resource
+specifications. A tight binding means that the components on either side
+of the binding must be sequential. A loose binding is a sort of wildcard,
+meaning that there may be unspecified components between the two components
+that are loosely bound together. For example, <B>xmail.toc.background</B>
+would match <B>xmail*background</B> and <B>*background</B>, but not <B>xmail.background</B>
+or <B>background</B>.
+
+<P>Because loose bindings are flexible, they are very useful
+for defining resource specifications. They allow resource specifications
+to match many specific applications and will still match if the applications
+are slightly changed (for example, if an extra level is inserted into the
+hierarchy.)
+
+<P>A resource specification used to store data into the database
+can use both loose and tight bindings. This allows the user to specify
+a data value which can match many different retrieval keys. In contrast,
+retrieval keys from the database can use only tight bindings. You can only
+look up one item in the database at a time.
+
+<P>Remember also that a resource specification can mix name
+and class components, while the retrieval keys are a pair of specifications
+without values, one consisting purely of name (first character lowercase)
+components and one consisting purely of class (first character uppercase)
+components.
+<H3>
+Wildcarding Resource Component Names</H3>
+In R5 and later, resource databases allow the character <B>?</B>
+to be used to wildcard a single component (name or class) in a resource
+specification. Thus the specification:
+<BLOCKQUOTE>
+<PRE><TT>xmail.?.?.Background: antique white</TT></PRE>
+</BLOCKQUOTE>
+sets the background color for all widgets (and only those
+widgets) that are grandchildren of the top-level window of the application
+<B>xmail</B>. And the specification:
+<BLOCKQUOTE>
+<PRE><TT>xmail.?.?*Background: brick red</TT></PRE>
+</BLOCKQUOTE>
+sets the background color of the grandchildren of the top-level
+window and all of their descendants. It does not set the background color
+for the child of the top-level window or for any popup windows. These kinds
+of specifications simply cannot be done without the <B>?</B> wildcard;
+sometimes the <B>*</B> wildcard does not provide the necessary fine-grained
+control. To set the background of all the grandchildren of an application
+window without the <B>?</B> wildcard, it would be necessary to specify
+the background for each grandchild individually.
+
+<P>There is one obvious restriction on the use of the <B>?</B>
+wildcard: it cannot be used as the final component in a resource specification--you
+can wildcard widget names, but not the resource name itself. Also, remember
+that the wildcard <B>?</B> (like the wildcard <B>*</B>) means a different
+thing in a resource file than it does on a UNIX command line.
+
+<P>The <B>?</B> wildcard is convenient in cases like those
+above, but it has more subtle uses that have to do with its precedence
+with respect to the <B>*</B> wildcard. First, note the important distinctions
+between the <B>?</B> and the <B>*</B> wildcards: a <B>?</B> wildcards a
+single component name or class and falls between two periods (unless it
+is the first component in a specification), while the <B>*</B> indicates
+a "loose binding" (in the terminology of the resource manager) and falls
+between two component names or classes. A <B>?</B> does not specify the
+name or class of a resource component, but does at least specify the existence
+of a component. The <B>*</B> on the other hand only specifies that zero
+or more components have been omitted from the resource.
+
+<P>Recall that in order to look up the value of a resource,
+an application must provide a fully specified resource name, i.e., the
+name and class of each resource component. The returned value will be from
+the resource in the database that most closely matches the full resource
+specification provided by the application. To determine which resource
+matches best, the full resource specification is scanned from left to right,
+one component at a time. When there is more than one possible match for
+a component name, the following rules are applied: As these rules are applied,
+component by component, entries in the resource database are eliminated
+until there are none remaining or until there is a single matching entry
+remaining after the last component has been checked. These rules are not
+new with R5; they have simply been updated to accommodate the new <B>?</B>
+wildcard.
+
+<P>With these rules of precedence in mind, consider what
+happens when users specify a line like <B>*Background: grey</B> in their
+personal resource files. They would like to set the background of all widgets
+in all applications to grey, but if the app-defaults file for the application
+"xmail" has a specification of the form <B>*Dialog*Background: peach</B>,
+the background of the dialog boxes in the xmail application will be peach-colored,
+because this second specification is more specific. So if they really don't
+like those peach dialog boxes, (pre-R5) users will have to add a line like
+<B>XMail*Background: grey</B> to their personal resource files, and will
+have to add similar lines for any other applications that specify colors
+like "xmail" does. The reason this line works is rule 1 above: at the first
+level of the resource specification, "XMail" is a closer match than <B>*</B>.
+
+<P>This brings us to the specific reason that the <B>?</B>
+wildcard was introduced: any resource specification that "specifies" an
+application name with a <B>?</B> takes precedence over a specification
+that elides the application name with a <B>*</B>, no matter how specific
+the <I>rest</I> of that specification is. So in R5, the frustrated users
+mentioned above could add the single line:
+<BLOCKQUOTE>
+<PRE><TT>?*Background: grey</TT></PRE>
+</BLOCKQUOTE>
+to their personal resource files and achieve the desired
+result. The sequence <B>?*</B> is odd-looking, but correct. The <B>?</B>
+replaces a component name, and the <B>*</B> is resource binding, like a
+dot (<B>.</B>).
+
+<P>The solution described above relies, of course, on the
+assumption that no app-defaults files will specify an application name
+in a more specific way than the user's <B>?</B>. If the "xmail" app-defaults
+file contained one of the following lines:
+<BLOCKQUOTE>
+<PRE><TT>xmail*Dialog*Background: peach
+XMail*Background: maroon</TT></PRE>
+</BLOCKQUOTE>
+then the user would be forced to explicitly override them,
+and the <B>?</B> wildcard would not help. To allow for easy customization,
+programmers should write app-defaults files that do not use the name or
+class of the application, except in certain critical resources that the
+user should not be able to trivially or accidentally override. The standard
+R5 clients have app-defaults files written in this way.
+<H3>
+The -name Option</H3>
+If you set up your resource specifications to use the class
+name for a program instead of an instance name, users can then list instance
+resources under an arbitrary name that they specify with the <I>-name</I>
+option to a program. For example, if <I>xterm</I> were set up this way,
+with the following resources defined:
+<BLOCKQUOTE>
+<PRE><TT>XTerm*Font:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 6x10
+smallxterm*Font:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3x5
+smallxterm*Geometry:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 80x10
+bigxterm*Font:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 9x15
+bigxterm*Geometry:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 80x55</TT></PRE>
+</BLOCKQUOTE>
+the user could use the following commands to create <I>xterm</I>s
+of different sizes:
+<BLOCKQUOTE>
+<PRE><TT>xterm &amp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <I>(create a normal xterm)
+</I>xterm -name smallxterm&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <I>(create a small xterm)
+</I>xterm -name bigxterm&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <I>(create a big xterm)</I></TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Storage/Access Rules</H3>
+As described in Section 13.2, "Using the Low-level Resource
+Manager Routines," Xlib merges the various sources of resource databases
+into a single database when an application starts up. When your application
+requests a value for a particular parameter from the resource database,
+using <B>XrmGetResource()</B>, this is called a <I>query</I>. The query
+takes completely specified instance and class names that we will call <I>retrieval
+keys</I>, and selects the most closely matching resource specifications
+from the database. The magic of the resource manager is that it always
+returns a single value even if multiple entries in the database match the
+retrieval keys. The algorithm for determining which resource database entry
+best matches a given query is the heart of the resource manager.
+
+<P>The resource manager compares component by component,
+matching a component from the resource specification against both the corresponding
+component from the instance retrieval key and the corresponding component
+from the class retrieval key. If the resource specification component matches
+either retrieval key component, then that component is considered to match.
+For example, the resource specification <B>xmail.toc.Foreground</B> matches
+the instance retrieval key <B>xmail.toc.foreground</B> and the class retrieval
+key <B>Vpane.Box.Foreground</B>.
+
+<P>Because the resource manager allows loose bindings (wildcards)
+and mixing names and classes in the resource specification, it is possible
+for many resource specifications to match a single instance/class retrieval
+key pair. To solve this problem, the resource manager uses the following
+precedence rules to determine which is the best match (and only the value
+from that match will be returned). To determine which of two resource specifications
+takes precedence, each level (and each binding) of the two resource specifications
+is compared, starting from the colon and working from right to left. Each
+of the rules is applied at each level, before moving to the next level,
+until only one resource specification remains. The precedence rules starting
+from the highest precedence are as follows:
+<OL>
+<LI>
+A resource that matches the current component by name, by
+class, or with the <B>?</B> wildcard takes precedence over an resource
+that omits the current component by using a <B>*</B>.</LI>
+
+<LI>
+*topLevel.quit.background: <I>and</I> *topLevel.Command.background:
+<I>and</I> *topLevel.?.background: <I>take precedence over</I> *topLevel*background:</LI>
+
+<LI>
+A resource that matches the current component by name takes
+precedence over a resource that matches it by class, and both take precedence
+over a resource that matches it with the <B>?</B> wildcard.</LI>
+
+<LI>
+*quit.background: <I>takes precedence over</I> *Command.background:
+<I>takes precedence over</I> *?.background:</LI>
+
+<LI>
+A resource in which the current component is preceded by
+a dot (<B>.</B>) takes precedence over a resource in which the current
+component is preceded by a <B>*</B>.</LI>
+
+<LI>
+*box.background: <I>takes precedence over</I> *box*background:</LI>
+</OL>
+Situations where both rule 2 and rule 3 apply often cause
+confusion. In these cases, remember that rule 2 takes precedence since
+it occurs earlier in the list above. Here is an example:
+<BLOCKQUOTE>
+<PRE><TT>*box*background:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <I>takes precedence over
+</I>*box.Background:</TT></PRE>
+</BLOCKQUOTE>
+As an example of applying these rules, assume the following
+user preference specifications:
+<BLOCKQUOTE>
+<PRE><TT>xmail*background:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; red
+*command.font:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 8x13
+*command.background:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; blue
+*Command.Foreground:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; green
+xmail.toc*Command.activeForeground:&nbsp;&nbsp;&nbsp;&nbsp; black
+xmail.toc.border:&nbsp;&nbsp; 3</TT></PRE>
+</BLOCKQUOTE>
+A query for the name:
+<BLOCKQUOTE>
+<PRE><TT>xmail.toc.messageFunctions.include.activeForeground</TT></PRE>
+</BLOCKQUOTE>
+and class:
+<BLOCKQUOTE>
+<PRE><TT>Vpane.Box.SubBox.Command.Foreground</TT></PRE>
+</BLOCKQUOTE>
+would match <B>xmail.toc*Command.activeForeground</B> and
+return "black." However, it also matches <B>*Command.Foreground</B> but
+with lower preference, so it would not return "green."
+
+<P>The programmer should think carefully when deciding which
+classes to use. For example, many text applications have some notion of
+background, foreground, border, pointer, and cursor or marker color. Usually
+the background is set to one color, and all of the other attributes are
+set to another, so that they may be seen on a monochrome display. To allow
+users of color displays to set any or all of them, the colors might be
+organized into classes as follows:
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 13-1 : </B>Setting Classes</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Instance</TH>
+
+<TH>Class</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>background</B></TD>
+
+<TD><B>Background</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>foreground</B></TD>
+
+<TD><B>Foreground</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>borderColor</B></TD>
+
+<TD><B>Foreground</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>pointerColor</B></TD>
+
+<TD><B>Foreground</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>cursorColor</B></TD>
+
+<TD><B>Foreground</B></TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>Then to configure the application to run in "monochrome"
+mode but using two colors, the user would have to use only two specifications:
+<BLOCKQUOTE>
+<PRE><TT>obj*Background:&nbsp; blue
+obj*Foreground:&nbsp; red</TT></PRE>
+</BLOCKQUOTE>
+Then if the user decided to make the cursor yellow but have
+the pointer and the border remain the same as the foreground, you would
+need only one new resource specification:
+<BLOCKQUOTE>
+<PRE><TT>obj*cursorColor: yellow</TT></PRE>
+</BLOCKQUOTE>
+All the resource manager rules for matching and precedence
+are explained in more detail in <I>Volume Four, X Toolkit Intrinsics Programming
+Manual</I>.
+<H3>
+Resource Manager Values and Representation Types</H3>
+The resource manager stores character strings in a structure
+called an <B>XrmValue</B>. Physically, database values consist of a size
+and an address. The size is specified in machine-dependent units, while
+the address is a machine-dependent pointer to the character string in uninterpreted
+machine memory.
+
+<P>The declaration of the <B>XrmValue</B> is shown in Example
+13-6.
+
+<P><B>The XrmValue structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp;&nbsp; unsigned int size;
+&nbsp;&nbsp;&nbsp; caddr_t addr;
+} XrmValue, *XrmValuePtr;</TT></PRE>
+</BLOCKQUOTE>
+In addition, a representation type is stored along with each
+value in the data structure. The corresponding representation type is returned
+along with the data value when the database is accessed. The type provides
+a way to distinguish between different representations of the same information.
+For example, a color may be specified by a color name ("red") or be coded
+in a hexadecimal string ("#4f6c84"), by a pixel value, or by RGB values.
+Representation types are user-defined character strings describing the
+way the data is represented. You specify them when you store data, and
+you interpret them when you access data. Previous releases of X contained
+programs to perform automatic type conversion. These converter routines
+and types were found to be insufficiently general and were removed from
+Xlib. However, similar conversion functions are now being implemented in
+the X Toolkit.
+
+<P>You create representation types from simple character
+strings by using the macro <B>XrmStringToRepresentation</B>. For example:
+<BLOCKQUOTE>
+<PRE><TT>XrmStringToRepresentation("RGB_value")</TT></PRE>
+</BLOCKQUOTE>
+might be used if the data to be stored was a color represented
+as an RGB value. Certain functions let you store data without specifying
+a representation type. These functions always take data in the form of
+a <B>char[]</B> and automatically assign it the representation type <B>String</B>.
+The type <B>XrmRepresentation</B> is internally represented as an <B>XrmQuark</B>,
+since it is an ID for a string. (See Section 13.5.6, "Quarks" for details.)
+<BR>
+<HR>
+<H2>
+Other Resource Manager Routines</H2>
+The resource manager includes a number of other routines
+that will be of limited use to most application developers. They are discussed
+briefly here for the sake of completeness.
+<H3>
+Putting Resources into the Database</H3>
+While all most applications will need to do is to merge various
+sources of user preferences into a database and then read individual values,
+routines also exist for putting explicit resource values into the database
+or writing out the database into a file. For example, the <I>xrdb</I> program
+allows a user to write out the current contents of the resource manager
+database into a file. An application could allow users to modify the application
+resource specifications file and would then need those routines.
+
+<P>Routines for putting resources include:
+<DL>
+<DT>
+<B>XrmPutResource()</B></DT>
+
+<DD>
+Stores preference data into a resource database.</DD>
+
+<DT>
+<B>XrmPutLineResource()</B></DT>
+
+<DD>
+Stores a single line of preference data into a resource database.</DD>
+
+<DT>
+<B>XrmPutStringResource()</B></DT>
+
+<DD>
+Stores a preference string into a resource database.</DD>
+
+<DT>
+<B>XrmPutFileDatabase()</B></DT>
+
+<DD>
+Writes a resource database into a file.</DD>
+</DL>
+The resource manager only frees or overwrites entries when
+new data is stored into a database with <B>XrmMergeDatabases()</B> or <B>XrmPutResource()</B>
+and related routines. A client that does not use these functions should
+be safe using the addresses to strings returned by routines like <B>XrmGetResource()</B>.
+<H3>
+Combining the Contents of Databases</H3>
+The pre-R5 function <B>XrmMergeDatabases()</B> combines the
+contents of a "source" database and a "target" database, using the contents
+of the source to override the contents of the target. With this function,
+there is no way to get "augment"-style behavior; i.e., there is no way
+to combine the two databases so that when source and target contain different
+values for the same resource specification the value in the target database
+is left unchanged. The two new functions <B>XrmCombineDatabase()</B> and
+<B>XrmCombineFileDatabase()</B> address this problem. They take a source
+database and a target database, or the name of a resource file and a target
+database, and also a <B>Bool</B> argument which specifies whether the resource
+from the source database or the file should override values in the target
+database. Thus the following two function calls are equivalent:
+<BLOCKQUOTE>
+<PRE><TT>XrmMergeDatabases(source, target);
+XrmCombineDatabase(source, target, True);</TT></PRE>
+</BLOCKQUOTE>
+Because the contents of resource files are often merged into
+databases, the function <B>XrmCombineFileDatabase()</B> was added as a
+shortcut for a call to <B>XrmGetFileDatabase()</B> followed by a call to
+<B>XrmCombineDatabase()</B>. Note that the new R5 functions use the singular
+"Database," while <B>XrmMergeDatabases()</B> uses the plural.
+
+<P>These functions were added in R5 because of a required
+change in the way the X Toolkit builds up its resource database. Prior
+to R5, that database was built from sources in low-priority to high-priority
+order, each new source overriding the existing contents of the database,
+and <B>XrmMergeDatabases()</B> was sufficient for this purpose. But with
+the advent of the customization resource in R5, it was necessary to build
+the database in reverse order so that the value of the customization resource
+could be obtained from any of the other sources before being used to locate
+the application's app-defaults file. When the order of database creation
+was reversed, it was necessary to combine databases by augmenting rather
+than overriding so that the resulting single merged database would be the
+same. <B>XrmCombineDatabase()</B> and <B>XrmCombineFileDatabase()</B> were
+added for precisely this purpose.
+<H3>
+Enumerating Database Entries</H3>
+Prior to R5 it was possible to query particular resources
+in a database or write the contents of a database to a file, but there
+was no way for a program to individually process each entry of a database.
+<B>XrmEnumerateDatabase()</B> fills this need. This function calls a user-supplied
+procedure once for each entry in a database that matches any completion
+of a specified partial name and class list. The enumeration can be performed
+a single level below these name and class prefixes, or for all levels below.
+The "callback" procedure invoked by this function returns a <B>Bool</B>
+and causes the enumeration to terminate by returning <B>True</B>.
+
+<P>The client <B>appres</B>, which previously relied on internal
+knowledge of the opaque <B>XrmDatabase()</B>, type now uses <B>XrmEnumerateDatabase()</B>.
+<H3>
+Associating a Resource Database with a Display</H3>
+It is common practice for Xlib applications (and automatic
+in Xt applications) to build a resource database for each display that
+is opened, and it is common to talk about the "database of the display."
+Before R5, however, there was no standard way to associate a database with
+a display for later retrieval. In the MIT Xlib implementation, there is
+a database field in the <B>Display</B> structure, and prior to R5 the X
+Toolkit used this field even though the <B>Display</B> structure is supposed
+to be opaque.
+
+<P>In R5, however, there are functions to set and get the
+database of the display: <B>XrmSetDatabase()</B> and <B>XrmGetDatabase()</B>.
+These are simply utility functions; they provide a public interface to
+fields in an opaque data structure. No Xlib routines use these functions,
+but <B>XtDisplayInitialize()</B> sets the database of the display for later
+use by <B>XtResolvePathname()</B>. Note that Xlib does not provide a way
+to associate a display with a screen.
+<H3>
+Getting the Locale of a Database</H3>
+As described in Chapter 10, "Internationalization," every
+<B>XrmDatabase()</B> is parsed in the current locale and has that locale
+associated with it. To return the name of the locale of a database, use
+the new function <B>XrmLocaleOfDatabase()</B>.
+<H3>
+Quarks</H3>
+A special data type called a <I>quark</I> is used internally
+by the resource manager to represent strings. They were created to improve
+the efficiency of the resource manager. The resource manager needs to make
+many comparisons of strings when it gets data from the database. It must
+compare, component by component, the name and class specification of the
+requested resource to each stored key in the database. Quarks are simple
+identifiers (presently represented as integers) for strings. Thus, instead
+of comparing strings, the resource manager converts each component of the
+string into the corresponding quark and compares the quarks instead. This
+converts lengthy string comparisons into quick numeric comparisons, with
+the obvious savings in efficiency. The price is the overhead needed to
+convert back and forth between strings and quarks, but this is a small
+price for avoiding multiple string comparisons in a large database.
+
+<P>In summary, then, a quark is to a string as an atom is
+to a property. Quarks, however, are local to the application.
+
+<P>Quarks are implemented using an internal table of strings.
+The function <B>XrmStringToQuark()</B> returns a pointer to the quark for
+a given string. Clients that do more than just access their resource specifications
+once might consider calling <B>XrmStringToQuark()</B> for each string and
+then using the quark form of the routines that get resources.
+
+<P>Prior to R5, the resource manager functions made a copy
+of all strings when they were registered as quarks. Most strings were widget
+names, resource names, and resource classes hardcoded into an application's
+executable, but the copying was required for those few quarks that were
+created with dynamically-allocated strings. R5 contains a new function,
+<B>XrmPermStringToQuark()</B>, which behaves like the existing <B>XrmStringToQuark()</B>
+except that it assumes that the passed string is either a string constant
+hardcoded into the application or at least is in memory that will not be
+modified or de-allocated for the lifetime of the application. This assumption
+means that the string need not be copied, and therefore memory is saved.
+There is no direct connection between <B>XrmPermStringToQuark()</B> and
+<B>Xpermalloc()</B>. Strings in memory allocated with <B>Xpermalloc()</B>
+may be passed to <B>XrmPermStringToQuark()</B> as long as they will not
+be changed during the lifetime of the application.
+
+<P>The following functions convert between strings and quarks:
+<UL>
+<LI>
+<B>XrmQuarkToString()</B></LI>
+
+<LI>
+<B>XrmStringToBindingQuarkList()</B></LI>
+
+<LI>
+<B>XrmStringToQuark()</B></LI>
+
+<LI>
+<B>XrmPermStringToQuark()</B></LI>
+
+<LI>
+<B>XrmStringToQuarkList()</B></LI>
+
+<LI>
+<B>XrmUniqueQuark()</B></LI>
+</UL>
+The following routines can be used to work directly on quarks
+rather than strings when retrieving or storing resources:
+<UL>
+<LI>
+<B>XrmQGetResource()</B></LI>
+
+<LI>
+<B>XrmQGetSearchList()</B></LI>
+
+<LI>
+<B>XrmQGetSearchResource()</B></LI>
+
+<LI>
+<B>XrmQPutResource()</B></LI>
+
+<LI>
+<B>XrmQPutStringResource()</B></LI>
+</UL>
+All of the quark routines are unlikely to be used by application
+developers. However, they will be of use to toolkit developers. See <I>Volume
+Two, Xlib Reference Manual</I>, for more information.
+
+<P>You will need to use a group of special macros with the
+routines that handle quarks. They are described in Appendix C, <I>Macros</I>,
+of <I>Volume Two, Xlib Reference Manual</I>, and listed below. Unfortunately,
+they do not follow the normal naming convention for macros, since they
+begin with <I>Xrm</I> (no other macros begin with <I>X</I>), possibly because
+the resource manager used to be part of a separate library.
+<UL>
+<LI>
+<B>XrmClassToString()</B></LI>
+
+<LI>
+<B>XrmNameToString()</B></LI>
+
+<LI>
+<B>XrmRepresentationToString()</B></LI>
+
+<LI>
+<B>XrmStringToClass()</B></LI>
+
+<LI>
+<B>XrmStringToName()</B></LI>
+
+<LI>
+<B>XrmStringToRepresentation()</B></LI>
+</UL>
+
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

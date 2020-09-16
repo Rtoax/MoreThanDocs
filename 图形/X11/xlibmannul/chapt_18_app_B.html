@@ -1,0 +1,314 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_17_app_A.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_19_app_C.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H2>
+X10 Compatibility</H2>
+X11 includes a conversion library, so that X10.4 applications
+can be easily ported to X11, albeit with a loss of performance. In addition,
+there are a few X10 routines that provide functionality missing in X11,
+which may still be used. This appendix discusses XDraw ()and related commands
+and association table routines for data management.
+
+<P>These functions are provided for compatibility with X
+Version 10. They are considered a part of Xlib even though they exist in
+a separate library. They can be used by including the file &lt;<I>X11/X10.h</I>>
+and linking with the <I>-loldX</I> library.
+
+<P>X Version 11 <B>XDraw</B> now provides all the functionality
+of the X Version 10 routines <B>XDraw</B>, <B>XDrawDashed</B>, and <B>XDrawPatterned</B>.
+X Version 11 <B>XDrawFilled()</B> now provides the functionality of the
+old <B>XDrawFilled()</B> and <B>XDrawTiled</B>. These routines now use
+the GC to specify the fill, tile or stipple, line styles, etc.
+
+<P>The association table routines are described next in this
+appendix. They are also carried over from X10, although their functionality
+is also provided by the context manager routines described in Chapter 15,
+"Other Programming Techniques." However, there are no performance penalties
+for using association tables if you prefer them.
+
+<P>See <I>Volume Two, Xlib Reference Manual</I>, for complete
+information on using any X10 compatibility function.
+<BR>
+<HR>
+<H2>
+XDraw and XDrawFilled()</H2>
+<B>XDraw</B> and <B>XDrawFilled()</B> call other Xlib routines,
+not the server directly. If you just have straight lines to draw, using
+<B>XDrawLines()</B> or <B>XDrawSegments()</B> is much faster. If you want
+to draw spline curves in a portable fashion, you currently have no choice
+but to use <B>XDraw</B> until a standard spline extension is adopted.
+
+<P><B>XDraw</B> draws an arbitrary polygon or curve. The
+figure drawn is defined by a list of vertices (vlist). The points are connected
+by lines as specified in the flags in the vertex structure. In X Version
+11, <B>XDraw</B> provides all the functionality of the X Version 10 routines
+<B>XDraw</B>, <B>XDrawDashed</B>, and <B>XDrawPatterned</B>. <B>XDrawFilled()</B>
+now provides the functionality of the old <B>XDrawFilled()</B> and <B>XDrawTiled</B>.
+The fill, pattern, <B>line_style</B>, and tile are all controlled by the
+graphics context. Lines are properly joined according to the GC if they
+connect and make a closed figure.
+
+<P>The error status returned is the opposite of what it was
+under X Version 10, conforming to the X Version 11 standard that 0 indicates
+failure. The <B>VertexDrawLastPoint</B> flag and the routines <B>XAppendVertex</B>
+and <B>XClearVertexFlag</B> from X Version 10 are not supported.
+
+<P>The vlist and vcount arguments of <B>XDraw</B> and <B>XDrawFilled()</B>
+control the line or area that is drawn:
+<DL>
+<DT>
+vlist</DT>
+
+<DD>
+Specifies a pointer to the list of vertices which indicate
+what to draw.</DD>
+
+<DT>
+vcount</DT>
+
+<DD>
+Specifies how many vertices are in vlist.</DD>
+</DL>
+Each <B>Vertex</B>, as defined in &lt;<I>X11/Xlib.h</I>>,
+is a structure with the following members:
+
+<P><B>The Vertex structure for XDraw</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct _Vertex {
+&nbsp;&nbsp; short x,y;
+&nbsp;&nbsp; unsigned short flags;
+} Vertex;</TT></PRE>
+</BLOCKQUOTE>
+The <B>x</B> and <B>y</B> members are the coordinates of
+the vertex. These coordinates are interpreted according to the flags.
+
+<P>The <B>flags</B> member, as defined in <B>Xlib.h</B>,
+is a mask made by ORing the symbols listed in Table B-1.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table B-1 : </B>Vertex Flags</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Flag</TH>
+
+<TH>Bit</TH>
+
+<TH>If Not Set</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>VertexRelative</B></TD>
+
+<TD>0</TD>
+
+<TD>Absolute</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>VertexDontDraw</B></TD>
+
+<TD>1</TD>
+
+<TD>Draw</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>VertexCurved</B></TD>
+
+<TD>2</TD>
+
+<TD>Straight</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>VertexStartClosed</B></TD>
+
+<TD>3</TD>
+
+<TD>Not closed</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>VertexEndClosed</B></TD>
+
+<TD>4</TD>
+
+<TD>Not closed</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P><B>XDraw</B> fails (returns 0) only if it runs out of
+memory or is passed a <B>Vertex</B> list which has a vertex with <B>VertexStartClosed</B>
+set not followed by a vertex with <B>VertexEndClosed</B> set. The <B>x</B>
+and <B>y</B> coordinates in <B>Vertex</B> are relative to the upper-left
+inside corner of the drawable if <B>VertexRelative</B> is not specified
+in <B>flags</B> or to the previous vertex if <B>VertexRelative</B> is specified.
+The first vertex must be an absolute vertex.
+
+<P>If <B>VertexDontDraw</B> is specified in <B>flags</B>,
+no line or curve is drawn from the previous vertex to this one. This is
+analogous to picking up the pen and moving it to another place before drawing
+another line.
+
+<P>If <B>VertexCurved</B> is specified in <B>flags</B>, a
+spline algorithm is used to draw a smooth curve from the previous vertex
+through the current one to the next vertex. Otherwise, a straight line
+is drawn from the previous vertex to the current one. You should set <B>VertexCurved</B>
+in <B>flags</B> only if a previous and next vertex are both defined, either
+explicitly or through the definition of a closed curve. If <B>VertexStartClosed</B>
+is specified, then this point marks the beginning of a closed curve. This
+vertex must be followed later in the array by another vertex whose absolute
+coordinates are identical and which has <B>VertexEndClosed</B> specified
+in its flags.
+
+<P>It is permissible for both the <B>VertexDontDraw</B> and
+the <B>VertexCurved</B> bits to be 1. This is useful to define the previous
+point for the smooth curve, without drawing until the current point.
+
+<P>Example B-2 shows a routine that draws a box on the root
+window for use by the window manager described in Chapter 16, "Window Management."
+Of course, you would want to create the GC in the calling routine if <B>draw_box</B>
+were to be called more than once.
+
+<P><B>draw_box implemented with X Version 10 XDraw</B>
+<BLOCKQUOTE>
+<PRE><TT>draw_box(display, screen_num, left,top,right,bottom)
+Display *display;
+int screen_num;
+int left,top,right,bottom;
+&nbsp;&nbsp; {
+&nbsp;&nbsp; Vertex corner[5];
+&nbsp;&nbsp; int vertexcount = 5;
+&nbsp;&nbsp; int planes = FIRST_PLANE;
+&nbsp;&nbsp; GC gc;
+&nbsp;&nbsp; /* Create graphics context */
+&nbsp;&nbsp; /* Ignore XGCvalues and use defaults */
+&nbsp;&nbsp; gc = XCreateGC(display, RootWindow(display, screen_num), 0,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; NULL);
+&nbsp;&nbsp; /* Set graphics context to include font */
+&nbsp;&nbsp; XSetFunction(display, gc, GXxor);
+&nbsp;&nbsp; XSetForeground(display, gc, BlackPixel(display,screen_num));
+&nbsp;&nbsp; XSetPlaneMask(display, gc, planes);
+
+&nbsp;&nbsp; corner[0].x = left;
+&nbsp;&nbsp; corner[0].y = top;
+&nbsp;&nbsp; corner[0].flags = 0;
+
+&nbsp;&nbsp; corner[1].x = left;
+&nbsp;&nbsp; corner[1].y = bottom;
+&nbsp;&nbsp; corner[1].flags = 0;
+&nbsp;&nbsp; corner[2].x = right;
+&nbsp;&nbsp; corner[2].y = bottom;
+&nbsp;&nbsp; corner[2].flags = 0;
+
+&nbsp;&nbsp; corner[3].x = right;
+&nbsp;&nbsp; corner[3].y = top;
+&nbsp;&nbsp; corner[3].flags = 0;
+
+&nbsp;&nbsp; corner[4].x = left;
+&nbsp;&nbsp; corner[4].y = top;
+&nbsp;&nbsp; corner[4].flags = 0;
+
+&nbsp;&nbsp; XDraw(display, RootWindow(display, screen_num), gc, corner,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; vertexcount);
+&nbsp;&nbsp; XFlush();
+&nbsp;&nbsp; }</TT></PRE>
+</BLOCKQUOTE>
+
+<HR>
+<H2>
+Association Tables</H2>
+Association tables provide a fast lookup table for data that
+must be searched frequently. They are implemented as a linked list of structures.
+To use these functions, you must link in <I>-loldX</I>, the X10 compatibility
+library.
+
+<P>Association tables associate arbitrary information with
+resource IDs. This is similar to the context manager, but the resource
+IDs used with association tables are existing resources, not created for
+the purpose of storing data for later retrieval.
+
+<P>An <B>XAssocTable</B> can be used to type X resources.
+For example, the user may wish to have three or four "types" of windows,
+each with different properties. This can be accomplished by associating
+each X window ID with a pointer to a window property data structure defined
+by the programmer. The generic type for resource IDs is <B>XID</B>.
+
+<P>There are a few guidelines that should be observed when
+using an <B>XAssocTable</B>:
+<UL>
+<LI>
+All <B>XID</B>s are relative to the currently active display.
+Therefore, if you are using multiple displays, you need to be sure the
+correct display is active before performing an <B>XAssocTable</B> operation.
+<B>XAssocTable</B> imposes no restrictions on the number of <B>XID</B>s
+per table, the number of <B>XID</B>s per display, or the number of displays
+per table.</LI>
+
+<LI>
+Because of the hashing scheme used by the association mechanism,
+the following rules for determining the size of <B>XAssocTable</B>s should
+be followed. Associations will be made and looked up more efficiently if
+the table size (number of buckets in the hashing system) is a power of
+two and if there are not more than eight <B>XID</B>s per bucket.</LI>
+</UL>
+<B>XCreateAssocTable()</B> creates an association table.
+To create an entry in a specific <B>XAssocTable</B>, use <B>XMakeAssoc()</B>.
+Some size suggestions might be: use 32 buckets per 100 objects; a reasonable
+maximum number of objects per buckets is 8. <B>XMakeAssoc()</B> inserts
+data into an <B>XAssocTable</B> keyed on an <B>XID</B>. <B>XDeleteAssoc()</B>
+deletes an association in an <B>XAssocTable</B> keyed on its <B>XID</B>.
+Data is inserted into the table only once. Redundant inserts are meaningless
+and cause no problems. The queue in each association bucket is sorted from
+the lowest <B>XID</B> to the highest <B>XID</B>. Redundant deletes (and
+deletes of nonexistent <B>XID</B>s) are meaningless and cause no problems.
+Deleting associations in no way impairs the performance of an <B>XAssocTable</B>.
+
+<P><B>XLookUpAssoc()</B> retrieves the data stored in an
+<B>XAssocTable</B> by its <B>XID</B>. If an appropriately matching <B>XID</B>
+can be found in the table, the routine will return the data associated
+with it. If the <B>XID</B> cannot be found in the table, the routine will
+return <B>NULL</B>.
+
+<P><B>XDestroyAssocTable()</B> frees the memory associated
+with a specific <B>XAssocTable</B>. Using an <B>XAssocTable</B> after it
+has been destroyed is guaranteed to have unpredictable and probably disastrous
+consequences!
+<BR>
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

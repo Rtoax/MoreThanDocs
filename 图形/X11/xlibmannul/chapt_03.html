@@ -1,0 +1,1977 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_02.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_04.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H1>
+Basic Window Program</H1>
+Every Xlib program has a similar structure. This chapter
+shows a simple program that puts up a window and handles events in that
+window. You can use this simple application as a template for your own
+more complex applications.
+
+<P>This chapter presents a simple program that demonstrates
+the fundamentals of programming with the X library. All clients will use
+the techniques described and demonstrated here.
+
+<P>The basic program presented in this chapter fulfills all
+the requirements for a basic application outlined near the end of Chapter
+2, "X Concepts," and illustrates some of the most important X concepts
+and programming issues. You should have read Chapter 2, "X Concepts" before
+proceeding.
+
+<P>The program will perform these operations:
+<UL>
+<LI>
+Connect the client to an X server with <B><A HREF="xlib/display/opening.html">XOpenDisplay()</A></B>,
+and exit gracefully if the connection could not be made.</LI>
+
+<LI>
+Get information about the physical screen, and use it to
+calculate the desired size of the window.</LI>
+
+<LI>
+Create a window with <B><A HREF="xlib/window/XCreateWindow.html">XCreateSimpleWindow()</A></B>.</LI>
+
+<LI>
+Set standard properties for the window manager.</LI>
+
+<LI>
+Select the types of events it needs to receive.</LI>
+
+<LI>
+Load the font to be used for printing text.</LI>
+
+<LI>
+Create a graphics context to control the action of drawing
+requests.</LI>
+
+<LI>
+Display the window with <B><A HREF="xlib/window/XMapWindow.html">XMapWindow()</A></B>.</LI>
+
+<LI>
+Loop for events.</LI>
+
+<LI>
+Respond to the <B>Expose</B> event resulting from mapping
+the window (and any other <B>Expose</B> event that might come along later)
+by calling routines to draw text and graphics. If the window is too small
+to perform its intended function, it will display an appropriate message.</LI>
+
+<LI>
+Receive <B>ConfigureNotify</B> events, indicating that the
+window has been resized by the window manager. The new window size is provided
+in the event structure.</LI>
+
+<LI>
+Keep handling events until a <B>KeyPress</B> or <B>ButtonPress</B>
+event arrives, then close the display connection and exits.</LI>
+</UL>
+The program does not perform the following operations, which
+are required of a robust X client:
+<UL>
+<LI>
+Allow the user to specify command line options and read the
+resource database.</LI>
+
+<LI>
+Handle colors.</LI>
+</UL>
+For more information on these topics, see Chapter 7, "Color,"
+and Chapter 14, "A Complete Application."
+<BR>
+<HR>
+<H2>
+Running the Program</H2>
+If you have the sample programs (see the <I>Preface</I> for
+how to get them) and a workstation that runs X, you can try out this program
+by compiling <I>basic/basicwin.c</I>. See the description of how to compile
+X programs in Section 2.6.2.2, "Compiling and Linking X Programs."
+
+<P>The program just displays a window with some text and
+graphics drawn into it. Figure 3-1 shows the output of the program. The
+one useful thing it does is tell you the size and depth of the current
+screen.
+
+<P><B>Output of the basicwin program</B>
+
+<P><IMG SRC="imgs/fig.3.01.gif" ALT="fig.3.01.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;Without further ado, let's begin to look at the
+code.
+<BR>
+<HR>
+<H2>
+The Main of basicwin</H2>
+As usual, the code is composed of a main program and several
+subroutines. The main does everything described at the start of this chapter
+except create the GC, load the font, and draw the text and graphics. These
+tasks are done in the <B>draw_graphics</B>, <B>draw_text</B>, <B>get_GC</B>,
+and <B>load_font</B>, routines, which are shown with the complete code
+in Section 3.2.20, "Complete Code for basicwin" but not described fully
+until Chapter 6, "Drawing Graphics and Text." You can get the general idea
+of what they do just by looking at them, though.
+
+<P>In the following sections, the code is shown and described
+in small pieces. In some cases, the relevant declarations of variables
+are shown again in each segment of the code as well as at the top of the
+program (where they would normally appear). This has been done to increase
+clarity when showing the individual pieces of the program.
+<H3>
+Include Files and Declarations</H3>
+Example 3-1 shows the include files and declarations from
+<I>basicwin.c</I>.
+
+<P><B>basicwin -- include files and declarations</B>
+<BLOCKQUOTE>
+<PRE><TT>/* Xlib include files */
+#include &lt;X11/Xlib.h>
+#include &lt;X11/Xutil.h>
+#include &lt;X11/Xos.h>
+#include &lt;X11/Xatom.h>
+/* Standard C include file */
+#include &lt;stdio.h>
+/* Bitmap data for icon */
+#include "bitmaps/icon_bitmap"
+#define BITMAPDEPTH 1
+/* Values for window_size in main -- is window big enough to be
+&nbsp;* useful? */
+#define TOO_SMALL 0
+#define BIG_ENOUGH 1
+/* Display and screen_num are used as arguments to nearly every
+&nbsp;* Xlib routine, so it simplifies routine calls to declare them
+&nbsp;* global; if there were additional source files, these variables
+&nbsp;* would be declared "extern" in them */
+Display *display;
+int screen_num;
+/* Name this program was invoked by; this is global because
+&nbsp;* it is used in several places in application routines, not
+&nbsp;* just in main */
+static char *progname;
+void main(argc, argv)
+int argc;
+char **argv;
+{
+&nbsp;&nbsp; Window win;
+&nbsp;&nbsp; unsigned int width, height;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Window size */
+&nbsp;&nbsp; int x = 0, y = 0;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Window position */
+&nbsp;&nbsp; unsigned int border_width = 4;&nbsp;&nbsp; /* Border four pixels wide */
+&nbsp;&nbsp; unsigned int display_width, display_height;
+&nbsp;&nbsp; char *window_name = "Basic Window Program";
+&nbsp;&nbsp; char *icon_name = "basicwin";
+&nbsp;&nbsp; Pixmap icon_pixmap;
+&nbsp;&nbsp; XSizeHints *size_hints;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Preferred sizes for window man */
+
+&nbsp;&nbsp; XEvent report;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Structure for event information */
+&nbsp;&nbsp; GC gc;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* ID of graphics context */
+&nbsp;&nbsp; XFontStruct *font_info;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Structure containing
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * font information */
+&nbsp;&nbsp; char *display_name = NULL;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Server to connect to */</TT></PRE>
+</BLOCKQUOTE>
+Let's begin with the include files. The three include files
+&lt;<I>X11/Xlib.h</I>>, &lt;<I>X11/Xutil.h</I>>, and &lt;<I>X11/Xos.h</I>>
+are needed in virtually all Xlib programs. The &lt;<I>X11/Xlib.h</I>> file
+contains declarations of structure types used in Xlib functions. &lt;<I>X11/Xlib.h</I>>
+in turn includes &lt;<I>X11/X.h</I>>, which sets up many defined constants.
+&lt;<I>X11/Xutil.h</I>> contains more structure definitions and defined
+constants for certain groups of Xlib functions. Many of the structures
+and constant definitions from these include files are described in this
+manual with the functions in which they are used. Structures and constants
+are also presented on many of the reference pages in <I>Volume Two, Xlib
+Reference Manual</I>, if the routine on that page uses a structure or defined
+constant as an argument or return value. Appendix , <I>Structure Reference</I>,
+of <I>Volume Two, Xlib Reference Manual</I>, provides an alphabetical listing
+of structures; Appendix G, <I>Symbol Reference</I>, of <I>Volume Two, Xlib
+Reference Manual</I>, provides the definitions of constants.
+
+<P>The final include file referenced in the Example 3-1 is
+&lt;<I>X11/Xos.h</I>>, which attempts to make programs as portable as possible
+by including certain files depending on the operating system for which
+the program is being compiled. This include file is not standard and is
+not absolutely necessary, but it is useful.
+
+<P>Now let's move on to all the strange new types that appear
+in Example 3-1. The <B>Window</B>, <B>Display</B>, <B>Pixmap</B>, <B>XSizeHints</B>,
+and <B>XEvent</B> types used in this program are all defined in &lt;<I>X11/Xlib.h</I>>.
+A brief description of each is given here, but you will need to see the
+code that uses each variable to fully understand them.
+<DL>
+<DT>
+<B>Window</B></DT>
+
+<DD>
+A unique integer identifier (ID) that is returned by <B>XCreateWindow()</B>
+or <B>XCreateSimpleWindow()</B> and is thereafter used by the program to
+refer to the created window resource.</DD>
+
+<DT>
+<B>Display</B></DT>
+
+<DD>
+A large structure that contains information about the server
+and its screens. It is filled only after this program connects to a server
+by calling <B>XOpenDisplay()</B>.</DD>
+
+<DT>
+<B>Pixmap</B></DT>
+
+<DD>
+An integer ID like <B>Window</B> but for a pixmap resource.
+The pixmap in this case is a picture to display in the icon for the window.</DD>
+
+<DT>
+<B>XSizeHints</B></DT>
+
+<DD>
+A structure that is used to provide the window manager with
+information about the preferred sizes and size increments for the top-level
+window of the application.</DD>
+
+<DT>
+<B>XEvent</B></DT>
+
+<DD>
+A union that stores information about an event. It can be
+interpreted as one of many individual structure types depending on the
+type of event.</DD>
+</DL>
+These declarations are repeated in the sections of code below
+in which they are used to avoid the need to flip back and forth.
+<H3>
+Connecting to a Server</H3>
+<B>XOpenDisplay()</B> connects an Xlib program to a server.
+The code shown in Example 3-2 that calls <B>XOpenDisplay()</B> will appear
+in all Xlib programs.
+
+<P><B>basicwin -- connecting to the server</B>
+<BLOCKQUOTE>
+<PRE><TT>char *display_name = NULL;
+Display *display;
+int screen_num;
+Screen *screen_ptr;
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+progname = argv[0];
+/* Connect to X server */
+if ( (display=XOpenDisplay(display_name)) == NULL )
+
+{
+&nbsp;&nbsp; (void) fprintf( stderr, "%s: cannot connect to X server %s\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; progname, XDisplayName(display_name));
+&nbsp;&nbsp; exit( -1 );
+}
+screen_num = DefaultScreen(display);
+screen_ptr = DefaultScreenOfDisplay(display);</TT></PRE>
+</BLOCKQUOTE>
+The display_name argument to <B>XOpenDisplay()</B> specifies
+which server to connect to. This may be any server on the network and could
+be specified on the command line in a more complete application than this
+one. (See Section 2.6.2.1, "Resources and User Customizability" and Chapter
+13, "Managing User Preferences," for a discussion of how to process command
+line arguments and user-specified default values in an X program.) When
+display_name is not specified by the user, it should be set to <B>NULL</B>,
+which causes <B>XOpenDisplay()</B> to connect to the server specified in
+the UNIX environment DISPLAY variable. You can view the current contents
+of the DISPLAY environment variable by using the UNIX command:
+<BLOCKQUOTE>
+<PRE><TT>echo $DISPLAY</TT></PRE>
+</BLOCKQUOTE>
+It can be changed by typing:
+<BLOCKQUOTE>
+<PRE><TT>setenv DISPLAY display_name(C Shell)</TT></PRE>
+</BLOCKQUOTE>
+or:
+<BLOCKQUOTE>
+<PRE><TT>DISPLAY=display_name; export DISPLAY&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (Bourne Shell)</TT></PRE>
+</BLOCKQUOTE>
+You must be careful to set the DISPLAY variable when you
+login to a remote machine to make sure that when you execute X applications
+from that terminal, your output will be displayed on the screen from which
+you typed the command.
+
+<P>Both the DISPLAY environment variable and the display_name
+argument to <B>XOpenDisplay()</B> have the same format. The format is <I>host:server.screen</I>,
+in which <I>host</I> refers to the name of the machine running the server;
+<I>server</I>, the server number on that machine; and <I>screen</I>, the
+screen number on that server.
+
+<P>The server number can be thought of as the number of the
+user on a particular host. The <I>server</I> number is always zero on a
+single-user workstation and may be nonzero only if a single host has a
+separate keyboard, pointer, and display for more than one user, all connected
+by wires (not networks) to the central host. Systems that run multiple
+X servers are rare.
+
+<P>The <I>.screen</I> part is optional and only specifies
+which screen is returned by the <B>DefaultScreen()</B> macro (more on macros
+in a minute). You can still use any or all of the screens controlled by
+the specified server. For example, <B>Perseus:0.1</B> instructs the server
+you are running the program on to connect to server <B>0</B> on the host
+called <B>Perseus</B> and that the default screen on that server for this
+program will be screen <B>1</B>.
+
+<P>The <B>XOpenDisplay()</B> routine returns a pointer to
+a structure of type <B>Display</B>. If the connection is successful, the
+structure will be filled with information about the server and each of
+its screens. If the attempt to create a connection fails, <B>XOpenDisplay()</B>
+returns <B>NULL</B>. The code in Example 3-2 above checks to make sure
+this returned pointer is not <B>NULL</B> before proceeding. The message
+printed when the connection fails includes the text returned by the <B>XDisplayName()</B>
+function. This function returns display_name or, if that is <B>NULL</B>,
+the UNIX environment DISPLAY variable. <B>XDisplayName()</B> is necessary,
+since without it, there would be no way to tell the user to what server
+an attempt to connect was made.
+
+<P>The client might not succeed in connecting to a server
+for a number of reasons. Most likely, the display_name variable or DISPLAY
+environment variable does not specify a valid server that is connected
+via the network to the machine on which you are running the program. Or
+perhaps the network is out of order. Another possibility is that the server
+and client use different versions of the X protocol. X Version 11 programs
+are not compatible with X Version 10 and vice versa, so that if such a
+connection is attempted, an error message such as "protocol mismatch" should
+be printed, since the connection will partially succeed. All releases of
+X Version 11, however, <I>are</I> compatible since they use the same protocol.
+
+<P>The connection will also fail if the host you are running
+the client on is not on the <I>host access list</I> of the server you are
+trying to display on. The host access list is a simple permission mechanism.
+A server reads the list of hosts as it starts up and may be connected only
+to clients running on these hosts. There are commands to add and remove
+hosts from the access list, but these can be called only from clients running
+on the host whose list is being changed. In all these cases, the code shown
+in Example 3-2 will simply print the name of the server to which the connection
+failed and no further information.
+
+<P>In R4, a simple authorization scheme has also been implemented.
+If the person operating the server has turned authorization on, Xlib must
+know a secret code in order to connect to that server. Xlib gets this code
+from a file, and the server puts it there to grant access.
+
+<P>If Example 3-2 executes successfully past opening the
+display, we can begin to set up variables for use in the rest of the program.
+The first of these is the global variable screen_num, set to the return
+value of the <B>DefaultScreen()</B> macro. screen_num will be used throughout
+the program to indicate which screen on the server our operations are to
+affect. It is important to use the <B>DefaultScreen()</B> macro rather
+than to hardcode <B>0</B> as the screen used by the client, because even
+without command line parsing in the client, this allows the user to set
+the default screen by setting the <I>.screen</I> element of the DISPLAY
+environment variable.
+
+<P>The variable screen_num can actually be any integral value
+between <B>0</B> and the value returned by (<B>ScreenCount)(display) -
+1</B>), inclusive. The <B>ScreenCount)</B> macro returns the number of
+screens on the connected server. Since we only intend to use one of the
+screens, we can be satisfied with using the default screen.
+<H3>
+Display Macros</H3>
+We have just described all the macros used in the context
+of connecting with a display. They all get their information from the <B>Display</B>
+structure returned by <B>XOpenDisplay()</B>. But this is not the only useful
+information we can get from the <B>Display</B> structure. There are numerous
+other macros that supply information about the characteristics of the server
+and its screens. We will describe these macros where they come in handy
+in this manual. The complete set of macros that access the members of the
+<B>Display</B> structure is listed and described in Appendix C, <I>Macros</I>,
+of <I>Volume Two, Xlib Reference Manual</I>. They tell you whether the
+server supports certain features like backing store and motion history
+buffers, the protocol version and release and the name of the server vendor,
+and much more. The <B>Display</B> structure also provides information about
+each screen, such as the root window dimensions and the number of planes.
+
+<P>The macros are provided both for convenience and because
+the <B>Display</B> structure is intended to be opaque; clients should not
+access its members directly. The reason for it being opaque is that Xlib's
+authors want to retain the option to change the members in the <B>Display</B>
+structure without making existing clients obsolete.
+<H3>
+Getting Window Information</H3>
+Most clients need to know the size of the screen so that
+the output can be tailored to look the same--or to look good--on any display.
+There are two ways to get this information: you can access members of the
+<B>Display</B> structure to get information about the root window or you
+can use <B>XGetGeometry()</B> or <B>XGetWindowAttributes()</B> to get the
+root window's dimensions. The first method, using the macros for accessing
+information from the <B>Display</B> structure, works only for the root
+window but is more efficient. The second and third methods, reading the
+window geometry or attributes, work for any window.
+
+<P>To get the dimensions of a screen in pixels, you can use
+the macros <B>DisplayWidth()</B> and <B>DisplayHeight()</B>. The macros
+<B>DisplayWidthMM()</B> and <B>DisplayHeightMM()</B> return the screen
+dimensions in millimeters. These four macros get their information locally
+from the <B>Display</B> structure, so they are fast and efficient. The
+ratio of width in millimeters to width in pixels gives you a measurement
+of the spacing between pixels horizontally, and the same process can be
+used to determine the vertical pixel spacing. This can be important because
+when you draw a circle, it will look more like an ellipse on screens that
+do not have the same pixel spacing in both directions (usually inexpensive
+PC servers). You can tailor your drawing to compensate for this effect.
+
+<P>The second and third ways to get the geometry of a window
+are to use <B>XGetGeometry()</B> or to get all the window attributes using
+<B>XGetWindowAttributes()</B>. The difference between these two routines
+is that <B>XGetWindowAttributes()</B> gets much more information and actually
+calls <B>XGetGeometry()</B> itself. These methods have the disadvantage
+that they get information from the server, requiring a round-trip request
+that is subject to network delays. We show this method here because, for
+any window other than the root window, this is the only way to get window
+information.
+
+<P>The following code fragments demonstrate the three ways
+of getting root window information. <I>basicwin</I> uses the macros method
+because, in this case, we need information about the root window, and this
+is the most efficient way to get it.
+
+<P>Example 3-3 shows the macros method; Example 3-4, the
+<B>XGetGeometry()</B> method; and Example 3-5, the <B>XGetWindowAttributes()</B>
+method.
+
+<P><B>Code fragment for getting display dimensions -- using
+macros</B>
+<BLOCKQUOTE>
+<PRE><TT>Display *display;
+int screen_num;
+unsigned int display_width, display_height;
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+/* Open display */
+screen_num = DefaultScreen(display);
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+/* Display size is a member of display structure */
+display_width = DisplayWidth(display, screen_num);
+display_height = DisplayHeight(display, screen_num);</TT></PRE>
+</BLOCKQUOTE>
+<B>Another way to get window size -- using XGetGeometry()</B>
+<BLOCKQUOTE>
+<PRE><TT>Display *display;
+int screen_num;
+Window root;
+int x, y;
+unsigned int width, height;
+unsigned int border_width;
+unsigned int depth;
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+/* Open display */
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+/* Get geometry information about root window */
+if (XGetGeometry(display, RootWindow(display, screen_num), &amp;root,
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;x, &amp;y, &amp;width, &amp;height, &amp;border_width, &amp;depth) == False)
+&nbsp;&nbsp; {
+&nbsp;&nbsp; fprintf(stderr, "%s: can't get root window geometry\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; progname);
+&nbsp;&nbsp; exit(-1);
+&nbsp;&nbsp; }
+display_width = width;
+display_height = height;</TT></PRE>
+</BLOCKQUOTE>
+Note that the <B>root</B> argument of <B>XGetGeometry()</B>
+returns the root window at the top of the hierarchy of the window being
+queried. This happens to be useless in this case, because it is the root
+window we are querying!
+
+<P><B>A third way to get window size -- using XGetWindowAttributes()</B>
+<BLOCKQUOTE>
+<PRE><TT>Display *display;
+int screen_num;
+XWindowAttributes windowattr; /* (This declaration at top) */
+
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+/* Open display */
+screen_num = DefaultScreen(display);
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+/* Fill attribute structure with information about root window */
+if (XGetWindowAttributes(display, RootWindow(display, screen_num),
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;windowattr) == 0) {
+&nbsp;&nbsp; fprintf(stderr, "%s: failed to get window attributes.\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; progname);
+&nbsp;&nbsp; exit(-1);
+}
+display_width = windowattr.width;
+display_height = windowattr.height;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Creating Windows</H3>
+The next step is to create and place windows. Actually, a
+window's position relative to its parent is determined as the window is
+created, since these coordinates are specified as arguments to the routine
+that creates the window.
+
+<P>The <I>basicwin</I> application has only one window. Creating
+the first window of an application is a special case, because that window
+is a child of the root window and, therefore, is subject to management
+by the window manager. An application can suggest a position for this window,
+but it is very likely to be ignored. Most window managers allow the user
+to position the window as it appears on the screen. So most simple applications
+create the first window with its position set to (<B>0</B>,<B>0</B>). Example
+3-6 shows the simplest call to create a window.
+
+<P>In Chapter 14, "A Complete Application," we will show
+you a more complete approach that processes command line arguments to get
+the position of the top-level window. When the user specifies a position,
+there is a technique for making sure that the window manager will honor
+the position.
+
+<P><B>basicwin -- creating a window</B>
+<BLOCKQUOTE>
+<PRE><TT>Window win;
+int border_width = 4;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Border four pixels wide */
+unsigned int width, height;&nbsp;&nbsp;&nbsp;&nbsp; /* Window size */
+int x,y;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Window position */
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+/* Open display, determine screen dimensions */
+screen_num = DefaultScreen(display);
+&nbsp;&nbsp; .
+/* Note that in a real application, x and y would default to 0 but
+&nbsp;* would be settable from the command line or resource database */
+x = y = 0;
+/* Size window with enough room for text */
+width = display_width/3, height = display_height/4;
+/* Create opaque window */
+win = XCreateSimpleWindow(display, RootWindow(display, screen_num),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x, y, width, height, border_width, BlackPixel(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; screen_num), WhitePixel(display, screen_num));</TT></PRE>
+</BLOCKQUOTE>
+The only new thing in Example 3-6 is the use of several new
+macros in the call to create a window.
+
+<P>Let's talk about the <B>RootWindow()</B> macro. Each screen
+has its own root window. To create the first of your application's windows
+on a particular screen, you use the root window on that screen as the parent.
+That window can then only be used on that screen. The ID of the root window
+on a particular screen is returned by the <B>RootWindow()</B> macro. The
+first generation of windows on a screen (known as the top-level windows)
+should always use this macro to specify the parent. <B>XCreateSimpleWindow()</B>
+makes a new window given arguments for specifying it parent, size, position,
+border width, border pixel value, and background pixel value. All other
+attributes of the window are taken from the parent, in this case the root
+window. If we wanted to specify any or all the attributes instead of inheriting
+them from the parent, we would have to use <B>XCreateWindow()</B> instead
+of <B>XCreateSimpleWindow()</B>.
+<H3>
+Color Strategy</H3>
+Applications do not choose pixel values, they choose colors
+and are returned pixel values by a routine they call that allocates colors
+or they get pixel values from the display macros <B>BlackPixel()</B> and
+<B>WhitePixel()</B>.
+
+<P>This example is a monochrome application, but it will
+work on both monochrome and color screens. We use the <B>WhitePixel()</B>
+macro to specify the background pixel value (in the call to create the
+window) and set the foreground in the GC to be the contrasting value returned
+by <B>BlackPixel()</B>. The border pixel value is also set to <B>BlackPixel()</B>.
+The background and border pixel values are set with the last two arguments
+of <B>XCreateSimpleWindow()</B>. The foreground pixel value is set in the
+<B>get_GC</B> routine in the manner described in Section 5.1, "Creating
+and Setting a Graphics Context."
+
+<P>As you may recall from Chapter 2, "X Concepts," pixel
+values represent colors, but they will be translated by a colormap before
+being displayed on the screen. <B>BlackPixel()</B> and <B>WhitePixel()</B>
+return the pixel values corresponding to two contrasting colors in the
+default colormap, which might not actually be black and white.
+
+<P>Every application should be made to work in monochrome,
+because many people have only monochrome screens.
+
+<P>How to add color handling to <I>basicwin</I> (or any application)
+is described in Chapter 7, "Color."
+<H3>
+Preparing an Icon Pixmap</H3>
+An application should create an icon design for itself, so
+that if a window manager is running and the user iconifies the application,
+the icon will be recognizable as belonging to the particular application.
+Exactly how to tell the window manager about this pixmap will be described
+in the next section, but first let's talk about how to create the pixmap.
+
+<P>The program should take two steps in creating the pixmap:
+it should find out what sizes of icon are acceptable to the window manager
+and then create a pixmap of an appropriate size. Since most current window
+managers do not specify icon sizes, and it is difficult to know how to
+respond in a reasonable way, this issue can be ignored for the present.
+Eventually, when standard window managers specify standard icon sizes,
+applications would use <B>XGetIconSizes()</B> to determine which window
+manager was in operation and have a icon bitmap for each one.
+
+<P>Example 3-7 shows the simple process of creating a pixmap
+for the icon.
+
+<P><B>basicwin -- creating an icon pixmap</B>
+<BLOCKQUOTE>
+<PRE><TT>#include "bitmaps/icon_bitmap"
+void main(argc, argv)
+int argc;
+char **argv;
+{
+&nbsp;&nbsp; /* Other declarations */
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; Pixmap icon_pixmap;
+
+&nbsp;&nbsp; /* Open display, create window, etc. */
+&nbsp;&nbsp; /* Might someday want to use XGetIconSizes to get the icon
+&nbsp;&nbsp;&nbsp; * sizes specified by the window manager in order to determine
+&nbsp;&nbsp;&nbsp; * which of several icon bitmap files to use, but only when
+&nbsp;&nbsp;&nbsp; * some standard window managers set these */
+&nbsp;&nbsp; /* Create pixmap of depth 1 (bitmap) for icon */
+&nbsp;&nbsp; icon_pixmap = XCreateBitmapFromData(display, win,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon_bitmap_bits, icon_bitmap_width,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon_bitmap_height);
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .</TT></PRE>
+</BLOCKQUOTE>
+An icon design can be created using the standard X application
+<I>bitmap</I>. You run <I>bitmap</I> with a filename and dimensions as
+command line arguments, like so:
+<BLOCKQUOTE>
+<PRE><TT>% bitmap icon_bitmap 40x40</TT></PRE>
+</BLOCKQUOTE>
+Then you use the pointer to draw your bitmap. For more information
+on the <I>bitmap</I> editor, see <I>Volume Three, X Window System User's
+Guide</I>. Normally the icon carries some symbolic representation of the
+application, so use your imagination. <I>bitmap</I> creates an ASCII file
+that looks like Example 3-8. This particular bitmap is a bit small for
+an icon, being only 20 pixels on a side. A more typical size would be about
+40 pixels on a side.
+
+<P><B>Format of bitmap files</B>
+<BLOCKQUOTE>
+<PRE><TT>#define icon_bitmap_width 20
+#define icon_bitmap_height 20
+static char icon_bitmap_bits[] = {
+&nbsp;&nbsp; 0x60, 0x00, 0x01, 0xb0, 0x00, 0x07, 0x0c, 0x03, 0x00, 0x04, 0x04, 0x00,
+&nbsp;&nbsp; 0xc2, 0x18, 0x00, 0x03, 0x30, 0x00, 0x01, 0x60, 0x00, 0xf1, 0xdf, 0x00,
+&nbsp;&nbsp; 0xc1, 0xf0, 0x01, 0x82, 0x01, 0x00, 0x02, 0x03, 0x00, 0x02, 0x0c, 0x00,
+&nbsp;&nbsp; 0x02, 0x38, 0x00, 0x04, 0x60, 0x00, 0x04, 0xe0, 0x00, 0x04, 0x38, 0x00,
+&nbsp;&nbsp; 0x84, 0x06, 0x00, 0x14, 0x14, 0x00, 0x0c, 0x34, 0x00, 0x00, 0x00, 0x00};</TT></PRE>
+</BLOCKQUOTE>
+The bitmap format shown in Example 3-8 is not used only in
+<B>XCreateBitmapFromData()</B>. It is also used by the Xlib functions <B>XWriteBitmapFile()</B>
+and <B>XReadBitmapFile()</B>. An application can also read from a file
+the data used to create a pixmap, instead of including the data, but this
+is more complicated because it requires processing of filenames.
+<H3>
+Communicating with the Window Manager</H3>
+Before mapping the window (which displays it on the screen),
+an application must set the standard properties to tell the window manager
+at least a few essential things about the application.
+
+<P>You may remember from Chapter 2, "X Concepts," that a
+property is a collection of information that is readable and writable by
+any client and is usually used to communicate between clients. The standard
+properties are part of the convention for communication between each application
+and the window manager.
+
+<P>You may also remember that a property is associated with
+a particular window. The standard properties are associated with the top-level
+window of the application. This is how the server keeps track of the standard
+properties of all the different applications and has them ready for the
+window manager to read them.
+
+<P>Several routines are provided that allow the application
+to easily set these properties; analogous routines allow the window manager
+to read them. The routine designed to set all the most important properties
+for a normal application is <B>XSetWMProperties()</B>.
+
+<P>The document describing the standard for communication
+between the application and the window manager is called the <I>Inter-Client
+Communication Conventions Manual</I>; it is reprinted in Appendix L, <I>Interclient
+Communcation Conventions</I>, of <I>Volume Zero, X Protocol Reference Manual</I>.
+More information on the conventions can be found in Chapter 12, "Interclient
+Communication," of this manual.
+
+<P>The minimum set of properties that an application must
+set are:
+<UL>
+<LI>
+Window name</LI>
+
+<LI>
+Icon name</LI>
+
+<LI>
+Icon pixmap</LI>
+
+<LI>
+Command name and arguments (the command line)</LI>
+
+<LI>
+Number of arguments</LI>
+
+<LI>
+Preferred window sizes</LI>
+
+<LI>
+Keyboard focus model</LI>
+</UL>
+We'll say more about each of these after you have seen the
+code that sets them. Example 3-9 shows the code that sets the standard
+properties.
+
+<P><B>basicwin -- setting standard properties</B>
+<BLOCKQUOTE>
+<PRE><TT>void main(argc, argv)
+int argc;
+char **argv;
+{
+&nbsp;&nbsp; XWMHints *wm_hints;
+
+&nbsp;&nbsp; XClassHint *class_hints;
+&nbsp;&nbsp; XTextProperty windowName, iconName;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; /* To be displayed in window manager's titlebar of window */
+&nbsp;&nbsp; char *window_name = "Basic Window Program";
+&nbsp;&nbsp; /* To be displayed in icon */
+&nbsp;&nbsp; char *icon_name = "basicwin";
+&nbsp;&nbsp; Pixmap icon_pixmap;
+&nbsp;&nbsp; XSizeHints *size_hints; /* Structure containing preferred sizes */
+
+&nbsp;&nbsp; if (!(size_hints = XAllocSizeHints())) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "%s: failure allocating memory, progname);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(0);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; if (!(wm_hints = XAllocWMHints())) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "%s: failure allocating memory, progname);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(0);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; if (!(class_hints = XAllocClassHint())) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "%s: failure allocating memory, progname);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(0);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Open display, create window, create icon pixmap */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; /* Before mapping, set size hints for window manager */
+&nbsp;&nbsp; /* Note that in a real application, if size or position were
+&nbsp;&nbsp;&nbsp; * set by the user, the flags would be USPosition and USSize,
+&nbsp;&nbsp;&nbsp; * and these would override the window
+&nbsp;&nbsp;&nbsp; * manager's preferences for this window.&nbsp; */
+&nbsp;&nbsp; /* x, y, width, and height hints are taken from the
+&nbsp;&nbsp;&nbsp; * actual settings of the window when mapped; note that
+&nbsp;&nbsp;&nbsp; * PPosition and PSize must be specified anyway */
+&nbsp;&nbsp; size_hints->flags = PPosition | PSize | PMinSize;
+&nbsp;&nbsp; size_hints->min_width = 300;
+&nbsp;&nbsp; size_hints->min_height = 200;
+&nbsp;&nbsp; /* These calls store window_name and icon_name into
+&nbsp;&nbsp;&nbsp; * XTextProperty structures and set their other fields
+&nbsp;&nbsp;&nbsp; * properly */
+&nbsp;&nbsp; if (XStringListToTextProperty(&amp;window_name, 1, &amp;windowName) == 0) {
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf( stderr, "%s: structure allocation for \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windowName failed.\n", progname);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(-1);
+&nbsp;&nbsp; }
+
+&nbsp;&nbsp; if (XStringListToTextProperty(&amp;icon_name, 1, &amp;iconName) == 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf( stderr, "%s: structure allocation for \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iconName failed.\n", progname);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(-1);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Whether application should be&nbsp; normal or iconified
+&nbsp;&nbsp;&nbsp; * when first mapped */
+&nbsp;&nbsp; wm_hints->initial_state = NormalState;
+&nbsp;&nbsp; /* Does application need keyboard input? */
+&nbsp;&nbsp; wm_hints->input = True;
+&nbsp;&nbsp; wm_hints->icon_pixmap = icon_pixmap;
+&nbsp;&nbsp; wm_hints->flags = StateHint | IconPixmapHint | InputHint;
+&nbsp;&nbsp; /* These are used by the window manager to get information
+&nbsp;&nbsp;&nbsp; * about this application from the resource database */
+&nbsp;&nbsp; class_hints->res_name = progname;
+&nbsp;&nbsp; class_hints->res_class = "Basicwin";
+&nbsp;&nbsp; XSetWMProperties(display, win, &amp;windowName, &amp;iconName,
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; argv, argc, size_hints, wm_hints,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; class_hints);</TT></PRE>
+</BLOCKQUOTE>
+It is important to realize that these properties are only
+hints. A hint is information that might or might not be used. There may
+be no window manager running, or the window manager may ignore some or
+all of the hints. Therefore, an application should not depend on anything
+having been done with the information provided in the standard properties.
+For example, take the window name hint. Some window managers will use this
+information to display a titlebar above or beside each top-level window,
+showing the application's name. The proper and obvious thing for the application
+to do would be to set the window name to be the application's name. But
+if the application were an editor, it could try to set its window name
+to the name of the current file. This plan would fall through if no window
+manager were running.
+
+<P>The icon name and icon pixmap should both set to allow
+the window manager to use either or both. Most current window managers
+often display just the icon pixmap, unless no pixmap is specified, in which
+case they use the icon name. If the icon name is not set, the convention
+within window managers is to use the window name as the icon name; if the
+window name is not specified either, then they will use the first element
+of the command line.
+
+<P>The UNIX shell command name and arguments are passed into
+<I>main</I> in the standard fashion from the command line, as <B>argv</B>
+and <B>argc</B>. These can be used directly as arguments in the call to
+set the standard properties. This information might be used by the session
+manager to restart or duplicate the application when so instructed by the
+user.
+
+<P>And last but not least, the window size hints property
+is a structure that specifies the sizes, positions, and aspect ratios preferred
+by the user or the program for this application. The <B>XSizeHints</B>
+structure is shown in Example 3-10.
+
+<P><B>The XSizeHints structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; long flags;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Marks defined fields
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * in this structure */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int x, y;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Obsolete as of R4 */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int width, height;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Obsolete as of R4 */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int min_width, min_height;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int max_width, max_height;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int width_inc, height_inc;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; struct {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int x;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Numerator */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int y;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Denominator */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } min_aspect, max_aspect;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int base_width, base_height;&nbsp;&nbsp; /* New in R4 */
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int win_gravity;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* New in R4 */
+} XSizeHints;</TT></PRE>
+</BLOCKQUOTE>
+You might ask, "How would the user be involved in specifying
+the size hints when they have to be set even before a window appears?"
+The answer: applications can be written to let the user specify the position
+and size of the top-level window through command line arguments or the
+resource database. A more complete application would get these values,
+use them to set the size of the window. To tell the window manager that
+the user, not the application, supplied these values, the application would
+set the <B>flags</B> field to <B>USSize | USPosition</B> instead of <B>PSize
+| PPosition</B>.
+
+<P>All this arranges a priority for the different settings
+of the position and size of a top-level window. The lowest priority is
+the application itself. Next higher is the window manager, and highest
+of all is the user. In Example 3-9, the symbols used to set <B>flags</B>
+are <B>PSize</B> and <B>PMinSize</B>. These indicate that the program is
+specifying its desired size and its minimum useful size. The symbols used
+for other members of <B>XSizeHints</B> are shown on the reference page
+for <B>XSetWMProperties()</B> in <I>Volume Two, Xlib Reference Manual</I>.
+
+<P>Let's describe the other members of <B>XSizeHints</B>.
+The <B>x</B>, <B>y</B>, <B>width</B>, and <B>height</B> members are simply
+the desired position and size for the window. In R4 and later, these fields
+should not be set.
+
+<P>The rest of the size hints give the window manager information
+about how to resize the window. The <B>min_height</B> and <B>min_width</B>
+fields should be set to the minimum dimensions (in pixels) required so
+that the application can still function normally. Many window managers
+will not allow the user to resize the window smaller than <B>min_width</B>
+and <B>min_height</B>. <B>max_width</B> and <B>max_height</B> are analogous
+to <B>min_width</B> and <B>min_height</B> but are less critical for most
+applications.
+
+<P>In R4, the <B>base_width</B> and <B>base_height</B> fields
+have been added to the <B>XSizeHints</B> structure. They are used with
+the <B>width_inc</B> and <B>height_inc</B> fields to indicate to the window
+manager that it should resize the window in steps--in units of a certain
+number of pixels instead of single pixels. The window manager resizes the
+window to any multiple of <B>width_inc</B> in width and <B>height_inc</B>
+in height, but no smaller than <B>min_width</B> and <B>min_height</B> and
+no bigger than <B>max_width</B> and <B>max_height</B>. If you think about
+it, <B>min_width</B> and <B>min_height</B> and <B>base_width</B> and <B>base_height</B>
+have basically the same purpose. Therefore, <B>base_width</B> and <B>base_height</B>
+take priority over <B>min_width</B> and <B>min_height</B>, so only one
+of these pairs should be set.
+
+<P>The <I>xterm</I> application provides a good example of
+size increments. It wants its window to be resized in multiples of the
+font width and height, since it uses only constant-width fonts. This way,
+there are no partial characters along the edges of the window. What's more,
+the application can then interpret dimensions specified by the user in
+multiples of <B>width_inc</B> and <B>height_inc</B>, instead of pixels.
+The user specifies dimensions in characters (24 by 80 for a standard size
+terminal), which the application then translates into pixels by multiplying
+them by <B>width_inc</B> and <B>height_inc</B>. Most window managers display
+the dimensions of the window when the user is resizing it, and if <B>width_inc</B>
+and <B>height_inc</B> are set, they will use multiples instead of pixels
+as units.
+
+<P>In R4, the <B>win_gravity</B> field has also been added
+to the <B>XSizeHints</B> structure. This field suggests to the window manager
+how the window should be placed when mapped or, more accurately, how the
+position for the window specified by the user should be interpreted. Normally,
+when the user specifies a position, either by clicking a pointer button
+to position a window or through command line arguments, the window manager
+places the top-left corner of the application's top-level window at that
+point. The <B>win_gravity</B> field requests the window manager to place
+a different part of the window at that point. The values of this field
+are <B>Center</B>, <B>East</B>, <B>North</B>, <B>NorthEast</B>, <B>NorthWest</B>,
+<B>South</B>, <B>SouthEast</B>, <B>SouthWest</B>, and <B>West</B>. These
+refer to a corner or edge of the window that should be placed at the specified
+point. As mentioned, the default is <B>NorthWest</B>, which positions the
+top-left corner of the window at the specified point. Few applications
+need to use this feature.
+<H3>
+Selecting Desired Event Types</H3>
+The next step is to select the event types the application
+will require. Our simple program must receive events for three reasons:
+to redraw itself in case of exposure, to recalculate its contents when
+it is resized, and to receive a button or key press indicating that the
+user is finished with the application.
+
+<P>The program must select these types of events specifically
+since, by default, it will not receive the kinds of input it needs. Example
+3-11 shows the line of code that selects events.
+
+<P><B>basicwin -- selecting desired event types</B>
+<BLOCKQUOTE>
+<PRE><TT>/* Select event types wanted */
+XSelectInput(display, win, ExposureMask | KeyPressMask |
+&nbsp;&nbsp; ButtonPressMask | StructureNotifyMask);</TT></PRE>
+</BLOCKQUOTE>
+The crucial argument of <B>XSelectInput()</B> is the event
+mask. Each symbol used here selects one of more event types. The event
+mask constants are combined with a bitwise OR since they are really setting
+bits in a single argument.
+
+<P><B>ExposureMask</B> selects <B>Expose</B> events, which
+occur when the window is first displayed and whenever it becomes visible
+after being obscured. <B>Expose</B> events signal that the application
+should redraw itself.
+
+<P>X provides separate events for depressing and releasing
+both keyboard keys and pointer buttons and separate symbols for selecting
+each of these types of events. <B>KeyPressMask</B> selects only <B>KeyPress</B>
+events, and <B>ButtonPressMask</B> selects only <B>ButtonPress</B> events.
+<B>ButtonRelease</B> and <B>KeyRelease</B> events can also be selected
+with <B>ButtonReleaseMask</B> and <B>KeyReleaseMask</B>, but they are not
+needed in this application.
+
+<P><B>StructureNotifyMask</B> selects a number of event types,
+specifically <B>CirculateNotify</B>, <B>ConfigureNotify</B>, <B>DestroyNotify</B>,
+<B>GravityNotify</B>, <B>MapNotify</B>, <B>ReparentNotify</B>, and <B>UnmapNotify</B>.
+The only one of these we need for our application is <B>ConfigureNotify</B>,
+which informs the application of its window's new size when it has been
+resized. However, there is no way to select just this one event type. We
+could get away without selecting this event type, but any real application
+would use it because it allows an increase in performance. Without this
+event type, on every <B>Expose</B> event the application would have to
+use <B>XGetGeometry()</B> to find out its current size. This is a request
+that requires a reply from the server and therefore is subject to network
+delays.
+
+<P>The rest of the event types selected by <B>StructureNotifyMask</B>
+are described in Chapter 8, "Events."
+
+<P><B>XSelectInput()</B> actually sets the <B>event_mask</B>
+attribute of the window. If you create the window with <B>XCreateWindow()</B>
+(as opposed to <B>XCreateSimpleWindow()</B>), you can select events at
+the same time by setting the <B>event_mask</B> attribute in the last two
+arguments of the call. This is slightly more efficient than calling <B>XSelectInput()</B>
+separately. You can also set this attribute through <B>XChangeWindowAttributes()</B>
+if, for some other reason, you need to call this function anyway.
+<H3>
+Creating Server Resources</H3>
+The next step in the application is to create any other server
+resources that are needed. Server resources are collections of information
+managed by the server and referred to in the application by an ID number.
+Items with the types <B>Colormap</B>, <B>Cursor</B>, <B>Font</B>, <B>GC</B>,
+<B>Pixmap</B>, and <B>Window</B> are server resources. They should be created
+once and the ID kept rather than creating and deleting them in frequently
+called subroutines. That is why they are normally created in <B>main</B>
+or in a subroutine called only once from <B>main</B>.
+
+<P>In this program, we have already created two resources:
+a window and the icon pixmap. We still need to load a font for the text
+and to create a graphics context to draw both text and graphics into the
+window. These operations are done in the routines <B>load_font</B> and
+<B>get_GC</B>, called just before mapping the window. We are going to delay
+describing these routines until Chapters 5, <I>The Graphics Context</I>
+and 6, <I>Drawing Graphics and Text</I>, in order to keep this chapter
+to manageable proportions. However, the complete code for <I>basicwin</I>,
+including these functions, is listed at the end of this chapter, in case
+you want a sneak preview.
+<H3>
+Window Mapping</H3>
+Finally we are ready to display the window. Note that we
+have done all that preparation before mapping the window for good reason.
+The window manager hints must be set so that the window manager can handle
+the mapping properly, and events must be selected so that the first <B>Expose</B>
+will arrive and tell the application to draw into its window.
+
+<P>Example 3-12 shows the code that maps the window.
+
+<P><B>basicwin -- mapping the window</B>
+<BLOCKQUOTE>
+<PRE><TT>/* Display window */
+XMapWindow(display, win);</TT></PRE>
+</BLOCKQUOTE>
+You may remember from Chapter 2, "X Concepts," that in order
+for a window to be visible, it must meet five conditions. These are so
+important that they bear repeating:
+<OL>
+<LI>
+The window must be mapped with <B>XMapWindow()</B> or related
+routines.</LI>
+
+<LI>
+All its ancestors must be mapped. This condition is always
+satisfied for the children of the root window, the top-level windows of
+each application.</LI>
+
+<LI>
+The window must not be obscured by visible sibling windows
+or their ancestors--this depends on the stacking order. When first mapped,
+a window appears on top of its siblings, which will be on top of all windows
+if its parent is the root window.</LI>
+
+<LI>
+The request buffer must be flushed. This topic will be described
+in the next section.</LI>
+
+<LI>
+The initial mapping of a top-level window is a special case,
+since the window's visibility may be delayed by the window manager. For
+complicated reasons, an application must wait for the first <B>Expose</B>
+event before assuming that its window is visible and drawing into it.</LI>
+</OL>
+
+<H3>
+Flushing the Output Buffer</H3>
+<B>XMapWindow()</B> causes an X protocol request that instructs
+the server to display the window on the screen. Like all other X protocol
+requests, this one is queued until an event-reading routine such as <B>XNextEvent()</B>,
+a routine that queries the server (most routines whose names contain <B>Fetch</B>,
+<B>Get</B>, or <B>Query</B>), or a routine such as <B>XFlush()</B> or <B>XSync()</B>
+is called. The server operates more efficiently over the network when X
+protocol requests are sent in groups.
+
+<P>The <B>XNextEvent()</B> call performs the flushing frequently
+enough in applications that take user input. The routines that query the
+server should be called as infrequently as possible because they reduce
+performance over the network. The <B>XFlush()</B> command instructs the
+server to process all queued output requests right away. <B>XFlush()</B>
+is generally necessary only when an application needs to draw periodically
+even without user input.
+<H3>
+Setting Up an Event-gathering Loop</H3>
+X programs are event-driven, which means that after setting
+up all the server resources and window manager hints as described up to
+this point, the program performs all further actions only in response to
+events. The event-gathering loop is the standard way to respond to events,
+performing the appropriate action depending on the type of event and the
+information contained in the event structure.
+
+<P>The event loop is normally a closed loop, in which one
+of the event types with certain contents defined by the application indicates
+that the user wants to exit. In some existing applications such as <I>xclock</I>,
+the loop is completely closed, and therefore the only way to terminate
+the program is to find the process ID from the shell and kill it or use
+the window or session manager, but this can be inconvenient.
+
+<P>The choice of which events are received by the application
+was made earlier when the application selected input or set the <B>event_mask</B>
+attribute. The event loop must make sure to properly handle every event
+type selected. One of the most common debugging problems is for there to
+be a difference between the events handled and those selected.
+
+<P>Have a look at the code in Example 3-13, before we describe
+it in more specific terms.
+
+<P><B>basicwin -- processing events</B>
+<BLOCKQUOTE>
+<PRE><TT>&nbsp; .
+&nbsp; .
+&nbsp; .
+/* Get events, use first Expose to display text and graphics
+&nbsp;* ConfigureNotify to indicate a resize (maybe even before
+&nbsp;* first Expose); ButtonPress or KeyPress to exit */
+while (1)&nbsp; {
+&nbsp;&nbsp; XNextEvent(display, &amp;report);
+&nbsp;&nbsp; switch&nbsp; (report.type) {
+&nbsp;&nbsp; case Expose:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Unless this is the last contiguous expose,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * don't draw the window */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (report.xexpose.count != 0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* If window too small to use */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (window_size == TOO_SMALL)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TooSmall(win, gc, font_info);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Place text in window */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; place_text(win, gc, font_info, width, height);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Place graphics in window */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; place_graphics(win, gc, width, height);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; case ConfigureNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Window has been resized; change width and height
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * to send to place_text and place_graphics in
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * next Expose */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width = report.xconfigure.width;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; height = report.xconfigure.height;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((width &lt; size_hints->min_width) ||
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (height &lt; size_hints->min_height))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; window_size = TOO_SMALL;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; window_size = BIG_ENOUGH;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; case ButtonPress:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Trickle down into KeyPress (no break) */
+&nbsp;&nbsp; case KeyPress:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XUnloadFont(display, font_info->fid);
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XFreeGC(display, gc);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XCloseDisplay(display);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp; default:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* All events selected by StructureNotifyMask
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * except ConfigureNotify are thrown away here,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * since nothing is done with them */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; } /* End switch */
+} /* End while */</TT></PRE>
+</BLOCKQUOTE>
+Example 3-13 is framed by an infinite while loop. Just inside
+the top of the loop is the <B>XNextEvent()</B> statement, which gets an
+event structure from the queue Xlib maintains for the application and puts
+the pointer to it in the variable <B>report</B>. You might assume that
+the event loop could have been written:
+<BLOCKQUOTE>
+<PRE><TT>while (XNextEvent(display, &amp;event)) {
+&nbsp; .
+&nbsp; .
+&nbsp; .
+}</TT></PRE>
+</BLOCKQUOTE>
+but this is not the case. <B>XNextEvent()</B> returns void;
+it only returns when there is an event to return. Errors are handled through
+a separate error-handling mechanism, not through the returned value. So
+it is necessary to write the event loop:
+<BLOCKQUOTE>
+<PRE><TT>while (1) {
+&nbsp;&nbsp;&nbsp; XNextEvent(display, &amp;event);
+&nbsp; .
+&nbsp; .
+&nbsp; .
+}</TT></PRE>
+</BLOCKQUOTE>
+Right after <B>XNextEvent()</B> is a switch statement that
+branches depending on the event type. There is one case for each of the
+four types of events: <B>ButtonPress</B>, <B>ConfigureNotify</B>, <B>Expose</B>,
+and <B>KeyPress</B>.
+
+<P>The <B>ConfigureNotify</B> branch, in all applications,
+will calculate the values of variables based on the new window size. These
+variable values will then be used to calculate where to draw things in
+the <B>Expose</B> branch the next time an <B>Expose</B> event occurs. A
+<B>ConfigureNotify</B> event is always followed by one or more <B>Expose</B>
+events.
+<H4>
+Repainting the Window</H4>
+<B>Expose</B> events occur when a window becomes visible
+on the screen, after being obscured or unmapped. They occur because the
+X Window System does not normally save the contents of regions of windows
+obscured by other windows or not mapped. The contents of windows need to
+be redrawn when they are exposed.
+
+<P>The code for <B>Expose</B> events draws or redraws the
+contents of the application's window. This code will be reached when the
+window is first mapped, and whenever a portion of the window becomes visible.
+
+<P>An application can respond to <B>Expose</B> events by
+refreshing only the parts of the window exposed, or by refreshing the entire
+window. The former is possible because the event structure for each <B>Expose</B>
+event carries the position and dimensions of a single rectangular exposed
+area, as shown in Example 3-14.
+
+<P><B>The XExposeEvent structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;/* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; int x, y;
+&nbsp;&nbsp; int width, height;
+&nbsp;&nbsp; int count;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* If nonzero, at least this many more */
+} XExposeEvent;</TT></PRE>
+</BLOCKQUOTE>
+Several <B>Expose</B> events can occur because of a single
+window manager operation, as shown in Figure 3-2. If window <I>E</I> were
+raised, four <B>Expose</B> events would be sent to it. The <B>height</B>
+and <B>width</B> members in each event structure would correspond to the
+dimensions of the area where each of the windows overlapped window <I>E</I>,
+and the <B>x</B> and <B>y</B> members would specify the upper-left corner
+of each area relative to the origin of window <I>E</I>. All the <B>Expose</B>
+events generated by a single action are guaranteed to be contiguous in
+the event queue.
+
+<P><B>Multiple Expose events generated from a single user
+action</B>
+
+<P><IMG SRC="imgs/fig.3.02.gif" ALT="fig.3.02.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;Whether an application should draw the whole window
+or just the exposed parts depends on the complexity of the drawing in the
+window. If all of the window contents are simple for both the application
+and the server to draw, the entire window contents can be redrawn without
+a performance problem. This approach works well as long as the window is
+only redrawn once, even if multiple <B>Expose</B> events occur because
+of a single user action. One trick is to monitor the <B>count</B> member
+of the <B>Expose</B> event structure and ignore the <B>Expose</B> events
+(do not redraw the window) until this member is <B>0</B>. It might seem
+an even better method to search the entire queue, removing all <B>Expose</B>
+events that occurred on the window, before redrawing. But this is illegal
+because there may be intervening <B>ConfigureNotify</B> events in the queue,
+and responding to an <B>Expose</B> event that follows a <B>ConfigureNotify</B>
+event too early will result in redrawing the wrong area or not redrawing
+at the right time. Only <I>contiguous</I><B>Expose</B> events can be skipped.
+
+<P>On the other hand, if a window has any elements that can
+be time consuming for either the application or the server to redraw, then
+the application should only redraw the time-consuming elements if they
+are actually within the exposed areas.
+
+<P>The issue here is redrawing time, which has two components
+under the application's control: the time the application takes to process
+the redrawing instructions, and the time it takes for the server to actually
+do the redrawing. On most servers, a user must wait for the server to complete
+drawing before he or she can move the pointer or go on to other actions.
+Therefore, the time taken by the server is critical, since it translates
+directly into waiting by the user. Since the system running X clients is
+normally multitasking, the time taken by the application to minimize redrawing
+is not as important, since the user can still do work.
+
+<P>There are two approaches to assisting the server in redrawing
+exposed regions quickly. One is to avoid redrawing items in regions that
+have not been exposed. Doing this in an application requires identifying
+any items to be drawn that do not extend into any of the exposed areas
+and eliminating these drawing requests. There are a set of routines that
+perform intersecting calculations on regions that may help you implement
+this.
+
+<P>The second approach is to set the clip mask in the GC
+to draw only in the exposed areas. This second approach is much simpler
+in code, but it delegates the job of eliminating unnecessary drawing to
+the server. Many servers may not do this elimination, because there is
+again a tradeoff between the time saved in eliminating requests and the
+time spent in calculating which requests to eliminate.
+
+<P>If you are now confused and wondering which redrawing
+approach to take in your application, the general rules should be as follows:
+<UL>
+<LI>
+If the window is fast to draw, the whole window can be drawn
+in response to the last <B>Expose</B> event in a contiguous series; this
+means drawing only when <B>count</B> is zero. The definition of <I>fast</I>
+will vary from server to server, but anything that uses the more complex
+features of the GC, such as wide lines or join styles, or that may have
+lots of drawing requests should probably be considered slow.</LI>
+
+<LI>
+For windows that are slow to draw, the application should
+avoid drawing areas that were not exposed. If the application can figure
+out which slow drawing requests would draw only into areas that were not
+exposed and these calculations are not time consuming in themselves, then
+it should eliminate these requests.</LI>
+
+<LI>
+For windows that are slow to draw, the second best approach
+is to set a clip mask to allow the server to eliminate unnecessary requests.
+(This will work only if the server has been designed to do so.) The application
+can combine all the areas in a contiguous series of expose events into
+a single clip mask and set this clip mask into the GC. The code for this
+is only slightly more complex than the approach for the window that is
+fast to draw.</LI>
+</UL>
+Since the image used by the <I>basicwin</I> application is
+simple, the application can redraw the entire window upon receiving the
+last contiguous <B>Expose</B> event with little performance penalty. But
+we will also show you the other approach, as if the window were more complex.
+Example 3-13 shows the first method from the list above, and Example 3-15
+shows the third method.
+
+<P>The second method in the list above is not shown here
+because it is hard to demonstrate in a way that is transferable to other
+applications. We will just describe it in a little more detail instead.
+Let's say that we are writing a spreadsheet application and designing the
+exposure event handling. In the spreadsheet, it would be easy to determine
+which cells were affected by the exposure, because the cells are arranged
+along horizontal rows and in columns. Upon getting an <B>Expose</B> event,
+the application could easily determine which cells overlapped the exposed
+area and then redraw only those. The same could not be said of a painting
+program, in which some drawing primitives could be diagonal or drawn with
+weird line styles. It would be very hard to determine whether a particular
+primitive drawn in the painting program intersects with an exposed region.
+In general, any application that draws most or all of its graphics horizontally
+or vertically can benefit from this technique. One example of an application
+written this way is <I>xterm</I>, and you can look at the code for that
+if you can get it. <I>xterm</I> redraws only the characters that are in
+exposed areas.
+
+<P>Example 3-15 shows a technique that could be used for
+more complicated windows. It creates a single <B>Region</B> composed of
+the union of the rectangles in all the <B>Expose</B> events. Regions are
+described fully in Chapter 6, "Drawing Graphics and Text," but you should
+be able to understand this example anyway.
+
+<P><B>Handling Expose events for complex window contents</B>
+<BLOCKQUOTE>
+<PRE><TT>int window_size = BIG_ENOUGH;&nbsp; /* Or TOO_SMALL to display contents */
+Region region;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Coalesce rectangles from all Expose
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * events */
+XRectangle rectangle;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Place Expose rectangles in here */
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+/* Create region for exposure event processing */
+region = XCreateRegion();
+while (1)&nbsp; {
+&nbsp;&nbsp; XNextEvent(display, &amp;report);
+&nbsp;&nbsp; switch&nbsp; (report.type) {
+&nbsp;&nbsp; case Expose:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (window_size == TOO_SMALL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TooSmall(win, gc, font_info);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Set rectangle to be exposed area */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; rectangle.x = (short) report.xexpose.x;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; rectangle.y = (short) report.xexpose.y;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; rectangle.width = (unsigned short) report.xexpose.width;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; rectangle.height = (unsigned short) report.xexpose.height;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Union this rect into a region */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XUnionRectWithRegion(&amp;rectangle, region, region);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* If this is the last contiguous expose in a group,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * set the clip region, clear region for next time
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * and draw */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (report.xexpose.count == 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Set clip region */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSetRegion(display, gc, region);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Clear region for next time */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XDestroyRegion(region);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; region = XCreateRegion();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Place text in window */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; place_text(win, gc, font_info, width, height);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Place graphics in window */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; place_graphics(win, gc, width, height);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;</TT></PRE>
+</BLOCKQUOTE>
+Being able to redraw the contents of its windows is important
+for most applications, but for a few applications, it might be very difficult
+or impossible. There is another method that might be used in such a situation.
+The application could draw into a pixmap and then copy the pixmap to the
+window each time the window needs redrawing. That way the complete window
+contents would always be available for redrawing the window on <B>Expose</B>
+events. The disadvantage of this approach is that the server might not
+have sufficient memory to store many pixmaps in memory (especially on color
+displays) or it might be slow about copying the pixmap into the window.
+But this would be a logical way to handle exposure in an application that
+performs double-buffering.&nbsp; On high performance graphics workstations,
+a feature known as a backing store might also be available to assist in
+redrawing windows. When available, this feature can be turned on for any
+window that really requires it. With the backing store on, the server can
+maintain the contents of the window when it is obscured and even when it
+is unmapped and capture drawing to the window while it is in one of these
+states. The one situation that the backing store cannot fully take care
+of is resizing the window. This is because it is assumed that most applications
+need to recalculate the dimensions of their contents to fit a new window
+size. The application can set an attribute called bit gravity to retain
+part of the window during a resize, but part of the window is still going
+to need redrawing if the window is resized larger.
+
+<P>In case you might be wondering, we have intentionally
+not described the <B>draw_text</B> and <B>draw_graphics</B> routines here.
+They are described in Sections 6.2.7 and 6.1.3. But if you are still curious,
+they are included in the listing of <I>basicwin</I> at the end of this
+chapter.
+<H3>
+When Can I Draw?</H3>
+There is often confusion about when an application is permitted
+to draw into its windows. You might think it would work to draw immediately
+after the <B>XMapWindow()</B> request that displays a window on the screen.
+But that will not work with most styles of window manager. The rule is
+that no drawing is allowed until the first <B>Expose</B> event arrives.
+
+<P>The reason involves a feature of X called substructure
+redirection, introduced in Section 2.1.5, "The Window Manager" and described
+more fully in Section 16.2, "Substructure Redirection."
+<H3>
+When Will My Drawing Appear?</H3>
+Another characteristic of X that often confuses newcomers
+is the fact that graphics drawn may not appear on the screen immediately.
+It is easy to write a program that properly performs a number of drawing
+calls but that never makes anything appear on the screen. This is a side
+effect of the fact that X is designed to buffer communications over a network,
+as was described in theoretical terms in Section 2.1.2, "Buffering." We
+will describe it in more practical terms here.
+
+<P>What happens is that the requests (to create windows,
+to map windows, or to draw into them) are queued up in Xlib, waiting for
+something to happen that requires an immediate communication with the server.
+Xlib will not send requests of any kind to the server until such an occurrence.
+The requests are saved up as a packet so they can be sent over the network
+more efficiently.
+
+<P>The queue of requests waiting to be sent to the server
+is called the <I>request buffer</I>. The requests are accumulated in the
+request buffer until a call to:
+<OL>
+<LI>
+Any routine which requests information from the X server
+(for example, <B>XGetWindowAttributes()</B>, <B>XLoadQueryFont()</B>, <B>XQueryPointer()</B>)</LI>
+
+<LI>
+Certain requests for getting events (<B>XMaskEvent()</B>,
+<B>XNextEvent()</B>, <B>XPending()</B>, <B>XWindowEvent</B>)</LI>
+
+<LI>
+<B>XFlush()</B></LI>
+
+<LI>
+<B>XSync()</B></LI>
+</OL>
+Actually, a routine in number 2 above that gets events triggers
+a communication with the server only if there is no event on Xlib's event
+queue that matches what the routine is looking for. Only if the routines
+are waiting for an event do they trigger the exchange. Any of these actions
+is said to <I>flush</I> the request buffer, which means that all requests
+up to this point will be acted on by the server. Novice programmers who
+neglect to call one of these routines will notice that their drawing requests
+have not been honored. They do not realize that perhaps <I>none</I> of
+their X requests that require communication with the server have been honored.
+
+<P>But does it really take a lot of care to make sure that
+the request buffer gets flushed? Not usually. Since X programs are event-driven,
+they often call routines that get events. If an application handles event
+types that occur frequently, such as pointer or keyboard events, there
+is nothing to worry about. If the application needs to get information
+from the server by making a call containing the word <B>Fetch</B>, <B>Get</B>,
+or <B>Query</B>, no problem is likely. On the other hand, an output-only
+application that handles only <B>Expose</B> events would certainly need
+to call <B>XFlush()</B> once in a while to make sure that its drawing was
+honored in a timely fashion.
+<H3>
+Handling Resizing of the Window</H3>
+The <B>ConfigureNotify</B> event tells the application that
+the window was resized. In this program, we pass this information to the
+routines that draw, so that they can position things properly. We also
+see if the new size is less than the minimum useful size that we set as
+a size hint for the window manager. If it is smaller in either dimension,
+then we set the flag <B>window_size</B> so that the next time an <B>Expose</B>
+event arrives, we display the message "Too Small" instead of the usual
+text.
+
+<P>Example 3-16 shows the code that handles the <B>ConfigureNotify</B>
+event.
+
+<P><B>basicwin -- the ConfigureNotify event</B>
+<BLOCKQUOTE>
+<PRE><TT>&nbsp; .
+&nbsp; .
+&nbsp; .
+case ConfigureNotify:
+&nbsp;&nbsp; /* Window has been resized; change width and height to
+&nbsp;&nbsp;&nbsp; * send to place_text and place_graphics in next Expose */
+&nbsp;&nbsp; width = report.xconfigure.width;
+&nbsp;&nbsp; height = report.xconfigure.height;
+&nbsp;&nbsp; if ((width &lt; size_hints->min_width) ||
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (height &lt; size_hints->min_height))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; window_size = TOO_SMALL;
+&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; window_size = BIG_ENOUGH;
+&nbsp;&nbsp; break;
+&nbsp; .
+&nbsp; .
+&nbsp; .</TT></PRE>
+</BLOCKQUOTE>
+Note that when the window is first mapped, the <B>ConfigureNotify</B>
+event appears on the queue <I>before</I> the first <B>Expose</B> event.
+This means that the code works even if the window manager modifies the
+window's size before allowing it to be displayed. The initial <B>ConfigureNotify</B>
+updates the application's knowledge of the window size, and the following
+<B>Expose</B> event allows the application to draw the window's contents.
+
+<P>If we had not selected <B>ConfigureNotify</B> events,
+the code for <B>Expose</B> would have to be modified to check the dimensions
+in the first <B>Expose</B> event, so that it knew the correct window size.
+It would also have to query the server for the window size in response
+to subsequent <B>Expose</B> events, because these events describe only
+the exposed area, not the entire window.
+<H3>
+Exiting the Program</H3>
+This program uses a key or button press to exit. This is
+not a very demanding use of <B>KeyPress</B> and <B>ButtonPress</B> events.
+For a description of how to use keyboard and pointer events for more advanced
+purposes, see Chapter 9, "The Keyboard and Pointer."
+
+<P>To cleanly exit, a client should free all the memory it
+has allocated, particularly X resources, and then close the display connection
+with <B>XCloseDisplay()</B>. Example 3-17 shows the code that performs
+these functions in <I>basicwin</I>.
+
+<P><B>Closing the display connection and freeing resources</B>
+<BLOCKQUOTE>
+<PRE><TT>case ButtonPress:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Trickle down into KeyPress (no break) */
+case KeyPress:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XUnloadFont(display, font_info->fid);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XFreeGC(display, gc);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XCloseDisplay(display);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);</TT></PRE>
+</BLOCKQUOTE>
+It is good practice to use <B>XCloseDisplay()</B> even though
+the connection to the server is closed automatically when a process exits.
+Otherwise, pending errors might not be reported.
+<H3>
+Error Handling</H3>
+Although there does not appear to be much in the way of error-handling
+code in this example, the question of error handling has been fully considered:
+<UL>
+<LI>
+On the <B>XOpenDisplay()</B> call, we check for the error
+return, tell the user what server the attempt was made to connect to, and
+exit gracefully.</LI>
+
+<LI>
+For all other errors, we depend on the default error-handling
+mechanisms. These errors might be a protocol errors caused by a programming
+error (all of which we hope to eliminate), a protocol error caused by the
+server running out of memory (the chance of which we cannot eliminate),
+or an IO error such as losing the connection with the server due to network
+failure. For protocol errors, the client gets an error event from the server,
+and Xlib invokes an error handler function. The client is free to provide
+its own error handler to replace the default handler, which prints an informative
+message and exits. For IO errors, there is a separate error handler function,
+which can be separately replaced by the application. But for this example,
+we have simply relied on the default handlers.</LI>
+</UL>
+It is important to note that not all protocol errors cause
+the error handler to be invoked, though this fact does not show itself
+in <I>basicwin</I>. Some errors, such as failure to open a font, are indicated
+by returned values of type <B>Status</B> on the appropriate routine (in
+this case, <B>XLoadFont()</B>). The returned values are zero on failure
+and nonzero on success. In general, any routine that returns <B>Status</B>
+will need its return value tested, because it will have bypassed the error-handling
+mechanism.
+<H3>
+Summary</H3>
+The basic steps that were taken in this program are as follows:
+<UL>
+<LI>
+Open connection to server.</LI>
+
+<LI>
+Make sure connection succeeded, print error and exit if not.</LI>
+
+<LI>
+Get display dimensions.</LI>
+
+<LI>
+Calculate desired size of window and create window.</LI>
+
+<LI>
+Create pixmap for icon.</LI>
+
+<LI>
+Initialize <B>XSizeHint</B> structure.</LI>
+
+<LI>
+Set standard properties for window manager.</LI>
+
+<LI>
+Select desired event types.</LI>
+
+<LI>
+Map window.</LI>
+
+<LI>
+Set up event gathering loop.</LI>
+
+<LI>
+If event is of type <B>Expose</B>, draw contents of window.</LI>
+
+<LI>
+If event is of type <B>ConfigureNotify</B>, recalculate dimensions
+of window.</LI>
+
+<LI>
+If event is <B>ButtonPress</B> or <B>KeyPress</B>, close
+the display and exit.</LI>
+</UL>
+The order of these steps is important up to the point where
+the window is mapped. Within the event loop, the order of events cannot
+be completely predicted.
+<H3>
+Complete Code for basicwin</H3>
+Now look at the complete code for <I>basicwin</I> and make
+sure you understand everything. Note that the <B>draw_graphics</B>, <B>draw_text</B>,
+<B>get_GC</B>, and <B>load_font</B> routines have not yet been described
+but will be covered in later chapters.
+
+<P><B>basicwin -- in its entirety</B>
+<BLOCKQUOTE>
+<PRE><TT>#include &lt;X11/Xlib.h>
+#include &lt;X11/Xutil.h>
+#include &lt;X11/Xos.h>
+#include &lt;X11/Xatom.h>
+#include &lt;stdio.h>
+#include "bitmaps/icon_bitmap"
+#define BITMAPDEPTH 1
+#define TOO_SMALL 0
+#define BIG_ENOUGH 1
+/* These are used as arguments to nearly every Xlib routine, so it
+&nbsp;* saves routine arguments to declare them global; if there were
+&nbsp;* additional source files, they would be declared extern there */
+Display *display;
+int screen_num;
+/* progname is the string by which this program was invoked; this
+&nbsp;* is global because it is needed in most application functions */
+static char *progname;
+void main(argc, argv)
+int argc;
+char **argv;
+{
+&nbsp;&nbsp; Window win;
+&nbsp;&nbsp; unsigned int width, height;&nbsp;&nbsp;&nbsp;&nbsp; /* Window size */
+&nbsp;&nbsp; int x, y;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Window position */
+&nbsp;&nbsp; unsigned int border_width = 4;&nbsp; /* Four pixels */
+&nbsp;&nbsp; unsigned int display_width, display_height;
+&nbsp;&nbsp; unsigned int icon_width, icon_height;
+&nbsp;&nbsp; char *window_name = "Basic Window Program";
+&nbsp;&nbsp; char *icon_name = "basicwin";
+&nbsp;&nbsp; Pixmap icon_pixmap;
+&nbsp;&nbsp; XSizeHints *size_hints;
+&nbsp;&nbsp; XIconSize *size_list;
+&nbsp;&nbsp; XWMHints *wm_hints;
+&nbsp;&nbsp; XClassHint *class_hints;
+&nbsp;&nbsp; XTextProperty windowName, iconName;
+&nbsp;&nbsp; int count;
+&nbsp;&nbsp; XEvent report;
+&nbsp;&nbsp; GC gc;
+&nbsp;&nbsp; XFontStruct *font_info;
+&nbsp;&nbsp; char *display_name = NULL;
+&nbsp;&nbsp; int window_size = 0;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* BIG_ENOUGH or TOO_SMALL to
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * display contents */
+&nbsp;&nbsp; progname = argv[0];
+&nbsp;&nbsp; if (!(size_hints = XAllocSizeHints())) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "%s: failure allocating memory, progname);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(0);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; if (!(wm_hints = XAllocWMHints())) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "%s: failure allocating memory, progname);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(0);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; if (!(class_hints = XAllocClassHint())) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "%s: failure allocating memory, progname);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(0);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Connect to X server */
+&nbsp;&nbsp; if ( (display=XOpenDisplay(display_name)) == NULL )
+&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf( stderr, "%s: cannot connect to X server %s\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; progname, XDisplayName(display_name));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit( -1 );
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Get screen size from display structure macro */
+&nbsp;&nbsp; screen_num = DefaultScreen(display);
+&nbsp;&nbsp; display_width = DisplayWidth(display, screen_num);
+&nbsp;&nbsp; display_height = DisplayHeight(display, screen_num);
+&nbsp;&nbsp; /* Note that in a real application, x and y would default
+&nbsp;&nbsp;&nbsp; * to 0 but would be settable from the command line or
+&nbsp;&nbsp;&nbsp; * resource database */
+&nbsp;&nbsp; x = y = 0;
+&nbsp;&nbsp; /* Size window with enough room for text */
+&nbsp;&nbsp; width = display_width/3, height = display_height/4;
+&nbsp;&nbsp; /* Create opaque window */
+&nbsp;&nbsp; win = XCreateSimpleWindow(display, RootWindow(display,screen_num),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x, y, width, height, border_width, BlackPixel(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; screen_num), WhitePixel(display,screen_num));
+&nbsp;&nbsp; /* Get available icon sizes from window manager */
+&nbsp;&nbsp; if (XGetIconSizes(display, RootWindow(display,screen_num),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;size_list, &amp;count) == 0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf( stderr, "%s: Window manager didn't set \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon sizes - using default.\n", progname);
+&nbsp;&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* A real application would search through size_list
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * here to find an acceptable icon size and then
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * create a pixmap of that size; this requires that
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * the application have data for several sizes of icons */
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Create pixmap of depth 1 (bitmap) for icon */
+&nbsp;&nbsp; icon_pixmap = XCreateBitmapFromData(display, win,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon_bitmap_bits, icon_bitmap_width,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon_bitmap_height);
+&nbsp;&nbsp; /* Set size hints for window manager; the window manager
+&nbsp;&nbsp;&nbsp; * may override these settings */
+&nbsp;&nbsp; /* Note that in a real application, if size or position
+&nbsp;&nbsp;&nbsp; * were set by the user, the flags would be USPosition
+&nbsp;&nbsp;&nbsp; * and USSize and these would override the window manager's
+&nbsp;&nbsp;&nbsp; * preferences for this window */
+&nbsp;&nbsp; /* x, y, width, and height hints are now taken from
+&nbsp;&nbsp;&nbsp; * the actual settings of the window when mapped; note
+&nbsp;&nbsp;&nbsp; * that PPosition and PSize must be specified anyway */
+&nbsp;&nbsp; size_hints->flags = PPosition | PSize | PMinSize;
+&nbsp;&nbsp; size_hints->min_width = 300;
+&nbsp;&nbsp; size_hints->min_height = 200;
+&nbsp;&nbsp; /* These calls store window_name and icon_name into
+&nbsp;&nbsp;&nbsp; * XTextProperty structures and set their other fields
+&nbsp;&nbsp;&nbsp; * properly */
+&nbsp;&nbsp; if (XStringListToTextProperty(&amp;window_name, 1, &amp;windowName) == 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf( stderr, "%s: structure allocation for \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; windowName failed.\n", progname);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(-1);
+&nbsp;&nbsp; }
+
+&nbsp;&nbsp; if (XStringListToTextProperty(&amp;icon_name, 1, &amp;iconName) == 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf( stderr, "%s: structure allocation for \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iconName failed.\n", progname);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(-1);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; wm_hints->initial_state = NormalState;
+&nbsp;&nbsp; wm_hints->input = True;
+&nbsp;&nbsp; wm_hints->icon_pixmap = icon_pixmap;
+&nbsp;&nbsp; wm_hints->flags = StateHint | IconPixmapHint | InputHint;
+&nbsp;&nbsp; class_hints->res_name = progname;
+&nbsp;&nbsp; class_hints->res_class = "Basicwin";
+&nbsp;&nbsp; XSetWMProperties(display, win, &amp;windowName, &amp;iconName,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; argv, argc, size_hints, wm_hints,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; class_hints);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Select event types wanted */
+&nbsp;&nbsp; XSelectInput(display, win, ExposureMask | KeyPressMask |
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ButtonPressMask | StructureNotifyMask);
+&nbsp;&nbsp; load_font(&amp;font_info);
+&nbsp;&nbsp; /* Create GC for text and drawing */
+&nbsp;&nbsp; getGC(win, &amp;gc, font_info);
+&nbsp;&nbsp; /* Display window */
+&nbsp;&nbsp; XMapWindow(display, win);
+&nbsp;&nbsp; /* Get events, use first to display text and graphics */
+&nbsp;&nbsp; while (1)&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNextEvent(display, &amp;report);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch&nbsp; (report.type) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case Expose:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Unless this is the last contiguous expose,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * don't draw the window */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (report.xexpose.count != 0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* If window too small to use */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (window_size == TOO_SMALL)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TooSmall(win, gc, font_info);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Place text in window */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; place_text(win, gc, font_info, width, height);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Place graphics in window */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; place_graphics(win, gc, width, height);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ConfigureNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Window has been resized; change width
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * and height to send to place_text and
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * place_graphics in next Expose */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width = report.xconfigure.width;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; height = report.xconfigure.height;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((width &lt; size_hints->min_width) ||
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (height &lt; size_hints->min_height))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; window_size = TOO_SMALL;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; window_size = BIG_ENOUGH;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ButtonPress:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Trickle down into KeyPress (no break) */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case KeyPress:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XUnloadFont(display, font_info->fid);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XFreeGC(display, gc);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XCloseDisplay(display);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; default:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* All events selected by StructureNotifyMask
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * except ConfigureNotify are thrown away here,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * since nothing is done with them */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } /* End switch */
+&nbsp;&nbsp; } /* End while */
+}
+getGC(win, gc, font_info)
+Window win;
+GC *gc;
+XFontStruct *font_info;
+{
+&nbsp;&nbsp; unsigned long valuemask = 0; /* Ignore XGCvalues and
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * use defaults */
+&nbsp;&nbsp; XGCValues values;
+&nbsp;&nbsp; unsigned int line_width = 6;
+&nbsp;&nbsp; int line_style = LineOnOffDash;
+&nbsp;&nbsp; int cap_style = CapRound;
+&nbsp;&nbsp; int join_style = JoinRound;
+&nbsp;&nbsp; int dash_offset = 0;
+&nbsp;&nbsp; static char dash_list[] = {12, 24};
+&nbsp;&nbsp; int list_length = 2;
+&nbsp;&nbsp; /* Create default Graphics Context */
+&nbsp;&nbsp; *gc = XCreateGC(display, win, valuemask, &amp;values);
+&nbsp;&nbsp; /* Specify font */
+&nbsp;&nbsp; XSetFont(display, *gc, font_info->fid);
+&nbsp;&nbsp; /* Specify black foreground since default window background
+&nbsp;&nbsp;&nbsp; * is white and default foreground is undefined */
+&nbsp;&nbsp; XSetForeground(display, *gc, BlackPixel(display,screen_num));
+&nbsp;&nbsp; /* Set line attributes */
+&nbsp;&nbsp; XSetLineAttributes(display, *gc, line_width, line_style,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; cap_style, join_style);
+&nbsp;&nbsp; /* Set dashes */
+&nbsp;&nbsp; XSetDashes(display, *gc, dash_offset, dash_list, list_length);
+}
+load_font(font_info)
+XFontStruct **font_info;
+{
+&nbsp;&nbsp; char *fontname = "9x15";
+&nbsp;&nbsp; /* Load font and get font information structure */
+&nbsp;&nbsp; if ((*font_info = XLoadQueryFont(display,fontname)) == NULL)
+&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf( stderr, "%s: Cannot open 9x15 font\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; progname);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit( -1 );
+&nbsp;&nbsp; }
+}
+place_text(win, gc, font_info, win_width, win_height)
+Window win;
+GC gc;
+XFontStruct *font_info;
+unsigned int win_width, win_height;
+{
+&nbsp;&nbsp; char *string1 = "Hi! I'm a window, who are you?";
+&nbsp;&nbsp; char *string2 = "To terminate program; Press any key";
+&nbsp;&nbsp; char *string3 = "or button while in this window.";
+&nbsp;&nbsp; char *string4 = "Screen Dimensions:";
+&nbsp;&nbsp; int len1, len2, len3, len4;
+&nbsp;&nbsp; int width1, width2, width3;
+&nbsp;&nbsp; char cd_height[50], cd_width[50], cd_depth[50];
+&nbsp;&nbsp; int font_height;
+&nbsp;&nbsp; int initial_y_offset, x_offset;
+&nbsp;&nbsp; /* Need length for both XTextWidth and XDrawString */
+&nbsp;&nbsp; len1 = strlen(string1);
+&nbsp;&nbsp; len2 = strlen(string2);
+&nbsp;&nbsp; len3 = strlen(string3);
+&nbsp;&nbsp; /* Get string widths for centering */
+&nbsp;&nbsp; width1 = XTextWidth(font_info, string1, len1);
+&nbsp;&nbsp; width2 = XTextWidth(font_info, string2, len2);
+&nbsp;&nbsp; width3 = XTextWidth(font_info, string3, len3);
+&nbsp;&nbsp; font_height = font_info->ascent + font_info->descent;
+&nbsp;&nbsp; /* Output text, centered on each line */
+&nbsp;&nbsp; XDrawString(display, win, gc, (win_width - width1)/2,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font_height,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string1, len1);
+&nbsp;&nbsp; XDrawString(display, win, gc, (win_width - width2)/2,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (int)(win_height - (2 * font_height)),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string2, len2);
+&nbsp;&nbsp; XDrawString(display, win, gc, (win_width - width3)/2,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (int)(win_height - font_height),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string3, len3);
+&nbsp;&nbsp; /* Copy numbers into string variables */
+&nbsp;&nbsp; (void) sprintf(cd_height, " Height - %d pixels",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DisplayHeight(display,screen_num));
+&nbsp;&nbsp; (void) sprintf(cd_width, " Width&nbsp; - %d pixels",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DisplayWidth(display,screen_num));
+&nbsp;&nbsp; (void) sprintf(cd_depth, " Depth&nbsp; - %d plane(s)",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DefaultDepth(display, screen_num));
+&nbsp;&nbsp; /* Reuse these for same purpose */
+&nbsp;&nbsp; len4 = strlen(string4);
+&nbsp;&nbsp; len1 = strlen(cd_height);
+&nbsp;&nbsp; len2 = strlen(cd_width);
+&nbsp;&nbsp; len3 = strlen(cd_depth);
+&nbsp;&nbsp; /* To center strings vertically, we place the first string
+&nbsp;&nbsp;&nbsp; * so that the top of it is two font_heights above the center
+&nbsp;&nbsp;&nbsp; * of the window; since the baseline of the string is what
+&nbsp;&nbsp;&nbsp; * we need to locate for XDrawString and the baseline is
+&nbsp;&nbsp;&nbsp; * one font_info -> ascent below the top of the character,
+&nbsp;&nbsp;&nbsp; * the final offset of the origin up from the center of
+&nbsp;&nbsp;&nbsp; * the window is one font_height + one descent */
+&nbsp;&nbsp; initial_y_offset = win_height/2 - font_height -
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font_info->descent;
+&nbsp;&nbsp; x_offset = (int) win_width/4;
+&nbsp;&nbsp; XDrawString(display, win, gc, x_offset, (int) initial_y_offset,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string4,len4);
+&nbsp;&nbsp; XDrawString(display, win, gc, x_offset, (int) initial_y_offset +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font_height,cd_height,len1);
+&nbsp;&nbsp; XDrawString(display, win, gc, x_offset, (int) initial_y_offset +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2 * font_height,cd_width,len2);
+&nbsp;&nbsp; XDrawString(display, win, gc, x_offset, (int) initial_y_offset +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3 * font_height,cd_depth,len3);
+}
+place_graphics(win, gc, window_width, window_height)
+Window win;
+GC gc;
+unsigned int window_width, window_height;
+{
+&nbsp;&nbsp; int x, y;
+&nbsp;&nbsp; int width, height;
+&nbsp;&nbsp; height = window_height/2;
+&nbsp;&nbsp; width = 3 * window_width/4;
+&nbsp;&nbsp; x = window_width/2 - width/2;&nbsp; /* Center */
+&nbsp;&nbsp; y = window_height/2 - height/2;
+&nbsp;&nbsp; XDrawRectangle(display, win, gc, x, y, width, height);
+}
+TooSmall(win, gc, font_info)
+Window win;
+GC gc;
+XFontStruct *font_info;
+{
+&nbsp;&nbsp; char *string1 = "Too Small";
+&nbsp;&nbsp; int y_offset, x_offset;
+&nbsp;&nbsp; y_offset = font_info->ascent + 2;
+&nbsp;&nbsp; x_offset = 2;
+&nbsp;&nbsp; /* Output text, centered on each line */
+&nbsp;&nbsp; XDrawString(display, win, gc, x_offset, y_offset, string1,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; strlen(string1));
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

@@ -1,0 +1,2156 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_08.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_10.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H1>
+The Keyboard and Pointer</H1>
+This chapter not only describes how to handle keyboard and
+pointer events but also describes many other topics related to these two
+input devices. In particular, it discusses X's use of keysyms as portable
+symbols for character encoding, keyboard remapping, keyboard and pointer
+"grabs," and keyboard and pointer preferences. Internationalized keyboard
+input is described in Chapter 11.
+
+<P>In Chapter 3, "Basic Window Program," we showed you quite
+thoroughly how to deal with <B>Expose</B> events. But all we did with pointer
+and keyboard events was to exit the program. As you can guess, there can
+be more to it than that. This chapter describes and demonstrates the handling
+of keyboard and pointer events, describes keyboard and pointer mapping,
+and describes how to set keyboard preferences. Internationalized keyboard
+input is described in Chapter 11, <I>Internationalized Text Input</I>,
+although it depends on many concepts described in this chapter.
+<BR>
+<HR>
+<H2>
+The Keyboard</H2>
+The keyboard is an area like color, where X clients have
+to be made portable across systems with different physical characteristics.
+In the case of the keyboard, these variations are in two areas: whether
+the keyboard provides <B>KeyPress</B> and <B>KeyRelease</B> events or just
+<B>KeyPress</B> events, and the symbols on the caps of the keys.
+
+<P>Almost all serious workstations provide both <B>KeyPress</B>
+and <B>KeyRelease</B> events. Some personal computers, however, may not.
+Therefore, avoid depending on <B>KeyRelease</B> events if you want your
+client to be portable to the lowest classes of machines.
+
+<P>The second problem is adjusting for variations in the
+keys available on each keyboard and the codes they generate. We'll start
+explaining how this problem is solved by describing the contents of a key
+event.
+
+<P><B>KeyPress</B> and <B>KeyRelease</B> events are stored
+in <B>XKeyEvent</B> structures, shown in Example 9-1. Each key event contains
+the <B>keycode</B> of the key that was pressed and <B>state</B>, a mask
+which indicates which modifier keys and pointer buttons were being held
+down just before the event. A <I>modifier key</I> is a key like Shift or
+Control that can modify the meaning of a key event. In addition to their
+effect on the processing of other keys, the modifier keys also generate
+key events with unique keycodes.
+
+<P><B>The XKeyEvent structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Of event */
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp; /* Last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if from a SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Server connection */
+&nbsp;&nbsp; Window window;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* "event" window reported in */
+&nbsp;&nbsp; Window root;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Root window event occurred on */
+&nbsp;&nbsp; Window subwindow;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Child window */
+&nbsp;&nbsp; Time time;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Milliseconds */
+&nbsp;&nbsp; int x, y;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Coordinates in event window */
+&nbsp;&nbsp; int x_root, y_root;&nbsp;&nbsp;&nbsp;&nbsp; /* Coordinates relative to root */
+&nbsp;&nbsp; unsigned int state;&nbsp;&nbsp;&nbsp;&nbsp; /* Key or button mask */
+&nbsp;&nbsp; unsigned int keycode;&nbsp;&nbsp; /* Detail */
+&nbsp;&nbsp; Bool same_screen;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Same screen flag */
+} XKeyEvent;
+typedef XKeyEvent XKeyPressedEvent;
+typedef XKeyEvent XKeyReleasedEvent;</TT></PRE>
+</BLOCKQUOTE>
+The <B>keycode</B> member of <B>XKeyEvent</B> is a number
+between 8 and 255. The keycode is the same regardless of whether a key
+is pressed or released. The keycode for each physical key never changes
+on a particular server, but the key with the same symbol on it on different
+brands of equipment may generate different keycodes. For portability reasons
+and because the keycode by itself without the state of the modifier keys
+does not provide enough information to interpret an event, clients cannot
+use keycodes by themselves to determine the meaning of key events.
+
+<P>Instead of using the keycode alone, X clients call <B>XLookupString()</B>
+to translate the key event into a keysym. A <I>keysym</I> is a defined
+constant that corresponds to the meaning of a key event. For example, the
+translation of the keycode generated by the "a" key on any system would
+be <B>XK_a</B> if no other keys were being held and <B>XK_A</B> if the
+Shift key were being held or if Shift Lock was in effect (all keysyms begin
+with <B>XK_</B>). The translation of the keycode for the Return key (which
+is labeled Enter or just with an arrow on some keyboards) would be <B>XK_Return</B>.
+The Enter key on the keypad, if any, would have the keysym <B>XK_KP_Enter</B>.
+Example 9-2 shows some keysym definitions. All keysyms are defined in &lt;<I>X11/keysymdef.h</I>>.
+
+<P><B>Some sample keysym definitions</B>
+<BLOCKQUOTE>
+<PRE><TT>#define XK_BackSpace&nbsp;&nbsp;&nbsp; 0xFF08&nbsp;&nbsp; /* Back space, back char,... */
+#define XK_Left&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0xFF51&nbsp;&nbsp; /* Move left, left arrow */
+#define XK_Undo&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0xFF65&nbsp;&nbsp; /* Undo, oops */
+#define XK_Num_Lock&nbsp;&nbsp;&nbsp;&nbsp; 0xFF7F
+#define XK_KP_Multiply&nbsp; 0xFFAA
+#define XK_Shift_L&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0xFFE1&nbsp;&nbsp; /* Left shift */
+#define XK_space&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0x020&nbsp;&nbsp;&nbsp; /* Space */
+#define XK_numbersign&nbsp;&nbsp; 0x023&nbsp;&nbsp;&nbsp; /* # */
+#define XK_3&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0x033
+#define XK_question&nbsp;&nbsp;&nbsp;&nbsp; 0x03f&nbsp;&nbsp;&nbsp; /* "?" */
+#define XK_A&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0x041
+#define XK_e&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0x065</TT></PRE>
+</BLOCKQUOTE>
+<B>XLookupString()</B> also provides an ASCII string that
+corresponds to the keysym or <B>NULL</B> if there is no associated string.
+By default, all the keys that have ASCII values will have that value as
+their string. For example, <B>XK_A</B> would have the string "A", <B>XK_ampersand</B>
+would have the string "&amp;", and <B>XK_4</B> would have the string "4".
+<B>XK_Return</B>, <B>XK_Escape</B>, and <B>XK_Delete</B> have ASCII values,
+but they are not printable. <B>XK_Shift_L</B> (the Shift key on the left
+side of the keyboard) would not normally have an associated string.
+
+<P>The ASCII value for a particular keysym as returned by
+<B>XLookupString()</B> can be changed by the client using <B>XRebindKeysym()</B>,
+and it can be a string of any length, not just a single character. Even
+though keysyms like <B>XK_F1</B> (the F1 key) have no default ASCII mapping,
+they can be given strings. This mapping would apply only to the client
+that calls <B>XRebindKeysym()</B>.
+
+<P>With these introductory comments, we'll move right to
+the examples that handle keyboard input. Then we'll return to discuss keysyms
+in more detail and the various keyboard mappings and how they can be changed.
+<H3>
+Simple Keyboard Input</H3>
+Example 9-3 shows the framework of the code for translating
+a keyboard event into both a keysym and an ASCII string. You will need
+the keysym to determine what the keystroke means, and the ASCII string
+if the keystroke is a printable character. If the keystroke is printable,
+the program would append the ASCII interpretation of the key event to the
+end of the result string (and display it). If the keystroke is a modifier
+key being pressed, the event can normally be ignored, since the modifier
+status of events on other keys is already dealt with by <B>XLookupString()</B>.
+But <B>XK_Delete</B> or <B>XK_Backspace</B> would indicate that a character
+should be removed from the string.
+
+<P>The function keys are not initially mapped to ASCII strings
+and can be ignored, but if the client allows the user to map them to an
+arbitrary string, it should treat them like any other printable character.
+
+<P>You may notice in Example 9-3 that <B>XLookupString()</B>
+returns something called an <B>XComposeStatus</B>. Some keyboards provide
+a Compose key, which is used to type characters not found on the keyboard
+keys. Its purpose is to make it possible to type characters from other
+languages without disturbing the normal operation of the keyboard. As it
+usually works, you press the Compose key followed by some other key to
+generate characters like &eacute;. A table is usually provided which tells
+you which keys correspond to each foreign character. Processing of multikey
+sequences using the Compose key is now supported as an input method through
+the Release 5 internationalization features. So the <B>XComposeStatus</B>
+argument of <B>XLookupString()</B> is now just a dummy.
+
+<P><B>Translating a key event to keysym and ASCII</B>
+<BLOCKQUOTE>
+<PRE><TT>Display *display;
+XEvent event;
+char buffer[20];
+int bufsize = 20;
+KeySym key;
+XComposeStatus compose;
+int charcount;
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+&nbsp;&nbsp; /*&nbsp; Open display, create window, select, map */
+XNextEvent(display, &amp;event);
+switch( event.type ) {
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+&nbsp;&nbsp; .
+case KeyPress:
+&nbsp;&nbsp; charcount = XLookupString(&amp;event, buffer, bufsize, &amp;keysym,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;compose);
+&nbsp;&nbsp; /* Branch according to keysym, then use buffer
+&nbsp;&nbsp;&nbsp; * if the key is printable */
+&nbsp;&nbsp; break;
+case MappingNotify:
+&nbsp;&nbsp; XRefreshKeyboardMapping(&amp;event);
+&nbsp;&nbsp; break;
+}</TT></PRE>
+</BLOCKQUOTE>
+Keysyms for accented vowels, tildes, and most combinations
+found in Western languages are provided in the LATIN1 set. If you want
+to display an accented <I>e</I>, for example, the keysym is <B>XK_eacute</B>.
+If the desired character is not present in the desired font, the client
+can prepare two or more text items for <B>XDrawText()</B> for displaying
+the desired overstrike character and use the <B>delta</B> member to move
+the second character back over the first. <B>XDrawText()</B> is capable
+of drawing in a different font for each text item, in case the desired
+accent is in a separate font from the desired character.
+<H4>
+Getting a String -- A Dialog Box</H4>
+Let's say you are porting a nonevent-driven program to X,
+and you have a routine called <B>get_string</B> that gets an ASCII string
+from the user. It gets the entire string before returning. But under X,
+the user might stop typing midway through, pop some other window on top
+to check some bit of information, then pop the original application back
+on top. That means you need to handle exposure in the middle of the input
+string, which, in turn, means you need a function that remembers the string's
+state so that it can be redrawn in the <B>get_string</B> routine. You also
+have to be prepared in case the keyboard gets remapped by some other client.
+Suddenly your tiny subroutine to get a string now must be integrated into
+the event loop.
+
+<P>Example 9-4 is a modification to the <I>basicwin</I> program
+described in Chapter 3, "Basic Window Program," that puts up a pop-up dialog
+box. If the user presses a button in the <I>basicwin</I> window, the application
+puts up a dialog box, which the user can type into until a carriage return
+is typed. All the printable characters except Tab are supported, and Delete
+or Backspace operate as would be expected. The code allows the user to
+type the string while also handling the other events that might occur.
+This is done by placing the code for popping up the dialog in the branch
+for <B>ButtonPress</B> events, placing the code to redraw the dialog string
+in the branch for <B>Expose</B> events, and placing the code to process
+key events in the branch for <B>KeyPress</B> events.
+
+<P><B>Implementing a dialog box</B>
+<BLOCKQUOTE>
+<PRE><TT>/* Other include files */
+#include &lt;X11/keysym.h>
+/* Other defined constants */
+#define MAX_POPUP_STRING_LENGTH 40
+#define MAX_MAPPED_STRING_LENGTH 10
+/* Global variables display and screen */
+void main(argc, argv)
+int argc;
+char **argv;
+{
+&nbsp;&nbsp; /* Declarations from basicwin */
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; /* The following are for pop-up window */
+&nbsp;&nbsp; static Window pop_win;
+&nbsp;&nbsp; char buffer[MAX_MAPPED_STRING_LENGTH];
+&nbsp;&nbsp; int bufsize=MAX_MAPPED_STRING_LENGTH;
+&nbsp;&nbsp; int start_x, start_y;
+&nbsp;&nbsp; KeySym keysym;
+&nbsp;&nbsp; XComposeStatus compose;
+&nbsp;&nbsp; int count;
+&nbsp;&nbsp; unsigned int pop_width, pop_height;
+&nbsp;&nbsp; char string[MAX_POPUP_STRING_LENGTH];
+&nbsp;&nbsp; int popped = False;
+&nbsp;&nbsp; int length;
+&nbsp;&nbsp; /* Create main window (win) and select its events */
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; XMapWindow(display, win);
+&nbsp;&nbsp; /* Get events, use first to display text and graphics */
+&nbsp;&nbsp; while (1)&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNextEvent(display, &amp;report);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch&nbsp; (report.type) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case Expose:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (report.xexpose.window == pop_win) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* If pop_win is nonzero, it has been created,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * and window in Expose is never zero */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (popped)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XDrawString(display, pop_win, gc, start_x,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; start_y, string, strlen(string));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else {&nbsp; /* It's the main window */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Refresh main window as in basicwin */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ConfigureNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Same as in basicwin */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ButtonPress:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Put up pop-up window, create if necessary */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!pop_win) {&nbsp; /* Create it and pop it */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Determine pop-up box size from font information */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pop_width = MAX_POPUP_STRING_LENGTH *
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font_info->max_bounds.width + 4;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pop_height = font_info->max_bounds.ascent +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font_info->max_bounds.descent + 4;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pop_win = XCreateSimpleWindow(display, win, x, y,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pop_width, pop_height, border_width,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BlackPixel(display, screen),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WhitePixel(display, screen));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Calculate starting position of string in window */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; start_x = 2;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; start_y = font_info->max_bounds.ascent + 2;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSelectInput(display, pop_win, ExposureMask | KeyPressMask);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* If window is already mapped, no problem */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XMapWindow(display, pop_win);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; popped = True;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case KeyPress:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (report.xkey.window == win) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Key on main window indicates exit */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XUnloadFont(display, font_info->fid);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XFreeGC(display, gc);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XCloseDisplay(display);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Get characters until you encounter a
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * carriage return; deal with backspaces, etc. */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; count = XLookupString(&amp;report, buffer, bufsize,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;keysym, &amp;compose);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Now do the right thing with as many
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * keysyms as possible */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((keysym == XK_Return) || (keysym == XK_KP_Enter)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; || (keysym == XK_Linefeed)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XUnmapWindow(display, pop_win);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; popped = False;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("string is %s\n", string);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if (((keysym >= XK_KP_Space)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;&amp; (keysym &lt;= XK_KP_9))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; || ((keysym >= XK_space)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;&amp; (keysym &lt;= XK_asciitilde))) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((strlen(string) + strlen (buffer)) >=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; MAX_POPUP_STRING_LENGTH)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XBell(display, 100);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; strcat(string, buffer);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if ((keysym >= XK_Shift_L)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;&amp; (keysym &lt;= XK_Hyper_R))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;/* Do nothing because it's a modifier key */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if ((keysym >= XK_F1)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;&amp; (keysym &lt;= XK_F35))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (buffer == NULL)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("Unmapped function key\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if ((strlen(string) + strlen (buffer)) >=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; MAX_POPUP_STRING_LENGTH)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XBell(display, 100);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; strcat(string, buffer);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if ((keysym == XK_BackSpace) ||
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (keysym == XK_Delete)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((length = strlen(string)) > 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string[length - 1] = NULL;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XClearWindow(display, pop_win);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XBell(display, 100);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("keysym %s is not handled\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XKeysymToString(keysym));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XBell(display, 100);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XDrawString(display, pop_win, gc, start_x,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; start_y, string, strlen(string));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case MappingNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XRefreshKeyboardMapping(&amp;report);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; default:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* All events selected by StructureNotifyMask
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * except ConfigureNotify are thrown away here,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * since nothing is done with them */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } /* End switch */
+&nbsp;&nbsp; } /* End while */
+}</TT></PRE>
+</BLOCKQUOTE>
+Example 9-4 takes advantage of the fact that the keysyms
+are constants arranged in groups with consecutive values. By looking for
+any keysym in a given range, you do not need to specify every keysym you
+intend to match.
+
+<P>Notice that the program uses keysyms to match all the
+keystrokes and then does different things depending on whether the keysym
+is a normal key, a modifier key, a function key, a delete key, or an enter
+key. If the key is printable, it copies the ASCII values returned by <B>XLookupString()</B>
+into the result string.
+
+<P>This program does have some weaknesses.&nbsp; One of them
+is that it redraws the entire string instead of just the character being
+changed. Secondly, using <B>XTextItem</B> structures for each character
+and calling <B>XDrawText()</B> instead of <B>XDrawString()</B> would support
+Tab characters and functions keys mapped to strings. Since a tab has to
+be expanded into a number of spaces before being drawn and function keys
+may be mapped to arbitrary strings, it is difficult to properly implement
+them with the approach we have used in Example 9-4.
+<H3>
+The Keyboard Mappings</H3>
+As we have said, there are several translations that take
+place between the pressing of a key and its interpretation within a program.
+The first, the mapping between physical keys and keycodes, is server-dependent
+and cannot be modified. A client cannot determine anything about this first
+mapping, and it is just a fact that certain physical keys generate certain
+keycodes. The second mapping, keycodes to keysyms, can be modified by clients
+but is server-wide, so it usually is not modified. The specification of
+which keycodes are considered modifiers is also part of the second level
+of mapping, because it affects the mapping of keycodes to keysyms. The
+third mapping, from keysyms to strings, is local to a client. This is the
+mapping with which a client can allow the user to map the function keys
+to strings for convenience of typing.
+
+<P>We are going to describe the mapping between keysyms and
+strings first, because this is the mapping that applications are most likely
+to change. Following that, we'll describe what you need to know about the
+keycode-to-keysym mapping and modifier mapping to write normal applications.
+These mappings are normally only changed by clients run from the user's
+startup script that do nothing else, because they change the keyboard mapping
+for all applications.
+
+<P>After that, Sections 9.1.3.1 and 9.1.3.2 are optional
+reading. They describe the background and development of keysyms and how
+to write special purpose programs to change the server-wide mapping of
+keycodes to keysyms and the modifier mapping. These techniques are not
+needed in normal applications.
+<H4>
+Keysyms to Strings</H4>
+The default mapping of keysyms to ASCII is defined by the
+server. The ASCII representation of the keys on the main keyboard are the
+ASCII codes for the single characters on the caps of the keys. Keysyms
+that do not have ASCII representations, such as the function keys, initially
+have mappings to <B>NULL</B>, but they can sometimes be mapped to strings,
+as we'll describe. However, the modifier keys on some machines cannot be
+mapped to strings at all.
+
+<P>Any client in which the user is expected to type a large
+amount of text should support remapping of the function keys to strings.
+<B>XRebindKeysym()</B> is the only function that can change this string,
+the one returned by <B>XLookupString()</B>. The string can be any length.
+This change affects only the client that calls <B>XRebindKeysym()</B>.
+
+<P>Example 9-5 is a short code sample that demonstrates how
+to remap function keys to strings. It binds the string "STOP" to Shift-F1
+and "ABORT" to CTRL-Shift-F1. Since keyboards may have two Shift and two
+Control keys, one on each side, the process has to be done for both. Mapping
+the function keys combined with modifiers will not work on all servers.
+(On the Sun sample server, this code results in STOP being generated when
+F1 is pressed with any modifiers and ABORT never being generated.) However,
+mapping of unmodified function keys should work on all servers.
+
+<P><B>Mapping keys to strings</B>
+<BLOCKQUOTE>
+<PRE><TT>#include &lt;X11/keysym.h>
+&nbsp; .
+&nbsp; .
+Display *display;
+KeySym modlist[2];&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Array of modifier keysyms */
+unsigned int string_length;
+unsigned int list_length;
+&nbsp; .
+&nbsp; .
+/* Open display */
+&nbsp; .
+&nbsp; .
+/* Map Shift-F1 to "STOP"&nbsp; */
+string_length = 4;
+list_length = 1;
+modlist[0] = XK_Shift_R;&nbsp;&nbsp; /* Do right shift key */
+XRebindKeysym(display, XK_F1, modlist, list_length, "STOP",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string_length);
+modlist[0] = XK_Shift_L;&nbsp;&nbsp; /* Do left shift key */
+XRebindKeysym(display, XK_F1, modlist, list_length, "STOP",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string_length);
+/* Map CTRL-Shift-F1 to "ABORT"&nbsp; */
+string_length = 5;
+list_length = 2;
+/* Both right pressed */
+modlist[0] = XK_Shift_R; modlist[1] = XK_Control_R;
+XRebindKeysym(display, XK_F1, modlist, list_length, "ABORT",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string_length);
+/* Left Shift, Right Control */
+modlist[0] = XK_Shift_L; modlist[1] = XK_Control_R;
+XRebindKeysym(display, XK_F1, modlist, list_length, "ABORT",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string_length);
+/* Right Shift, Left Control */
+modlist[0] = XK_Shift_R; modlist[1] = XK_Control_L;
+XRebindKeysym(display, XK_F1, modlist, list_length, "ABORT",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string_length);
+/* Both left pressed */
+modlist[0] = XK_Shift_L; modlist[1] = XK_Control_L;
+XRebindKeysym(display, XK_F1, modlist, list_length, "ABORT",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string_length);</TT></PRE>
+</BLOCKQUOTE>
+<B>XLookupString()</B> currently uses a linear search to
+find the keysym corresponding to each key event, and each call to <B>XRebindKeysym()</B>
+causes <B>XLookupString()</B> to run somewhat slower. This problem is exacerbated
+if you want a function key (or any other key) to generate the same string
+with any combination of modifier keys, since this requires 15 or more calls
+to <B>XRebindKeysym()</B>.
+<H4>
+The Modifier Keys</H4>
+A keysym represents the meaning of a certain combination
+of a key and modifier keys such as Shift and Control. For example, <B>XK_A</B>
+represents the letter "a" pressed while the Shift key is held down or while
+Shift Lock is on. As in this example, the keysym depends on what modifier
+key is being held.
+
+<P>Although Shift is present on all keyboards and Control
+on most, the remaining modifier keys are not standardized. There may be
+Meta, Hyper, Super, Left, Right, or Alternate keys. X, however, has a fixed
+set of logical modifiers, listed in the first column of Table 9-1. Each
+of these logical modifier symbols corresponds to a bit in the <B>state</B>
+member of the <B>XKeyEvent</B> structure. On each keyboard, there is a
+mapping between the physical modifier keys and these logical modifiers.
+Table 9-1 also shows the keysyms of the keys that are by default mapped
+to the logical modifiers on a Sun-3 system and the corresponding keycodes
+for that system. You can use the <I>xmodmap</I> command without arguments
+to find out the default modifier mapping on any system.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 9-1 : </B>Logical Modifiers and a Typical
+Modifier Key Mapping</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Logical Modifier</TH>
+
+<TH>Default Keycodes of Modifier Keys (Sun-3)</TH>
+
+<TH>Modifier Keysym (Sun-3)</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ShiftMask</B></TD>
+
+<TD>(0x6a), (0x75)</TD>
+
+<TD><B>XK_Shift_L</B>, <B>XK_Shift_R</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ShiftLockMask</B></TD>
+
+<TD>(0x7e)</TD>
+
+<TD><B>XK_Caps_Lock</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>ControlMask</B></TD>
+
+<TD>(0x53)</TD>
+
+<TD><B>XK_Control_L</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>Mod1Mask</B></TD>
+
+<TD>(0x7f), (0x81)</TD>
+
+<TD><B>XK_Meta_L</B>, <B>XK_Meta_R</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>Mod2Mask</B></TD>
+
+<TD>(unmapped)</TD>
+
+<TD></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>Mod3Mask</B></TD>
+
+<TD>(unmapped)</TD>
+
+<TD></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>Mod4Mask</B></TD>
+
+<TD>(unmapped)</TD>
+
+<TD></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>Mod5Mask</B></TD>
+
+<TD>(unmapped)</TD>
+
+<TD></TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>Each keycode may have a list of keysyms, one for every
+logical modifier. Each list, of varying length, conveys the set of meanings
+for the key with each of the modifier keys pressed. This array of keysyms
+for each keycode is initially defined by the server. In most cases, only
+two keysyms are defined for the keys that represent single printable characters
+and only one for the rest.
+<H4>
+Keycodes to Keysyms</H4>
+Clients can change the mapping of keycodes to keysyms (with
+<B>XChangeKeyboardMapping()</B>), but they rarely do because this mapping
+is global to the server. This change would affect every client operating
+on the server. Every client would receive a <B>MappingNotify</B> event
+(regardless of whether they selected it or whether they actually use keyboard
+input) and must then get a new keysym table from the server with <B>XRefreshKeyboardMapping()</B>.
+(This table is stored in the <B>Display</B> structure and is used by <B>XLookupString()</B>
+and the other routines that return keysyms.) <B>XRefreshKeyboardMapping()</B>
+works by erasing the copy of the keyboard and/or modifier mappings that
+are present in the <B>Display</B> structure (the <B>keysyms</B> and <B>modifiermap</B>
+members). The next time that an Xlib call is made that requires either
+of these mappings, a request is made to the server, the new mappings are
+transferred to Xlib, and the pointers in the <B>Display</B> structure are
+reset to the new mapping data. Subsequent calls to access this data use
+the <B>Display</B> structure instead of querying the server.
+
+<P>One of few applications that might change the mapping
+between keycodes and keysyms would be an application that converted between
+QWERTY and DVORAK keyboard layout. These are the nicknames for two different
+layouts for the alphabetic characters on English language keyboards. The
+QWERTY keyboard in common use was originally designed to be slow enough
+so that mechanical typesetting machine operators would not be able to type
+fast enough to jam their machines. The DVORAK keyboard, on the other hand,
+was designed to place the most common letters in the English language under
+the home row of keys and is much faster.
+
+<P>Let's say a user wanted to use the DVORAK layout instead
+of the default, which is QWERTY. This application would not even need to
+create a window, but it would change the mapping of keycodes to keysyms
+with <B>XChangeKeyboardMapping()</B>. The user could then move the keycaps
+around on the keyboard or label them somehow. Except for calling <B>XRefreshKeyboardMapping()</B>,
+other applications would operate as usual. From then on, while the server
+was running, all applications would work properly with the DVORAK layout.
+<H3>
+Background on Keysyms</H3>
+Keysyms are a concept developed especially for X. It may
+help you to understand them better to read about how they were designed.
+But this is optional reading, and you can skip to Section 9.2, "The Pointer"
+if you do not plan to write programs that change the mapping of keycodes
+to keysyms.
+
+<P>The keysyms are defined in two include files, &lt;<I>X11/keysym.h</I>>
+and &lt;<I>X11/keysymdef.h</I>>. Together these files define several sets
+of keysyms for different languages and purposes. There are sets for Latin,
+Greek, Cyrillic, Arabic, and so on, intended to allow for internationalization
+of programs. There are also sets for publishing and technical purposes,
+because these fields have their own "languages." &lt;<I>X11/keysym.h</I>>
+defines which character sets are active, and &lt;<I>X11/keysymdef.h</I>>
+defines the symbols in all the sets. Only &lt;<I>X11/keysym.h</I>> needs
+to be included in an application because it includes &lt;<I>X11/keysymdef.h</I>>.
+
+<P>By default, the enabled sets of defined keysyms include
+the ISO Latin character sets (1-4), a set of Greek characters, and a set
+of miscellaneous symbols common on keyboards (Return, Help, Tab, and so
+on). These are sufficient for making an application work in any Western
+language. Symbols for Katakana, Arabic, Cyrillic, Technical, Special, Publishing,
+APL, and Hebrew character sets are defined in &lt;<I>X11/keysymdef.h</I>>
+but are not enabled in &lt;<I>X11/keysym.h</I>> and may not be available
+on all servers. This is because some C compilers have a limit to the number
+of allowable defined symbols.
+
+<P>Many of the keysym sets share keysyms with sets earlier
+in the &lt;<I>X11/keysymdef.h</I>> include file. For example, there is
+only one <B>XK_space</B> keysym because a space is common to all languages.
+<B>XK_space</B> is in LATIN1 so that it is always available. The LATIN2
+and LATIN3 sets are quite short because they share most of their symbols
+with the previous sets.
+<H4>
+The Design of Keysyms</H4>
+English language keyboards tend to be quite standard in the
+alphanumeric keys, but they differ radically in the miscellaneous function
+keys. Many function keys are left over from early timesharing days or are
+designed for a specific application. Keyboard layouts from large manufacturers
+tend to have lots of keys for every conceivable purpose, whereas small
+workstation manufacturers often have keys that are solely for support of
+some unique function.
+
+<P>There are two ways of thinking about how to define keysyms
+given such a situation: the <I>Engraving</I> approach and the <I>Common</I>
+approach.
+
+<P>The Engraving approach is to create a keysym for every
+unique key engraving. This is effectively taking the union of all key engravings
+on all keyboards. For example, some keyboards label function keys across
+the top as F1 through F<I>n</I>, others label them as PF1 through PF<I>n</I>.
+These would be different keys under the Engraving approach. Likewise, Lock
+would differ from Shift Lock, which is different from the up-arrow symbol
+that has the effect of changing lower case to upper case. There are lots
+of other aliases such as Del, DEL, Delete, Remove, and so forth. The Engraving
+approach makes it easy to decide if a new entry should be added to the
+keysym set: if it does not exactly match an existing one, then a new one
+is created. One estimate is that there would be on the order of 300 to
+500 miscellaneous keysyms using this approach, not counting foreign translations
+and variations.
+
+<P>The Common approach tries to capture all of the keys present
+on a number of common keyboards, folding likely aliases into the same keysym.
+For example, Del, DEL, and Delete are all merged into a single keysym.
+Vendors would be expected to augment the keysym set (using the vendor-specific
+encoding space) to include all of their unique keys that were not included
+in the standard set. Each vendor decides which of its keys map into the
+standard keysyms. It is more difficult to implement this approach, since
+a judgement is required whether a sufficient set of keyboards implement
+an engraving to justify making it a keysym in the standard set and which
+engravings should be merged into a single keysym. Under this scheme, there
+are an estimated 100 to 150 keysyms for an English language keyboard.
+
+<P>While neither scheme is perfect, the Common approach has
+been selected because it makes it easier to write a portable application.
+Having the Delete functionality merged into a single keysym allows an application
+to implement a deletion function and expect reasonable bindings on a wide
+set of workstations. Under the Common approach, application writers are
+still free to look for and interpret vendor-specific keysyms, but because
+they are in an extended set, application developers should be more conscious
+that they are writing applications in a nonportable fashion.
+<H4>
+Conventions for Keysym Meaning</H4>
+For each keycode, the server defines a list of keysyms, corresponding
+to the key pressed while various modifier keys are being held. There are
+conventions for the meanings of the first two keysyms in the list. The
+first keysym in the list for a particular key should be construed as the
+symbol corresponding to a <B>KeyPress</B> when no modifier keys are down.
+The second keysym in the list, if present, usually should be construed
+as the symbol when the Shift or Shift Lock modifier keys are down. However,
+if there is only one keysym for a particular keycode, if it is alphabetic,
+and if case distinction is relevant for it, then the appropriate case should
+be based on the Shift and Lock modifiers. For example, if the single keysym
+is an uppercase <I>A</I>, you have to use the <B>state</B> member of <B>XKeyEvent</B>
+to determine if the Shift key is held. <B>XLookupString()</B> should translate
+the event into the correct ASCII string anyway.
+
+<P>X does not suggest an interpretation of the keysyms beyond
+the first two and does not define any spatial geometry of the symbols on
+the key by their order in the keysym list. This is because the list of
+modifier keys varies widely between keyboards. However, when programming,
+it should be safe to assume that the third member in the keysym list would
+correspond to the key pressed with the next most common modifier available
+on the keyboard, which might be Control.
+
+<P>For keyboards with both left-side and right-side modifier
+keys (for example, Shift keys on each side that generate different keycodes),
+the bit in the <B>state</B> member in the event structure defines the OR
+of the keys. If electronically distinguishable, these keys can have separate
+keycodes and up/down events generated and your program can track their
+individual states manually.
+<H3>
+Changing the Server-wide Keyboard Mappings</H3>
+Both the keycode-to-keysym mapping and the modifier mapping
+affect all clients when they are changed by any client. That is why normal
+applications will not change them. Special purpose programs, however, can
+be written to change these mappings, usually to be run from a user's startup
+script. These sections describe how to write such programs. If you do not
+plan to write one, you can skip ahead to Section 9.1.5, "Other Keyboard-handling
+Routines."
+<H4>
+Changing the Keycode-to-Keysym Mapping</H4>
+<B>XChangeKeyboardMapping()</B> changes the current mapping
+of the specified range of keycodes to keysyms.
+
+<P>Example 9-6 shows a simple program called <I>mapkey</I>
+that changes the keyboard mapping for all the applications running on the
+server. This application takes pairs of arguments that are keysyms and
+maps the keycode associated with the first keysym to the second keysym.
+In other words, you could use it to map the F1 key to be Escape and Home
+to be a Control key on the right side of the keyboard by typing the following:
+<BLOCKQUOTE>
+<PRE><TT>$&nbsp; mapkey F1 Escape Home Control_R</TT></PRE>
+</BLOCKQUOTE>
+Use <B>mapkey</B> with care, because it is easy to disable
+a server by remapping an alphanumeric key. Such a remapping cannot be reversed
+except by restarting the server.
+
+<P><B>An application for server-wide keymapping</B>
+<BLOCKQUOTE>
+<PRE><TT>#include &lt;stdio.h>
+#include &lt;X11/Xlib.h>
+#include &lt;X11/Xutil.h>
+#include &lt;X11/Xatom.h>
+#include &lt;X11/keysym.h>
+main(argc, argv)
+int argc;
+char **argv;
+{
+&nbsp;&nbsp; KeySym old, new;
+&nbsp;&nbsp; int old_code;
+&nbsp;&nbsp; Display *display;
+&nbsp;&nbsp; if (!(display = XOpenDisplay(""))) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr,"Cannot open display '%s'\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XDisplayName(""));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; argv++, argc--;
+&nbsp;&nbsp; if (argc &amp; 0x1) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr,"Usage:&nbsp; Keysymfrom Keysymto Keysymfrom \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Keysymto ...\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; while (argc > 1) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; old = XStringToKeysym(*argv++);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; new = XStringToKeysym(*argv++);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; argc--, argc--;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; old_code = XKeysymToKeycode(display, old);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XChangeKeyboardMapping(display, old_code, 1, &amp;new, 1);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; XFlush(display);
+&nbsp;&nbsp; XCloseDisplay(display);
+&nbsp;&nbsp; exit(0);
+}</TT></PRE>
+</BLOCKQUOTE>
+The application in Example 9-6 could be rewritten on a larger
+scale to change a keyboard from QWERTY to DVORAK layout as described in
+Section 9.1.2.3, "Keycodes to Keysyms." Since the keycodes are server-dependent,
+the QWERTY-to-DVORAK conversion program would not be portable between machines
+unless it used <B>XGetKeyboardMapping()</B> to get the current mapping
+of keycodes to keysyms and then remapped them.
+
+<P><B>XGetKeyboardMapping()</B> returns an array of keysyms
+that represent the current mapping of the specified range of keycodes.
+<H4>
+Changing Modifier Mapping</H4>
+X allows you to control which physical keys are considered
+modifier keys. Normal applications will not do this. The modifier mapping
+might be changed for a left-handed user if, by default, there was only
+one Control key on the left side of the keyboard and the user preferred
+to have a Control key on the right side. In that case, a conveniently placed
+key on the right side could be mapped to a logical Control key. Like keycode-to-keysym
+remapping, this would typically be done by a special purpose application
+run from the user's startup script.
+
+<P>While modifier keys generate <B>KeyPress</B> and <B>KeyRelease</B>
+events like other keys, modifier keys are the only keys reported in the
+<B>state</B> member of every key, button, motion, or border crossing event
+structure. The <B>state</B> member is a mask that indicates which logical
+modifiers were pressed when the event occurred. Each bit in <B>state</B>
+is represented by a constant such as <B>ControlMask</B>. <B>state</B> is
+used by <B>XLookupString()</B> to generate the correct keysym from a key
+event. Note that the <B>state</B> member of events other than key, button,
+motion, and border crossing events does not have the meaning described
+here.
+
+<P><B>XInsertModifiermapEntry()</B> and <B>XDeleteModifiermapEntry()</B>
+provide the easiest ways by far to add or delete a few keycodes for a modifier.
+
+<P>Using <B>XInsertModifiermapEntry()</B> and <B>XDeleteModifiermapEntry()</B>
+is straightforward. You get the current modifier mapping stored in an <B>XModifierKeymap</B>
+structure with a call to <B>XGetModifierMapping()</B>. You specify this
+structure, a keycode, and one of the eight modifier symbols as the three
+arguments to <B>XInsertModifiermapEntry()</B> or <B>XDeleteModifiermapEntry()</B>.
+Both routines return a new <B>XModifierKeymap</B> structure suitable for
+calling <B>XSetModifierMapping()</B>. You should add or delete all the
+keycodes you intend to change before calling <B>XSetModifierMapping()</B>.
+
+<P>You should not need to understand how the modifiers are
+stored to use the procedure described above for adding or deleting keycodes.
+
+<P><B>XSetModifierMapping()</B> is the routine that actually
+changes the mapping. As such, it is when calling <B>XSetModifierMapping()</B>
+that any errors appear, even though they are usually caused by an invalid
+<B>XModifierKeymap</B> structure that was set earlier.
+
+<P>These are the requirements for the <B>XModifierKeymap</B>
+structure specified to <B>XSetModifierMapping()</B>:
+<UL>
+<LI>
+Zero keycodes are ignored.</LI>
+
+<LI>
+No keycode may appear twice anywhere in the map (otherwise,
+a <B>BadValue</B> error is generated).</LI>
+
+<LI>
+All nonzero keycodes must be in the range specified by <B>min_keycode</B>
+and <B>max_keycode</B> in the <B>Display</B> structure (else a <B>BadValue</B>
+error).</LI>
+
+<LI>
+A server can impose restrictions on how modifiers can be
+changed. For example, certain keys may not generate up transitions in hardware
+or multiple modifier keys may not be supported. If a restriction is violated,
+then the status reply is <B>MappingFailed</B>, and none of the modifiers
+are changed.</LI>
+</UL>
+If the new keycodes specified for a modifier differ from
+those currently defined and any (current or new) keys for that modifier
+are in the down state, then the status reply is <B>MappingBusy</B>, and
+none of the modifiers are changed.
+
+<P><B>XSetModifierMapping()</B> generates a <B>MappingNotify</B>
+event on a <B>MappingSuccess</B> status.
+
+<P>When finished mapping the keyboard, you can free the <B>XModifierKeymap</B>
+structures by calling <B>XFreeModifiermap()</B>.
+<H3>
+Other Keyboard-handling Routines</H3>
+Several routines in addition to <B>XLookupString()</B> provide
+ways to translate key events. None of these routines are commonly needed
+in applications.
+
+<P>You might think that <B>XKeysymToString()</B> and <B>XStringToKeysym()</B>
+describe the mapping between keysyms and strings, but they don't. <B>XKeysymToString()</B>
+does not return the same string as is placed in the buffer argument of
+<B>XLookupString()</B>, when <B>XKeysymToString()</B> is given the keysym
+that <B>XLookupString()</B> returns. <B>XKeysymToString()</B> changes the
+symbol form of a keysym (<B>XK_Return</B>), which is a number, into a string
+form of the symbol ("Return"), and <B>XStringToKeysym()</B> does the reverse.
+<B>XKeysymToString()(XK_F1)</B> would return "F1" regardless of what string
+is currently mapping to the F1 key. Only <B>XLookupString()</B> returns
+the string mapped to a particular keysym with <B>XRebindKeysym()</B>.
+
+<P><B>XKeycodeToKeysym()</B> and <B>XKeysymToKeycode()</B>
+make the mapping between single keycodes and keysyms more accessible. (<B>XLookupKeysym()</B>
+actually takes a key event, extracts the keycode, and calls <B>XKeycodeToKeysym()</B>.)
+For <B>XKeycodeToKeysym()</B> and <B>XLookupKeysym()</B>, you must specify
+which keysym you want from the list for the keycode, with the index argument.
+Remember that the list of keysyms for each keycode represents the key with
+various combinations of modifier keys pressed. The meaning of the keysym
+list beyond the first two (unmodified, Shift or Shift Lock) is not defined.
+Therefore, the index values of 0 and 1 are the most commonly used.
+<BR>
+<HR>
+<H2>
+The Pointer</H2>
+The pointer generates events as it moves, as it crosses window
+borders, and as its buttons are pressed. It provides position information
+that can define a path in the two-dimensional space of the screen, tell
+you which window the pointer is in and allow the user to "point and click,"
+generating input without using the keyboard. In fact, the pointer is the
+most unique feature of a window system.
+
+<P>This section describes how to track the pointer and how
+to handle the pointer buttons. Border crossing events are discussed in
+Section 9.3, "Border Crossing and Keyboard Focus Change Events," because
+they must be handled in concert with keyboard focus change events.
+<H3>
+Tracking Pointer Motion</H3>
+There are three ways of handling pointer motion events:
+<UL>
+<LI>
+Getting all motion events. The program simply receives and
+processes every motion event. This option is suitable for applications
+that require all movements to be reported, no matter how small. Since many
+motion events are generated and reporting the processing of the events
+may lag behind the pointer, this approach is not suitable for applications
+that require the most current information about pointer position.</LI>
+
+<LI>
+Getting hints and querying pointer position. This method
+greatly reduces the number of motion events sent but requires that <B>XQueryPointer()</B>
+be called to get the current pointer position. This option is suitable
+for applications that require only the final position of the mouse after
+each movement.</LI>
+
+<LI>
+Reading the motion history buffer. After checking that the
+buffer exists, call <B>XGetMotionEvents()</B> when you want the array of
+events occurring between two specified times. This option is not available
+on all servers, but it is suitable for detailed pointer position reporting.
+Its advantage over getting all motion events is that the list of pointer
+positions in the motion history buffer can be used for undoing or responding
+to exposure events in drawing applications.</LI>
+</UL>
+Let's look at each of these methods in detail.
+<H4>
+Getting All Motion Events</H4>
+The most obvious way to handle motion events is to get all
+motion events. The only complication is that you must keep the processing
+of each event to a minimum so that the feedback loop to the user is reasonably
+fast.
+
+<P>Example 9-7 shows another modification to <I>basicwin</I>,
+the program described in Chapter 3, "Basic Window Program." It creates
+a child window of the top-level window of the application and allows the
+user to draw into it by moving the pointer with any button held down.
+
+<P><B>Getting all motion events</B>
+<BLOCKQUOTE>
+<PRE><TT>/* Global declarations of display and screen */
+&nbsp; .
+&nbsp; .
+&nbsp; .
+#define BUF_SIZE 2000
+void main(argc, argv)
+int argc;
+char **argv;
+{
+&nbsp;&nbsp; /* Declarations from basicwin */
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; Window wint;
+&nbsp;&nbsp; int xpositions[BUF_SIZE], ypositions[BUF_SIZE];
+&nbsp;&nbsp; int i;
+&nbsp;&nbsp; int count = 0;
+&nbsp;&nbsp; Bool buffer_filled = False;
+&nbsp;&nbsp; /* Open display and create window win */
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; wint = XCreateSimpleWindow(display, win, 20, 20, 50, 50,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border_width, BlackPixel(display, screen),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WhitePixel(display,screen));
+&nbsp;&nbsp; XSelectInput(display, wint, ExposureMask | PointerMotionMask);
+&nbsp;&nbsp; XMapWindow(display, wint);
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; /* Select events for and map win */
+&nbsp;&nbsp; while (1)&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNextEvent(display, &amp;report);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch&nbsp; (report.type) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case MotionNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("got a motion event\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; xpositions[count] = report.xmotion.x;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ypositions[count] = report.xmotion.y;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XDrawPoint(display, wint, gc,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; report.xmotion.x, report.xmotion.y);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* The following implements a fast ring buffer
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * when count reaches buffer size */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (count &lt;= BUF_SIZE)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; count++;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; count = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; buffer_filled = True;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case Expose:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("got expose event\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (report.xexpose.count != 0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (report.xexpose.window == wint) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* This redraws the right number of points;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * if the ring buffer is not yet filled,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * it draws count points; otherwise, it
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * draws all the points */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (i=0 ; i &lt; (buffer_filled ?
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BUF_SIZE : count) ; i++)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XDrawPoint(display, wint, gc, xpositions[i],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ypositions[i]);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (window_size == SMALL)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TooSmall(win, gc, font_info);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Place text in window */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; draw_text(win, gc, font_info, width, height);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Place graphics in window */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; draw_graphics(win, gc, width, height);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Other event types handled same as basicwin */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } /* End switch */
+&nbsp;&nbsp; } /* End while */
+}</TT></PRE>
+</BLOCKQUOTE>
+The program keeps a record of the points drawn so that they
+can be redrawn in case of an <B>Expose</B> event. The event record is a
+ring buffer so that the latest <B>BUF_SIZE</B> pointer positions are always
+maintained.
+
+<P>The program requires that one or more of the pointer buttons
+must be held down while drawing. (Most drawing applications require a button
+to be held, because otherwise it is impossible to move the pointer into
+a different application without drawing a trail of points to the edge of
+the window.) Therefore, drawing applications normally select <B>ButtonMotionMask</B>.
+
+<P>It would be quite easy to extend this program by giving
+each button a different meaning. Drawing with button 1 could mean drawing
+in black, button 2 could mean drawing in white, and button 3 could mean
+toggling the previous state of the drawn pixels. The only change necessary
+to implement this would be code that changes the foreground pixel value
+and logical operation in a GC or creates three GCs with these variations.
+The routine would determine which button was pressed from the <B>state</B>
+member of the event structure and determine what to do if more than one
+button was pressed.
+<H4>
+Using Pointer Motion Hints</H4>
+If you do not need a record of every point the pointer has
+passed through but only its current position, using motion hints is the
+most efficient method of handling pointer motion events. This method could
+be used for dragging in menus or scrollbars, in a window manager when it
+moves the outlines of windows, or in a drawing application in a line drawing
+mode. We'll demonstrate the technique in a line drawing application.
+
+<P>To use this method, select <B>PointerMotionHintMask</B>
+in addition to the specific event masks you desire. <B>PointerMotionHintMask</B>
+is a modifier; it does not select events by itself.
+
+<P>Example 9-8 demonstrates how to read pointer events with
+<B>PointerMotionHintMask</B> selected. The code shown in the example draws
+lines between the series of points the user specifies with button clicks.
+The <B>ButtonPress</B> event indicates the beginning of a line, <B>MotionNotify</B>
+events allow the application to draw a temporary line to the current pointer
+position, and <B>ButtonRelease</B> events indicate that the line should
+be drawn permanently between the points indicated by the <B>ButtonPress</B>
+and <B>ButtonRelease</B> events.
+
+<P><B>Using pointer motion hints</B>
+<BLOCKQUOTE>
+<PRE><TT>/* Declare global variables display and screen */
+&nbsp; .
+&nbsp; .
+&nbsp; .
+void main(argc, argv)
+int argc;
+char **argv;
+{
+&nbsp;&nbsp; /* Declarations from basicwin */
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; int root_x, root_y;
+&nbsp;&nbsp; Window root, child;
+&nbsp;&nbsp; unsigned int keys_buttons;
+&nbsp;&nbsp; Window wint;
+&nbsp;&nbsp; XPoint points[BUF_SIZE];
+&nbsp;&nbsp; int index = 1;
+&nbsp;&nbsp; int pos_x, pos_y;
+&nbsp;&nbsp; int prev_x, prev_y;
+&nbsp;&nbsp; GC gcx;
+&nbsp;&nbsp; wint = XCreateSimpleWindow(display, win, 20, 20, 50, 50,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border_width, BlackPixel(display, screen),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WhitePixel(display,screen));
+&nbsp;&nbsp; XSelectInput(display, wint, ExposureMask | ButtonPressMask
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | ButtonReleaseMask | ButtonMotionMask
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | PointerMotionHintMask);
+&nbsp;&nbsp; gcx = XCreateGC(display, win, 0, NULL);
+&nbsp;&nbsp; XSetFunction(display, gcx, GXxor);
+&nbsp;&nbsp; XSetForeground(display, gcx, BlackPixel(display, screen));
+&nbsp;&nbsp; XMapWindow(display, wint);
+&nbsp;&nbsp; while (1)&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNextEvent(display, &amp;report);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch&nbsp; (report.type) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ButtonPress:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; points[index].x = report.xbutton.x;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; points[index].y = report.xbutton.y;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ButtonRelease:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; index++;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; points[index].x = report.xbutton.x;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; points[index].y = report.xbutton.y;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case MotionNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("got a motion event\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; while (XCheckMaskEvent(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ButtonMotionMask, &amp;report));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!XQueryPointer(display, report.xmotion.window,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;root, &amp;child, &amp;root_x, &amp;root_y,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;pos_x, &amp;pos_y, &amp;keys_buttons))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Pointer is on other screen */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Undraw previous line, only if not first */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (index != 1)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XDrawLine(display, wint, gcx, points[index].x,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; points[index].y, prev_x, prev_y);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Draw current line */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XDrawLine(display, wint, gcx, points[index].x,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; points[index].y, pos_x, pos_y);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; prev_x = pos_x;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; prev_y = pos_y;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case Expose:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("got expose event\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (report.xexpose.window == wint) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; while (XCheckTypedWindowEvent(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; wint, Expose, &amp;report));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSetFunction(display, gcx, GXcopy);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XDrawLines(display, wint, gcx, points,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; index, CoordModeOrigin);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSetFunction(display, gcx, GXxor);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Same code as basicwin */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } /* End switch */
+&nbsp;&nbsp; } /* End while */
+}</TT></PRE>
+</BLOCKQUOTE>
+In some applications, you do not need to track pointer motion
+events to know where the pointer is at particular times. The pointer position
+is given in <B>ButtonPress</B>, <B>ButtonRelease</B>, <B>KeyPress</B>,
+<B>KeyRelease</B>, <B>EnterNotify</B>, and <B>LeaveNotify</B> events. You
+can use any of these events to locate objects in a window.
+<H4>
+Motion History</H4>
+If the motion history buffer exists on the server (<B>XDisplayMotionBufferSize()
+(display) > 0</B>), all selected motion events are placed in a list of
+<B>XTimeCoord</B> structures. There is no macro for accessing this member
+of the <B>display</B> structure. You specify the desired range of times
+to <B>XGetMotionEvents()</B>, and it returns a pointer to a list of <B>XTimeCoord</B>
+structures, representing all the pointer positions during the range of
+times. The reported pointer positions may be in finer detail than would
+be reported by <B>MotionNotify</B> events.
+
+<P>In the MIT sample distribution of Xlib, motion history
+buffers were first implemented in Release 5. In any case, they are not
+a required part of a server implementation. Therefore, an application that
+uses motion history should also support the all-motion-events approach
+for use on servers that do not have the buffer.
+
+<P>The <B>XTimeCoord</B> structure is shown in Example 9-9.
+
+<P><B>The XTimeCoord structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct _XTimeCoord {
+&nbsp;&nbsp; short x,y;&nbsp; /* Position relative to root window */
+&nbsp;&nbsp; Time time;
+} XTimeCoord;</TT></PRE>
+</BLOCKQUOTE>
+Example 9-10 shows another version of the program used to
+demonstrate getting all motion events.
+
+<P><B>Reading the motion history buffer</B>
+<BLOCKQUOTE>
+<PRE><TT>/* Global declarations of display and screen */
+&nbsp; .
+&nbsp; .
+&nbsp; .
+#define BUF_SIZE 2000
+void main(argc, argv)
+int argc;
+char **argv;
+{
+&nbsp;&nbsp; /* Declarations from basicwin */
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; Window wint;
+&nbsp;&nbsp; int xpositions[BUF_SIZE], ypositions[BUF_SIZE];
+&nbsp;&nbsp; int i;
+&nbsp;&nbsp; int count = 0;
+&nbsp;&nbsp; Bool buffer_filled = False;
+&nbsp;&nbsp; /* Open display and create window win */
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; if (XDisplayMotionBufferSize(display) &lt;= 0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("%s: motion history buffer not provided on server",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; argv(0));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(-1);&nbsp; /* Or use all events method instead */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp; wint = XCreateSimpleWindow(display, win, 20, 20, 50, 50,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border_width, BlackPixel(display, screen),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WhitePixel(display,screen));
+&nbsp;&nbsp; XSelectInput(display, wint, ExposureMask | ButtonMotionMask
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | PointerMotionHintMask);
+&nbsp;&nbsp; XMapWindow(display, wint);
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; /* Select events for and map win */
+&nbsp;&nbsp; while (1)&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNextEvent(display, &amp;report);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch&nbsp; (report.type) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case MotionNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("got a motion event\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; while (XCheckTypedEvent(display, MotionNotify, &amp;report));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; start = prevtime;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; stop = report.xmotion.time;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; xytimelist = XGetMotionEvents(display, window, start,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; stop, &amp;nevents);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (i=0;i&lt;nevents;i++)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XDrawPoint(display, window, gc, xytimelist[i]->x,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; xytimelist[i]->y);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case Expose:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("got expose event\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (report.xexpose.window == wint) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; while (XCheckTypedWindowEvent(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; wint, Expose, &amp;report));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; xytimelist = XGetMotionEvents(display, window,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0, CurrentTime, &amp;nevents);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (i=0 ; i &lt; nevents ; i++)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XDrawPoint(display, window, gc, xytimelist[i]->x,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; xytimelist[i]->y);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; while (XCheckTypedWindowEvent(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; win, Expose, &amp;report));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (window_size == SMALL)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TooSmall(win, gc, font_info);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Place text in window */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; draw_text(win, gc, font_info, width, height);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Place graphics in window */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; draw_graphics(win, gc, width, height);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Other event types handled same as basicwin */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } /* End switch */
+&nbsp;&nbsp; } /* End while */
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Handling Pointer Button Events</H3>
+The examples of tracking pointer motion in Section 9.2.1,
+"Tracking Pointer Motion" use the buttons to some extent, but they do not
+tell you the whole story. There is the subject of automatic button grabs,
+and there are issues involved in making each button perform a different
+function. Let's tackle grabs first.
+
+<P>When a pointer button is pressed, an active grab is triggered
+automatically (as described in Section 8.3.2.2, "Keyboard and Pointer Grabbing,"
+an active grab means that all button events before the matching <B>ButtonRelease</B>
+event on the same button always goes to the same application, or sometimes
+the same window, as the <B>ButtonPress</B>). The automatic grab does not
+take place if an active grab already exists or a passive grab on the present
+key and button combination exists for some higher level window in the hierarchy
+than the window in which the <B>ButtonPress</B> occurred.
+
+<P>The <B>OwnerGrabButtonMask</B> that you can specify in
+calls to <B>XSelectInput()</B> controls the distribution of the <B>ButtonRelease</B>
+event (and any other pointer events that occur between the <B>ButtonPress</B>
+and <B>ButtonRelease</B>). If <B>OwnerGrabButtonMask</B> is selected, the
+<B>ButtonRelease</B> event will be sent to whichever window in the application
+the pointer is in when the event occurs. If the pointer is outside the
+application or if <B>OwnerGrabButtonMask</B> is not selected, the event
+is sent to the window in which the <B>ButtonPress</B> occurred.
+
+<P><B>OwnerGrabButtonMask</B> should be selected when an
+application wants to know in which window <B>ButtonRelease</B> events occur.
+This information is useful when you require that both the <B>ButtonPress</B>
+and the matching <B>ButtonRelease</B> events occur in the same window in
+order for an operation to be executed. In practice, it does not hurt to
+select <B>OwnerGrabButtonMask</B> even if you do not need the response
+it provides. If you do not select <B>OwnerGrabButtonMask</B>, any changes
+you try to make to the event mask of the grabbing window before the <B>ButtonRelease</B>
+will not take effect.
+
+<P>The automatic grabs affect only the window to which button
+events are sent. To be more precise, they affect the value of the <B>window</B>
+member in the button event structures in the application's event queue.
+And for the event to be placed on the queue in the first place, it must
+have been selected on the window specified in the <B>window</B> member.
+
+<P>Now let's talk about distinguishing which pointer button
+was pressed. Two members of the <B>XButtonEvent</B> structure contain information
+about the button state. The <B>button</B> member specifies the button that
+changed state to trigger the event. The <B>state</B> member gives the state
+of all the buttons and modifier keys just before the event. You will need
+the state member only if you require that certain key or button combinations
+be pressed to trigger an operation.
+
+<P>Especially if you require that the same button must be
+pressed and released in a certain window, be sure to account for the case
+where, for example, button 1 is pressed, then buttons 2 and 3 are pressed
+and released (perhaps repeatedly) or pressed and held, before button 1
+is again released. You must be careful if you structure your code as shown
+in Example 9-11 to handle <B>ButtonPress</B> and <B>ButtonRelease</B> events
+in pairs.&nbsp; There is no case for <B>ButtonRelease</B> in the example.
+Instead the code for <B>ButtonPress</B> looks for the matching <B>ButtonRelease</B>
+event. The matching <B>ButtonRelease</B> might not be the next button event,
+so intervening events must be dealt with. This problem appears only if
+you are trying to distinguish the button that was pressed.
+
+<P><B>Accepting button events in pairs</B>
+<BLOCKQUOTE>
+<PRE><TT>case ButtonPress:
+&nbsp;&nbsp; /* Draw pane in white on black */
+&nbsp;&nbsp; paint_pane(event.xbutton.window, panes, gc, rgc,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font_info, BLACK);
+&nbsp;&nbsp; /* Keep track of which button was pressed */
+&nbsp;&nbsp; button = event.xbutton.button;
+&nbsp;&nbsp; /* Keep track of which window press occurred in */
+&nbsp;&nbsp; inverted_pane = event.xbutton.window;
+&nbsp;&nbsp; /* Get the matching ButtonRelease on same button */
+&nbsp;&nbsp; while (1) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Get rid of presses on other buttons */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; while (XCheckTypedEvent(display, ButtonPress,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;event));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Wait for release; if on correct button, exit */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XMaskEvent(display, ButtonReleaseMask, &amp;event);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (event.xbutton.button == button)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* All events are sent to the grabbing window
+&nbsp;&nbsp;&nbsp; * regardless of whether this is True or False,
+&nbsp;&nbsp;&nbsp; * because owner_events only affects the
+&nbsp;&nbsp;&nbsp; * distribution of events when the pointer is
+&nbsp;&nbsp;&nbsp; * within this application's windows; we don't
+&nbsp;&nbsp;&nbsp; * expect it to be for a window manager */
+&nbsp;&nbsp; owner_events = True;
+&nbsp;&nbsp; /* We don't want pointer or keyboard events
+&nbsp;&nbsp;&nbsp; * frozen in the server */
+&nbsp;&nbsp; pointer_mode = GrabModeAsync;
+&nbsp;&nbsp; keyboard_mode = GrabModeAsync;
+&nbsp;&nbsp; /* We don't want to confine the cursor */
+&nbsp;&nbsp; confine_to = None;
+&nbsp;&nbsp; GrabPointer(display, menuwin, owner_events,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ButtonPressMask | ButtonReleaseMask,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pointer_mode, keyboard_mode,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; confine_to, hand_cursor, CurrentTime);
+&nbsp;&nbsp; /* If press and release occurred in same window,
+&nbsp;&nbsp;&nbsp; * do command; if not, do nothing */
+&nbsp;&nbsp; if (inverted_pane == event.xbutton.window)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Convert window ID to window array index&nbsp; */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (winindex = 0; inverted_pane !=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; panes[winindex]; winindex++)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch (winindex)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 0:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; raise_lower(display, screen,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; RAISE);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 9: /* Exit */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSetInputFocus(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; RootWindow(display,screen),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; RevertToPointerRoot,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CurrentTime);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Turn all icons back into windows */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Must clear focus highlights */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XClearWindow(display, RootWindow(display, screen));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Need to change focus border width back here */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XFlush(display);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XCloseDisplay(display);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; default:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Something went wrong\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } /* End switch */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } /* End if */
+&nbsp;&nbsp; /* Invert back here (logical function is GXcopy) */
+&nbsp;&nbsp; paint_pane(event.xexpose.window, panes, gc, rgc,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font_info, WHITE);
+&nbsp;&nbsp; inverted_pane = NONE;
+&nbsp;&nbsp; draw_focus_frame();
+&nbsp;&nbsp; XUngrabPointer(display, CurrentTime);
+&nbsp;&nbsp; XFlush(display);
+&nbsp;&nbsp; break;
+case DestroyNotify:
+&nbsp; .
+&nbsp; .
+&nbsp; .</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Changing the Pointer Button Mapping</H3>
+Some applications may allow the user to modify the mapping
+between the physical pointer buttons and the logical buttons that are reported
+when a button is pressed. In other words, if physical button 1 were mapped
+to logical button 3, then when either button 3 or button 1 were pressed,
+it would appear to all applications that only button 3 was pressed.
+
+<P>There are five logical buttons, but the number of physical
+buttons may range from one up to and perhaps greater than five. Mapping
+the pointer buttons might be done, for example, to simulate buttons 4 and
+5 on a system with a three-button mouse. However, while physical buttons
+1 and 2 were mapped to logical 4 and 5, no buttons would be mapped to logical
+1 and 2. Therefore, there would have to be a way of toggling between the
+modes, perhaps using a function key.
+
+<P>The mapping of pointer buttons is analogous to the mapping
+between keycodes and keysyms in that it is global to the server and affects
+all clients. However, since the translation of a pointer event takes place
+in the server, unlike key event processing routines that use information
+stored in Xlib whenever possible, no routine is necessary to update the
+pointer mapping like <B>XRefreshKeyboardMapping()</B> updates the keyboard
+mapping.
+
+<P><B>XGetPointerMapping()</B> returns the current mapping
+between physical and logical pointer buttons. <B>XSetPointerMapping()</B>
+sets this mapping.
+<H3>
+Moving the Pointer</H3>
+The <B>XWarpPointer()</B> routine moves the pointer to a
+relative or global position. Its use should be minimized and constrained
+to particular predictable circumstances, because it often confuses the
+user.
+
+<P><B>XWarpPointer()</B> has various features for moving
+only in certain situations. See the reference page in <I>Volume Two, Xlib
+Reference Manual</I>, for details.
+
+<P>Warping the pointer generates <B>MotionNotify</B> and
+border crossing events just as if the user moved the pointer.
+<BR>
+<HR>
+<H2>
+Border Crossing and Keyboard Focus Change Events</H2>
+<B>LeaveNotify</B> and <B>EnterNotify</B> events are generated
+when the pointer crosses a window border. If the window manager is of the
+real-estate-driven variety (as is <I>uwm</I>), you might be tempted to
+assume that a <B>LeaveNotify</B> event indicates that the window will not
+receive keyboard input until it receives a matching <B>EnterNotify</B>.
+However, this assumption is not true if the user has been allowed to set
+a keyboard focus window. It is also not true if the window manager is of
+the listener variety (see Chapters 1, <I>Introduction</I>, 12, <I>Interclient
+Communication</I>, and 16, <I>Window Management</I>). Ideally, you should
+be prepared to deal with either type of window manager.
+
+<P>Pointer input can only be delivered to a window when the
+pointer is inside the window (unless the window grabs the pointer). Therefore,
+an application that depends on pointer input can expect to be idle when
+the pointer leaves the window and to be active again when the pointer enters.
+Notice that keyboard input can be diverted with the keyboard focus or grabs,
+while pointer input can only be diverted by grabs.
+
+<P><B>FocusIn</B> and <B>FocusOut</B> events occur when the
+keyboard focus window changes (when some client calls <B>XSetInputFocus()</B>).
+By using focus events together with the border crossing events, an application
+should be able to determine whether or not it can get keyboard input. If
+it cannot get keyboard input, it may change its behavior somewhat. If it
+polls for keyboard input to allow for interrupts, it can stop polling.
+If it normally highlights a window when the pointer enters it, it should
+not do so if the keyboard focus is not the root window.
+
+<P>In general, to determine if it will get keyboard input,
+an application should first check <B>FocusIn</B> and <B>FocusOut</B> events.
+If the focus window is the root window, then the application should check
+<B>LeaveNotify</B> and <B>EnterNotify</B> to see if keyboard events are
+possible.
+
+<P>Additional focus change and border crossing events are
+generated when the origin and destination of the focus or pointer crossing
+do not have a parent-child relationship. These events are called <I>virtual
+crossing</I> events. See Appendix E, <I>Event Reference</I>, for a description
+of when these events are generated and how to distinguish them from normal
+crossing events.
+
+<P>Example 9-12 shows the code that would be used to monitor
+whether the application will receive keyboard input. When <B>keyboard_active</B>
+is <B>True</B> in this code, the application could highlight its main window.
+
+<P><B>Monitoring whether keyboard input will be available</B>
+<BLOCKQUOTE>
+<PRE><TT>Bool keyboard_active;
+Bool focus;
+/* Open display, create window, select input */
+/* Select input before setting keyboard focus, if application does */
+while (1)&nbsp; {
+&nbsp;&nbsp; XNextEvent(display, &amp;report);
+&nbsp;&nbsp; switch&nbsp; (report.type) {
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; case EnterNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("enter\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Make sure focus is an ancestor */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (report.xcrossing.focus) ?
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (keyboard_active = True)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; : (keyboard_active = False);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; case LeaveNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("leave\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* We get input only if we have the focus */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (focus) ? (keyboard_active = True)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; : (keyboard_active = False);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; case FocusIn:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* We get keyboard input for sure */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("focus in\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; focus = True;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; keyboard_active = True;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; case FocusOut:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* We lost focus, get no keyboard input */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; printf("focus out\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; focus = False;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; keyboard_active = False;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp; }
+} /* End while */</TT></PRE>
+</BLOCKQUOTE>
+Example 9-12 could be used as a basis for code that highlights
+a portion of an application when it can get keyboard input. It would be
+in <I>active</I> mode when the <B>keyboard_active</B> flag is <B>True</B>.
+When an <B>EnterNotify</B> event is received, the <B>focus</B> member of
+the event structure is checked to see that the focus window is an ancestor
+of the window in question. If so, <B>keyboard_active</B> is <B>True</B>.
+When a <B>LeaveNotify</B> event is received, <B>keyboard_active</B> is
+<B>True</B> only if the application has the focus. On <B>FocusIn</B> events,
+<B>keyboard_active</B> is <B>True</B>, and a flag (<B>focus</B>) is set
+to indicate whether the keyboard will be active after <B>LeaveNotify</B>
+events.
+<H3>
+The KeymapNotify Event</H3>
+The <B>KeymapNotify</B> event, when selected, always follows
+on the queue immediately after a <B>FocusIn</B> or <B>EnterNotify</B> event.
+Its purpose is to allow the application to easily determine which combination
+of keys were pressed when the focus was transferred to the window or the
+pointer entered it. The <B>KeymapNotify</B> event contains a keyboard <I>vector</I>,
+which is a 32-element array of type <B>char</B>, in which each bit represents
+a key. For a given key, its keycode is its position in the keyboard vector.
+
+<P>The <B>XQueryKeymap()</B> function also returns this keyboard
+vector. Keyboard vectors are always independent of all the keyboard mapping
+and reading functions, since the bits in the vector correspond to keycodes
+that cannot be changed. This way of reading the keyboard is just like reading
+the pointer buttons. It can be useful for applications that treat the keyboard
+not as characters but, for example, as piano keys or drum pads.
+
+<P>Since <B>XQueryKeymap()</B> makes a routine trip request,
+reading the keyboard this way could not achieve the same performance when
+operating over a network as the same program implemented using events.
+<BR>
+<HR>
+<H2>
+Grabbing the Keyboard and Pointer</H2>
+There are times when a program might want to bypass the normal
+keyboard or pointer event propagation path in order to get input independent
+of the position of the pointer. This is the purpose of grabbing the keyboard
+and pointer. There are routines to grab the keyboard (<B>XGrabKeyboard()</B>)
+or the pointer (<B>XGrabPointer()</B>), or to arrange that they become
+grabbed when a certain combination of keys and/or buttons is pressed (<B>XGrabButton()</B>,
+<B>XGrabKey()</B>). There are corresponding calls to ungrab (<B>XUngrabButton()</B>,
+<B>XUngrabKey()</B>, <B>XUngrabKeyboard()</B>, <B>XUngrabPointer()</B>),
+and there is one call to change the characteristics of a pointer grab (<B>XChangeActivePointerGrab()</B>).
+
+<P>One of the most common situations where grabbing takes
+place is with button events. Most applications want both a <B>ButtonPress</B>
+and a <B>ButtonRelease</B>, so that they can compare the two positions.
+Since this is such a common desire, the server <I>automatically</I> grabs
+the pointer between the <B>ButtonPress</B> and <B>ButtonRelease</B> if
+both are selected, so that you do not have to make an explicit grab.
+
+<P>One reason for grabbing a device is so that you can handle
+a series of events contiguously without fear of intervening events. But
+when you grab a device, no other application can receive input from that
+device. Therefore, it is something to do only when absolutely necessary.
+
+<P>The routines that grab take several arguments that tailor
+the input response in these ways:
+<UL>
+<LI>
+When the pointer is grabbed, the cursor may be confined to
+any window (the confine_to argument).</LI>
+
+<LI>
+The distribution of events to windows within the application
+can be modified by the owner_events argument. If owner_events is <B>True</B>,
+then the grabbed events will be sent to the window within the application
+that the pointer indicates. If owner_events is <B>False</B> or the pointer
+is outside the applications, then the events are always sent only to window
+specified by window.</LI>
+
+<LI>
+A window called the grab_window is specified. All events
+that occur outside the calling application's windows are reported to the
+grab window. All events within the application's windows will be sent to
+the grab window if the owner_events argument is <B>False</B>, or they will
+be reported normally within the application (to the window indicated by
+the pointer or propagating from that window if it did not select the event)
+if owner_events is <B>True</B>.</LI>
+
+<LI>
+For events that occur outside the calling application's windows,
+and events that occur inside when owner_events is <B>False</B>, the event_mask
+argument specifies which types of events are selected for the grab window.
+This event_mask overrules the existing event_mask for the grab window unless
+owner_events is <B>True</B>.</LI>
+
+<LI>
+Event processing for either keyboard or pointer events or
+both may be halted altogether during the grab until a releasing <B>XAllowEvents()</B>
+call is invoked by setting the pointer_mode or keyboard_mode arguments
+to <B>GrabModeSync</B>.</LI>
+
+<LI>
+The cursor argument specifies a particular <B>Cursor</B>
+to be displayed while the grab is active. This cursor indicates to the
+user that input is going to the grabbing window, since the cursor will
+not change when moved across the screen as it normally would.</LI>
+
+<LI>
+Grabbing calls may specify a time when the grab should take
+place (the time argument).</LI>
+</UL>
+You can change several of the conditions of an active pointer
+grab, namely the event_mask, cursor, and time, using <B>XChangeActivePointerGrab()</B>.
+
+<P><B>XGrabKey()</B> and <B>XGrabButton()</B> arrange for
+a grab to take place when a certain combination of keys or buttons is pressed.
+After one of these routines is called, a passive grab is said to be in
+effect, until the specified keys and buttons are pressed. At that time,
+the grab is active and is indistinguishable from a grab generated by a
+call to <B>XGrabKeyboard()</B> or <B>XGrabPointer()</B>. After a passive
+grab, an active pointer grab will take effect when the following four conditions
+are met:
+<UL>
+<LI>
+The specified button is pressed when an optional set of modifier
+keyboard keys is pressed and no other keys or buttons are pressed.</LI>
+
+<LI>
+The pointer is contained in the grab window specified in
+the grabbing call.</LI>
+
+<LI>
+The cursor-confining window (specified in the confine_to
+argument of <B>XGrabPointer()</B> or <B>XGrabButton()</B>) must be visible,
+if one is specified.</LI>
+
+<LI>
+These conditions are not satisfied by any ancestor.</LI>
+</UL>
+Grabbing the keyboard is similar to setting the keyboard
+focus window, but grabbing is more flexible, since there are more arguments
+to modify the effect. Focus changes and keyboard grabs and ungrabs all
+generate the same <B>FocusIn</B> and <B>FocusOut</B> events.
+
+<P>If pointer grabs and ungrabs cause the pointer to move
+in or out of a window, they generate <B>EnterNotify</B> and <B>LeaveNotify</B>
+events.
+
+<P>The <B>XAllowEvents()</B> routine is used only when the
+pointer_mode or keyboard_mode in previous grabbing calls were set to <B>GrabModeSync</B>.
+Under these conditions, the server queues any events that occur (but does
+not send them to the Xlib event queues for each application), and the keyboard
+or pointer is considered "frozen." <B>XAllowEvents()</B> releases the events
+that are queued in the server for the frozen device. After the call, the
+device is still frozen, and the server again queues any events that occur
+on that device until the next <B>XAllowEvents()</B> or <B>Ungrab*</B> call.
+In effect, <B>XAllowEvents()</B> allows events to come in a batch through
+the network to the event queues for each application in Xlib.
+
+<P>The pointer modes have no effect on the processing of
+keyboard events and vice versa.
+
+<P>Both a pointer grab and a keyboard grab may be active
+at the same time by the same or different clients. If a device is frozen
+on behalf of either grab, no event processing is performed for the device.
+It is possible for a single device to be frozen by both grabs. In this
+case, the freeze must be released on behalf of both grabs before events
+can again be processed.
+<H3>
+Implementing Type-ahead for Information Entry</H3>
+Normally, the keyboard input focus, which is the window to
+which all keyboard input is sent, is controlled by the window manager.
+However, the window manager only gives the keyboard input focus to top-level
+windows. So essentially the window manager gives the keyboard focus to
+one application at a time.
+
+<P>Order entry applications need to move the keyboard focus
+from subwindow to subwindow within the application. Many of them interpret
+the Tab key as a command to move to the next information entry field. To
+do this reliably while allowing type-ahead, they must use the keyboard
+focus in combination with grabs. Here's why, as written by Wayne Dyksen
+of Purdue University. It begins with a little more about synchronous and
+asynchronous grabs, which you need to understand to follow the rest.
+
+<P>As "raw" events occur on devices, the Server processes
+them and sends them to clients. For example, given a raw event, the Server
+must determine to which window the event is to be sent; that is, the Server
+must determine the value of the <B>window</B> member of the event structure.
+The parameters <B>pointer_mode</B> and <B>keyboard_mode</B> arguments of
+<B>XGrabButton()</B>, <B>XGrabPointer()</B>, <B>XGrabKey()</B>, and <B>XGrabKeyboard()</B>
+control the processing of raw events during a grab; they can have either
+of the values <B>GrabModeAsync</B> or <B>GrabModeSync</B>.
+
+<P>If the value <B>GrabModeAsync</B> is used, then event
+processing for the grabbed device is asynchronous, as usual. That is, the
+Server processes and sends all grabbed events to the grabbing client as
+soon as they occur. Note that all ungrabbed events (e.g., <B>Expose</B>)
+are processed and sent normally.
+
+<P>If <B>GrabModeSync</B> is used, then, when the grab occurs,
+the Server records raw device events in an internal queue, but it temporarily
+stops processing and sending them to the grabbing client. The Server resumes
+raw event processing when the grabbing client sends either an <B>XAllowEvents()</B>
+request or an ungrab request.
+
+<P>Using <B>GrabModeSync</B> is often referred to as <I>freezing</I>
+the keyboard or pointer. This term is the source of some confusion since
+using <B>GrabModeSync</B> does <I>not</I> freeze (lockup) the pointer or
+keyboard themselves in any intuitive sense. One would guess that if the
+pointer or keyboard were "frozen," then using them would have no effect.
+In fact, use of the pointer and keyboard during a freeze continues to generate
+raw events which are recorded (but not processed or sent) by the Server.
+For example, the pointer cursor continues to move on the screen. Using
+<B>GrabModeSync</B> does <I>not</I> freeze the physical pointer or keyboard
+themselves, but rather it freezes the raw pointer or keyboard <I>events</I>
+at the Server. The raw events (not the devices) are eventually <I>thawed</I>
+(processed and sent) when the freezing client sends either an <B>XAllowEvents()</B>
+request or an ungrab request.
+
+<P>Consider the simplified forms fill-in application illustrated
+in Figure 9-1. Recall that the user gets from one blank to the next (from
+one window to the next) by using a special key (say Next). Each blank in
+the form is implemented by a separate X window. The client changes the
+keyboard input focus (via <B>XSetInputFocus()</B>) to the next blank (window)
+each time it receives a Next <B>KeyPress</B> event.
+
+<P><B>Simplified forms fill-in application</B>
+
+<P><IMG SRC="imgs/fig.9.01.gif" ALT="fig.9.01.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;Suppose first that a client were to attempt to implement
+this forms fill-in application by having the "form" window (the parent
+of the blanks) <I>asynchronously</I> grab the Next key. When the form window
+receives a Next <B>KeyPress</B> event, it issues an <B>XSetInputFocus()</B>
+request, changing the keyboard input focus to the next blank.
+
+<P>Consider the possible scenario of events when a user types
+"D-y-k-s-e-n-Next-W-a-y-n-e," as illustrated in Figure 9-2. Each Snapshot
+shows the events and requests in queues at a moment in time; events as
+they are first generated ("Raw Events"), events as the server determines
+the window to which they should be delivered ("Cooked Events"), and requests
+made by the client in response to the arrival of these events. "Raw Events"
+are physical device events which the Server has queued and must process;
+for example, "s --> ?" indicates that the "s" key has been pressed and
+that the Server must decide to which window the <B>KeyPress</B> event is
+to be sent. "Cooked Events" are events which the Server has processed and
+is about to dispatch; for example, "D --> Last" indicates that the "D"
+key has been pressed and that the event is to be sent to the "Last Name"
+window. "Requests" are requests which have come from the client in response
+to events; for example, "D --> Last" indicates that the client has requested
+the Server to draw a "D" in the "Last Name" window.
+
+<P><B>Possible scenario of events using an asynchronous key
+grab</B>
+
+<P><IMG SRC="imgs/fig.9.02.gif" ALT="fig.9.02.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;Consider now what might happen if a user were to
+type "D-y-k-s-e-n-Next-W-a-y-n-e." When the event "Next --> Form" illustrated
+in Snapshot 2 is received by the "Form" window, the client issues the request
+"Focus --> First" shown in Snapshot 3. Unfortunately, while the client
+is processing the Next <B>KeyPress</B> event, the Server is asynchronously
+processing further keyboard events. Thus, until the Server actually receives
+and processes the "Focus --> First" request, it continues to dispatch <B>KeyPress</B>
+events to the "Last Name" window. This is illustrated in Snapshot 3 where
+the Server is dispatching "W-a-y" to the "Last Name" window. Since the
+events "W-a-y" are sent to the "Last Name" window, the client issues the
+requests shown in Snapshot 4 to draw "W-a-y" in the "Last Name" window.
+Eventually, the Server does receive and process the "Focus --> First" request.
+Snapshot 4 and 5 show "n-e" being sent to and drawn in the "First Name"
+window. The above scenario produces the incorrect result illustrated in
+Figure 9-3.
+
+<P><B>Possible incorrect forms fill-in result using an asynchronous
+key grab</B>
+
+<P><IMG SRC="imgs/fig.9.03.gif" ALT="fig.9.03.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;Note that the actual forms fill-in result using
+an asynchronous grab varies depending on the time between <B>KeyPress</B>
+events. In fact, the form would produce the correct result if a user were
+to type "D-y-k-s-e-n-Next" followed by a sufficiently long pause followed
+by "W-a-y-n-e."
+
+<P>Consider again the above example, only this time suppose
+that the client <I>synchronously</I> grabs the Next key (before any key
+events are processed). The sequence of events that occur in response to
+the user typing "D-y-k-s-e-n-Next-W-a-y-n-e" is illustrated in Figure 9-4.
+
+<P><B>Scenario of events using a synchronous key grab</B>
+
+<P><IMG SRC="imgs/fig.9.04.gif" ALT="fig.9.04.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;As soon as the Server sees the raw Next <B>KeyPress</B>
+event, it initiates a synchronous grab. Snapshot 3 shows that the Server
+is continuing to record raw <B>KeyPress</B> events, but it has stopped
+"cooking" them. The <B>KeyPress</B> events "W-a-y-n-e" have accumulated
+in the Server's "Raw Events" queue. After receiving the Next <B>KeyPress</B>
+event, the client sends a request to the Server to change the focus to
+the "First Name" window ("Focus --> First") followed by a request to start
+cooking events ("Allow Events"). Because of the synchronous grab, the client
+knows that the Server receives and processes the "Focus --> First" request
+before it processes the raw event "W --> ?." The desired result is illustrated
+in Figure 9-5.
+
+<P><B>Correct forms fill-in result using a synchronous key
+grab</B>
+
+<P><IMG SRC="imgs/fig.9.05.gif" ALT="fig.9.05.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;To summarize, the solution to this form of type-ahead
+problem is to use <B>GrabModeSync</B> as the <B>keyboard_mode</B> argument
+of the passive grab on the Tab key. Then call <B>XAllowEvents()</B> in
+response the arrival of the Tab key event that signals the change in windows.
+This synchronizes the change of keyboard focus from one window to another
+and assures that the events go to the intended window.
+<BR>
+<HR>
+<H2>
+Keyboard Preferences</H2>
+Xlib provides routines to control beep pitch and volume,
+key click, Shift-Lock mode, mouse acceleration, keyboard lights and keyboard
+auto-repeat. Not all servers will actually be able to control all of these
+parameters.
+
+<P>There are five routines that deal with the keyboard and
+pointer preferences. <B>XGetKeyboardControl()</B> and <B>XChangeKeyboardControl()</B>
+are the primary routines for getting or setting all these preferences at
+once. <B>XAutoRepeatOff()</B> and <B>XAutoRepeatOn()</B> set the global
+keyboard auto-repeat status but are not able to control the auto-repeat
+of individual keys as <B>XChangeKeyboardControl()</B> can.
+<H3>
+Setting Keyboard Preferences</H3>
+<B>XChangeKeyboardControl()</B> uses the standard X method
+of changing internal structure members. The values argument to <B>XChangeKeyboardControl()</B>
+specifies the structure containing the desired values; the value_mask argument
+specifies which members in the structure specified in values should replace
+the current settings. See the reference page for <B>XChangeKeyboardControl()</B>
+in <I>Volume Two, Xlib Reference Manual</I>, for a list of the mask symbols.
+
+<P>Example 9-13 shows the <B>XKeyboardControl()</B> structure.
+
+<P><B>The XKeyboardControl() structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int key_click_percent;
+&nbsp;&nbsp; int bell_percent;
+&nbsp;&nbsp; int bell_pitch;
+&nbsp;&nbsp; int bell_duration;
+&nbsp;&nbsp; int led;
+&nbsp;&nbsp; int led_mode;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* LedModeOn or LedModeOff */
+&nbsp;&nbsp; int key;
+&nbsp;&nbsp; int auto_repeat_mode;&nbsp;&nbsp; /* AutoRepeatModeOff, AutoRepeatModeOn,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * AutoRepeatModeDefault */
+} XKeyboardControl;</TT></PRE>
+</BLOCKQUOTE>
+The following list describes each member of the <B>XKeyboardControl()</B>
+structure:
+<UL>
+<LI>
+<B>key_click_percent</B> sets the volume for key clicks between
+0 (off) and 100 (loud), inclusive.</LI>
+
+<LI>
+<B>bell_percent</B> sets the base volume for the bell (or
+beep) between 0 (off) and 100 (loud), inclusive.</LI>
+
+<LI>
+<B>bell_pitch</B> sets the pitch (specified in Hz) of the
+bell.</LI>
+
+<LI>
+<B>bell_duration</B> sets the duration (specified in milliseconds)
+of the bell.</LI>
+
+<LI>
+<B>led_mode</B> controls whether the keyboard LEDs are to
+be used. If <B>led</B> is not specified and <B>led_mode</B> is <B>LedModeOn</B>,
+the states of all the lights are changed. If <B>led_mode</B> is <B>LedModeOff</B>,
+then the states of the lights are not changed. If <B>led</B> is specified,
+the light specified in <B>led</B> is turned on if <B>led_mode</B> is <B>LedModeOn</B>
+or turned off if <B>led_mode</B> is <B>LedModeOff</B>.</LI>
+
+<LI>
+<B>led</B> is a number between 1 and 32, inclusive, which
+specifies which light is turned on or off, depending on <B>led_mode</B>.</LI>
+
+<LI>
+<B>auto_repeat_mode</B> specifies how to handle auto-repeat
+when a key is held down. If only <B>auto_repeat_mode</B> is specified,
+then the global auto-repeat mode for the entire keyboard is changed, without
+affecting the per-key settings. If the <B>auto_repeat_mode</B> is <B>AutoRepeatModeOn</B>,
+the keys that are set to auto-repeat will do so. If it is set to <B>AutoRepeatModeOff</B>,
+no keys will repeat. If it is set to <B>AutoRepeatModeDefault</B>, all
+the keys or the specified key will operate in the default mode for the
+server. Normally the default mode is for all nonmodal keys to repeat (everything
+except Shift Lock and similar keys). The <B>auto_repeat_mode</B> can also
+be set using the <B>XAutoRepeatOff()</B> and <B>XAutoRepeatOn()</B> routines.
+None of the other members of the <B>XKeyboardControl()</B> structure have
+convenience routines for setting them.</LI>
+
+<LI>
+<B>key</B> specifies the keycode of a key whose auto-repeat
+status will be changed to the setting specified by <B>auto_repeat_mode</B>.
+If this value is specified, <B>auto_repeat_mode</B> affects only the key
+specified in <B>key</B>. This is the only way to change the mode of a single
+key.</LI>
+</UL>
+Setting any of <B>bell_duration</B>, <B>bell_percent</B>,
+<B>bell_pitch</B>, or <B>key_click_percent</B> to <B>-1</B> restores the
+default value for that member.
+
+<P>The initial state of many of these parameters may be determined
+by command line arguments to the X server. On systems that operate only
+under the X Window System, the server is executed automatically by <I>xdm</I>
+during the boot procedure, and the defaults may have been modified in one
+of the <I>xdm</I> configuration files.
+
+<P>Table 9-2 shows the ranges for each member when no command
+line arguments are specified for the server. The defaults when these values
+are not set are server-dependent.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 9-2 : </B>Keyboard Preference Settings
+-- Ranges</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Parameter</TH>
+
+<TH>Range</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>key_click_percent</B></TD>
+
+<TD>0 to 100</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>bell_percent</B></TD>
+
+<TD>0 to 100</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>bell_pitch</B></TD>
+
+<TD>hertz (20 to 20K)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>bell_duration</B></TD>
+
+<TD>milliseconds</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>led</B></TD>
+
+<TD>1 to 32</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>led_mode</B></TD>
+
+<TD><B>LedModeOff</B>, <B>LedModeOn</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>key</B></TD>
+
+<TD>8 to 255</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>auto_repeat_mode</B></TD>
+
+<TD><B>AutoRepeatModeDefault</B>, <B>AutoRepeatModeOff</B>
+, <B>AutoRepeatModeOn</B></TD>
+</TR>
+</TABLE>
+&nbsp;
+<H3>
+Getting Keyboard Preferences</H3>
+To obtain the current state of the user preferences, use
+<B>XGetKeyboardControl()</B>. This routine returns an <B>XKeyboardState()</B>
+structure, as shown in Example 9-14.
+
+<P><B>The XKeyboardState() structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int key_click_percent;
+&nbsp;&nbsp; int bell_percent;
+&nbsp;&nbsp; unsigned int bell_pitch, bell_duration;
+&nbsp;&nbsp; unsigned long led_mask;
+&nbsp;&nbsp; int global_auto_repeat;
+&nbsp;&nbsp; char auto_repeats[32];
+} XKeyboardState;</TT></PRE>
+</BLOCKQUOTE>
+Except for <B>led_mask</B>, <B>global_auto_repeat</B>, and
+<B>auto_repeats</B>, these members have the same range of possible values
+listed in Table 9-2.
+
+<P>The <B>led_mask</B> member is not directly analogous to
+any member of <B>XKeyboardControl()</B>. Each bit set to 1 in <B>led_mask</B>
+indicates a lit LED. The least significant bit of <B>led_mask</B> corresponds
+to LED one.
+
+<P>The <B>global_auto_repeat</B> member is either <B>AutoRepeatModeOff</B>
+or <B>AutoRepeatModeOn</B>. It reports the state of the parameter set by
+the <B>auto_repeat_mode</B> member of <B>XKeyboardControl()</B>.
+
+<P>The <B>auto_repeats</B> member is a key vector like the
+one in <B>KeymapNotify</B> events and returned by <B>XQueryKeymap()</B>.
+Each bit set to 1 in <B>auto_repeats</B> indicates that auto-repeat is
+enabled for the corresponding key. The vector is represented as 32 bytes.
+Byte <I>N</I> (from 0) contains the bits for keycodes <I>8N</I> to <I>8N+7</I>,
+with the least significant bit in the byte representing keycode <I>8N</I>.
+Every key on the keyboard is represented by a bit in the vector.
+<BR>
+<HR>
+<H2>
+Pointer Preferences</H2>
+<B>XChangePointerControl()</B> sets the parameters that control
+pointer acceleration, and <B>XGetPointerControl()</B> gets them. <I>Pointer
+acceleration</I> is a feature that allows the user to move the cursor more
+quickly across the screen. If pointer acceleration is active, when the
+pointer moves more than a certain <I>threshold</I> amount in a single movement,
+the cursor will move a <I>multiple</I> of the amount the physical pointer
+moved. The effect of acceleration is that you can have detailed control
+over the pointer for fine work and, by flicking the wrist, you can also
+move quickly to the far reaches of the screen.
+
+<P><B>XChangePointerControl()</B> takes three arguments (in
+addition to the ubiquitous display): accel_numerator, accel_denominator,
+and threshold.
+
+<P>The accel_numerator and accel_denominator arguments make
+up a fraction that determines the multiple used to determine how many pixels
+to move the cursor based on how much the physical pointer moved. The threshold
+argument specifies how many pixels the physical pointer must have moved
+for acceleration to take effect.
+<BR>
+<HR>
+<H2>
+X Input Extension</H2>
+As of Release 5, the X Input extension is now a standard
+way to get input from devices other than keyboard and mouse (such as trackballs
+and tablets), or from multiple such devices. However, not many servers
+currently support the extension. For more information on the X Input extension,
+see <I>The X Resource</I>, Issue 4, or the forthcoming volume <I>Extensions
+and Utilities</I>.
+<BR>
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

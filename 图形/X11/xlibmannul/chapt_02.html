@@ -1,0 +1,1929 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_01.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_03.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H1>
+X Concepts</H1>
+This chapter introduces the concepts that underlie X programming.
+You should read this chapter even if you are the type of person who likes
+to jump right into the code. (If you are desperate, you can skip ahead
+to Chapter 3 and return to this chapter when you get confused.) "An hour
+or so spent reading about the system in general can save many hours of
+programming that leads to a dead end when the approach turns out to be
+wrong."
+
+<P>When learning a new programming language, many programmers
+prefer to look at a few code samples and then begin programming right away,
+looking up more information as they need it. This manual is organized so
+that most of it is useful both as a tutorial and as a reference. There
+are lots of code samples and fragments in this manual to help the person
+who likes to read code more than words. Around the code they will find
+many of the concepts described that are necessary for understanding that
+particular example.
+
+<P>The "just-look-at-the-examples" approach works up to a
+point. It allows a sharp individual to get "something" running in a very
+short time. Eventually, however, programmers find that in order to get
+the most out of a system--and sometimes even to get it do anything useful--a
+lot of underlying issues must be understood. In X, there are a lot of interrelated
+concepts and assumptions that are so basic that the programmer should know
+them cold. An hour or so spent reading about the system in general can
+save many hours of programming that leads to a dead end when the approach
+turns out to be wrong.
+
+<P>This chapter describes those underlying issues and assumptions
+that are so important to programming with Xlib. It goes into considerably
+more detail than the brief conceptual overview provided in Chapter 1, "Introduction."
+After reading this chapter, you will be well prepared to understand the
+rest of this manual and will have a sound idea of what is required to write
+an X application. This chapter describes how Xlib works, including a description
+of window concepts and characteristics, graphics, and events, and reviews
+the issues that you will need to think about in order to program.
+<BR>
+<HR>
+<H2>
+How Xlib Works</H2>
+Let's start by describing the problem that X was designed
+to solve and then describe how it goes about solving it.
+
+<P>First of all, X was designed to provide windows on bitmapped
+terminals. This has been done before but not in a way designed to be easily
+portable to many different brands of hardware, from PCs to supercomputers.
+The code was designed to stress easy portability, even between different
+operating systems, but still to allow high performance.
+
+<P>Second, X was designed to allow many different types of
+machines to cooperate within a network. This was one of the major innovations
+in the X design. There are several standard networking protocols, but there
+was lacking a widely adopted standard for a higher-level protocol specifying
+what should be sent over the network to drive a window system. The first
+thing that was determined about X was the protocol used to communicate
+across the network.
+
+<P>Third, the developers of X decided that it should not
+require (or even imply) a particular style of user interface. Practically
+speaking, X would not have been adopted as a standard by many companies
+if it had implied a user interface incompatible with their proprietary
+window systems. In addition, the developers of X felt that the issues surrounding
+the design of a window-based user interface for X were not sufficiently
+worked out at present. An important design goal was thus to make X "policy
+free."
+
+<P>To accomplish these goals, the X Window System had to
+be designed from the bottom up. To work over a network, there had to be
+programs running at both ends of the connection to send and receive the
+information and to interpret it. The end that controls the display and
+input devices was named the server. At the other end are clients--programs
+written using Xlib to interface with the X protocol. This is shown in Figure
+2-1.
+
+<P><B>Clients and servers</B>
+
+<P><IMG SRC="imgs/fig.2.01.gif" ALT="fig.2.01.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;Actually, although this manual describes Xlib, the
+C language interface to the X protocol, there is also a Lisp interface,
+and there are likely to be others. Any language binding that can generate
+and receive X protocol requests can communicate with a server and be used
+with the X Window System. But, at present, Xlib is the most popular low-level
+programming interface used with X, because C is so widely available.
+<H3>
+The X Protocol</H3>
+The X protocol specifies what makes up each packet of information
+that gets transferred between the server and Xlib in both directions. Even
+when the server and Xlib are running on the same machine, the protocol
+is used for communication, through some internal channel instead of the
+external network. There are four types of packets that get transferred
+via the protocol: requests, replies, events, and errors.
+
+<P>A protocol <I>request</I> is generated by Xlib and sent
+to the server. A protocol request can carry a wide variety of information,
+such as a specification for drawing a line or changing the color value
+in a cell in a colormap or an inquiry about the current size of a window.
+Most Xlib routines generate protocol requests. The exceptions are routines
+that only affect data structures local to Xlib and do not affect the server
+(regions and the resource manager are the primary examples of these exceptions).
+
+<P>A protocol <I>reply</I> is sent from the server to Xlib
+in response to certain requests. Not all requests are answered by replies--only
+the ones that request information. Requests that specify drawing, for example,
+do not generate replies. When Xlib receives a reply, it places the requested
+data into the arguments or returned value of the Xlib routine that generated
+the request. An Xlib routine that requires a reply is called a <I>round-trip
+request</I>. Round-trip requests have to be minimized in clients because
+they lower performance when there are network delays.
+
+<P>An <I>event</I> is sent from the server to Xlib and contains
+information about a device action or about a side effect of a previous
+request. The data contained in events is quite varied, because it is the
+principal method by which clients get information. Events are kept in a
+queue in Xlib and can be read one at a time by the client. The range of
+types of events that the server sends to a client is specified by the client.
+
+<P>An <I>error</I> tells the client that a previous request
+was invalid. An error is like an event, but it is handled slightly differently
+within Xlib. Errors cannot be read by the Xlib calls that read events.
+Instead, errors are sent to an error-handling routine in Xlib. The default
+error handler simply prints a message and exits; it can be replaced by
+a client-specific error-handling routine.
+<H3>
+Buffering</H3>
+Xlib saves up requests instead of sending them to the server
+immediately, so that the client program can continue running instead of
+waiting to gain access to the network after every Xlib call. This is possible
+because most Xlib calls do not require immediate action by the server.
+This grouping of requests by the client before sending them over the network
+also increases the performance of most networks, because it makes the network
+transactions longer and less numerous, reducing the total overhead involved.
+
+<P>Xlib sends the buffer full of requests to the server under
+three conditions. The most common is when an application calls an Xlib
+routine to wait for an event but no matching event is currently available
+on Xlib's queue. Since, in this case, the application must wait for an
+appropriate event anyway, it makes sense to flush the request buffer. Second,
+Xlib calls that get information from the server require a reply before
+the program can continue, and therefore, the request buffer is sent and
+all the requests acted on before the information is returned. Third, the
+client would like to be able to flush the request buffer manually in situations
+where no user events and no calls to query the server are expected. One
+good example of this third case is an animated game, where the display
+changes even when there is no user input.
+
+<P>Let's look at how this works in practice. When the application
+starts up, all the requests that create the initial appearance of the application
+are queued up by Xlib. Then the application goes into its event loop and
+calls <B><A HREF="xlib/event-handling/manipulating-event-queue/XNextEvent.html">XNextEvent()</A></B>.
+Since nothing has yet been sent to the server, there are no windows and
+therefore no events have yet been generated. So <B>XNextEvent()</B> causes
+all the requests to be sent to the server, displaying the application.
+Meanwhile, the application is still waiting for the first user input. When
+the user moves the mouse or presses a button or key, the server, sends
+the events to Xlib as soon as the network allows--it does not queue them
+or group them (except under rare conditions involving grabs discussed in
+Section 9.4, "Grabbing the Keyboard and Pointer"). Normally, once an event
+arrives, the application generates more requests to draw--for example,
+highlighting the border of a button. These stay queued in Xlib until all
+the events that have already arrived have been processed. Once the application
+arrives at <B>XNextEvent()</B> and no more events are in the queue, the
+queued requests are sent to the server and the process starts again.
+
+<P>Using Xlib calls, the client can flush the connection
+in three ways: by calling a routine that requires an immediate reply (a
+<A HREF="xlib/function-index.html">routine</A> with <B>Query</B>, <B>Fetch</B>,
+or <B>Get</B> in its name); by calling certain event-reading routines when
+no matching event exists on Xlib's queue; or by calling the routines <B><A HREF="xlib/event-handling/XFlush.html">XFlush</A></B>
+or <B><A HREF="xlib/event-handling/XSync.html">XSync()</A></B>.&nbsp; The
+first of these actions says to the server, "I need some information; please
+act on these requests right away and then give me the information." The
+second says, "I'm waiting for a certain kind of event, so I'll check if
+you already sent the event over to Xlib. If not, please act on these requests
+immediately, and then I'll be waiting for the event." The last one says,
+"I don't need any information from you now, but I need you to act on these
+requests immediately." Normally, the last method is not used much because
+there are enough of the first two types of Xlib calls in the client to
+make the transactions frequent enough.
+
+<P>You should already know that Xlib maintains a queue of
+the events for each server to which an application is connected, as shown
+in Figure 2-2. Whenever events arrive from the server, they are queued
+until the client reads them.
+
+<P><B>The server's event queue and a client's event queue</B>
+
+<P><IMG SRC="imgs/fig.2.02.gif" ALT="fig.2.02.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;The fact that Xlib queues both input and output
+is very important in application programming and especially in debugging.
+It means that drawing requests will not appear in a window until the request
+buffer is flushed. It means that errors are not discovered by the server
+until the requests arrive at the server and are processed, which happens
+only after Xlib flushes the request buffer. Once discovered, the error
+is reported immediately to the client. In other words, several Xlib routines
+may be called before an error caused by an earlier routine is reported.
+These are two of the most visible examples of the effects of buffering.
+See Section 2.6.3, "Debugging an X Application" for more details on how
+buffering affects programming and debugging.
+<H3>
+<A HREF="xlib/resource-manager/index.html">Resources</A></H3>
+X uses several techniques to reduce network traffic. One
+major technique is to have the server maintain complex abstractions such
+as windows or fonts and have the client allocate an integer ID number for
+each one as a nickname. Each of these abstractions is called a <I>resource</I>.
+A resource can be a window, pixmap, colormap, cursor, font, or graphics
+context (these will be described in a moment).
+
+<P>Whenever an operation is to be performed on a window (or
+any other resource), the ID of the window is used in one argument to the
+Xlib routine. This means that instead of an entire structure full of data
+being sent over the network with an Xlib routine call, only a single integer
+that refers to that structure need be sent. Remember that since the client
+and the server may be running on different machines, pointers cannot be
+used to refer to structures. The caveat of the resource approach is that
+the client must query the server when it needs information about resources,
+which, as mentioned above, leads to network delays. As it turns out, clients
+normally do not need to query the server very often, and the resource abstraction
+greatly simplifies programs.
+
+<P>If any client knows the ID of a resource, that client
+can manipulate that resource even if some other client created the resource.
+That means that more than one client can draw into the same window, although
+that is not often desirable. More importantly, this is how window managers
+are implemented--they can move and resize application windows because they
+know the IDs.
+
+<P>Be warned that there is another use of the term "resource"
+in X that pertains to the resource manager. A resource in the context of
+the resource manager is a user-preference specification that controls user-customizable
+elements of an application. Fortunately, these two uses of the term resource
+apply to different parts of X and therefore are not too difficult to keep
+separate. One use applies to server-maintained data structures, and the
+other to user customization of an application.
+<H3>
+Properties and Atoms</H3>
+The developers of X needed a way to allow clients to communicate
+arbitrary data with each other, and they came up with properties. A <I>property</I>
+is a packet of information associated with a window, made available to
+all the clients running under a server. Properties are used by clients
+to store information that other clients might need or want to know and
+to read that information when set by other clients.
+
+<P>Properties have a string name and a numerical identifier
+called an atom. An <I>atom</I> is an ID that uniquely identifies a particular
+property. Property name strings are typically all upper case, with words
+separated by underscores, such as "WM_COLORMAP_WINDOWS". Atoms are used
+to refer to properties in routine calls so arbitrary-length property name
+strings do not need to be sent over the network. An application gets the
+atom for a property by calling <B><A HREF="xlib/window-information/XInternAtom.html">XInternAtom()</A></B>.
+You specify the string name for the property as an argument to <B>XInternAtom()</B>,
+and it returns the atom. From this point on, the application uses only
+the atom to refer to that property. Every application that uses this procedure
+will get the same atom for the same property name string, if it is connected
+to the same server (that has not been reset).
+
+<P>Some atoms, called <I>predefined atoms</I>, are defined
+when the server initializes. An application does not need to use <B>XInternAtom()</B>
+to get these atoms. Instead, these atoms are available as symbolic constants
+beginning with <B>XA_</B>. These atoms identify properties whose contents
+have a certain meaning known by convention to all clients. The properties
+themselves do not have any contents until a client or the window manager
+sets them. Some of the properties described in this manual have predefined
+atoms and others do not, for historical reasons. Where predefined atoms
+are available, such as <B>XA_WM_HINTS</B>, we will use them in the text
+to refer to the property. For properties with no predefined atoms, we will
+use the string property name such as WM_COLORMAP_WINDOWS, which does not
+begin with XA_ and is not in Courier typeface. This tells you whether you
+will need to call <B>XInternAtom()</B> before using the property.
+
+<P>A group of related clients or an extension may define
+other properties and atoms that will have a meaning known to all the clients
+in the group or using the extension.
+
+<P>Atoms for properties are analogous to the IDs used to
+refer to server resources, except that both an atom and a window are needed
+to uniquely identify a property. The same atom would be used to identify
+a property on one window as on another--only the window is different in
+the calls to set or read this property on two windows. Only the type <B>Atom</B>
+is ever used in client code; properties are the underlying data managed
+by the server.
+
+<P>One of the most important uses of properties is to communicate
+information from applications to the window manager and vice versa. The
+application sets the <I>standard properties</I> on its top-level window
+to specify the range of sizes it prefers for its top-level window and other
+information. These properties are called "standard" because they are the
+minimum set that an application should specify. Properties also communicate
+the other way; for example, the window manager specifies what sizes of
+icon pixmaps it prefers.
+
+<P>For more information on properties and atoms, see Section
+12.1, "Properties and Atoms."
+<H3>
+The Window Manager</H3>
+The window manager is just another client written with Xlib,
+but by convention, it is given special responsibilities. It mediates competing
+demands for the physical resources of a display, including screen space
+and the colormap. Usually it has a user interface to allow the user to
+move windows about on the screen, resize them, and start new applications.
+
+<P>Most window managers decorate the main windows of all
+applications with a titlebar and various tools for iconifying and resizing
+the application. The window manager does this by creating a separate window
+that fits behind the main window of each application. It is this separate
+window that has the decorations on it. This is important mainly because
+your application code does not need to handle this drawing. Figure 2-3
+shows the titlebar added to an application by <I>twm</I>, the standard
+window manager in the MIT distribution as of R4.
+
+<P><B>Titlebar added to applications by the twm window manager</B>
+
+<P><IMG SRC="imgs/fig.2.03.gif" ALT="fig.2.03.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;Much of the communication between clients and the
+window manager and vice versa occurs through properties (the rest occurring
+through events). Many of the properties are known as <I>hints</I> because
+they may not necessarily be honored by the window manager, even if one
+is running. An application must be prepared for the window manager to ignore,
+modify, or honor the preferences it indicates through the window manager
+hints. The properties themselves do not have valid contents until applications
+or the window manager set them.
+
+<P>Quite a few of the features of Xlib (and the X protocol)
+exist only to give the window manager the mechanism to enforce its authority.
+These are described in Appendix L, <I>Interclient Communcation Conventions</I>,
+of <I>Volume Zero, X Protocol Reference Manual</I> (as of the second printing).
+They will not be needed by normal applications.
+
+<P>One such feature is called <I>substructure redirection</I>.
+Substructure refers to the size, position, and overlapping order of the
+children of a window. Redirection refers to the requests by applications
+to change the configuration of these windows being sent to the window manager
+for approval instead of actually getting acted upon by the server. Substructure
+redirection allows a window manager to intercept any request by an application
+to change the size, position, border width, or stacking order (known collectively
+as the window configuration) of its top-level windows on the screen. Any
+application request to change the configuration of its top-level window
+will be canceled, and instead an event will be sent to the window manager
+indicating the arguments used in the reconfiguration request. The window
+manager can then decide what size, position, and stacking order to grant
+the application, and the window manager will reconfigure the window to
+those dimensions. For temporary windows such as pop-up menus and dialog
+boxes, the substructure redirect feature can be turned off using a window
+attribute.
+
+<P>Substructure redirection may seem obscure, but it has
+two significant implications for applications. The first is that the application
+cannot assume that the configuration it specifies for a window will actually
+be reflected in the window on the screen. This is true whether the configuration
+was set by creating the window or by reconfiguring the window. That means
+that the application must always determine the new configuration of the
+window before drawing into it. It can do this by selecting a certain event
+type which contains the window configuration.
+
+<P>The second important implication of substructure redirection
+concerns the mapping of a top-level window. Because the window manager
+can intercept the mapping request, and it might take some time before the
+window manager decides on a window configuration and maps the window itself,
+an application cannot assume that the window is visible immediately. That
+means it cannot draw into the window immediately. The application must
+wait until it receives an event indicating that the window is visible before
+drawing into the window.
+
+<P>Communicating with the window manager, and window management
+in general, is a long story which we'll describe more fully in Chapter
+3, "Basic Window Program," and Chapter 12, "Interclient Communication."Chapter
+16, "Window Management," gives an example of a simple window manager and
+describes communication with applications from the window manager's perspective.
+
+<P>Most window managers today also have the ability to start
+and kill applications. This is known a session management. However, they
+can usually start only <I>xterm</I> and a few other basic clients. A true
+<I>session manager</I> can be a separate client. It would be able to start
+any client and control its command line arguments and save the state of
+a whole group of clients (before the user logs out) and later restore them
+to the same position on the screen (when the user logs back in). This level
+of capability is not yet available (but people are working on it). Each
+application supplies its command line as a hint so that the window or session
+manager has enough information to restart it in its current state.
+
+<P>Now you should have an idea of how Xlib works. Let's move
+on to a description of windows.
+<BR>
+<HR>
+<H2>
+What are X Windows?</H2>
+An X server controls a bitmapped screen. In order to make
+it easier to view and control many different tasks at the same time, this
+screen can be divided up into smaller areas called windows. A window is
+a rectangular area that works in several ways like a miniature screen.
+Windows on the screen can be arranged so they all are visible or so they
+cover each other completely or partially. A window may be any size greater
+than zero.
+
+<P>Each window (on a screen running X) can be involved in
+a different activity, and the windows currently in use are placed so they
+are at least partially visible. The window manager lets you move a different
+window to the top when necessary or rearrange the size and position of
+the windows.
+
+<P>What you may not have realized is that some of these windows,
+such as the ones created by the mail handler <I>xmh</I>, are made up of
+many layered windows of various sizes. The scrollbars, titlebar, command
+buttons, and other features of the user interface are actually separate
+windows that provide information to the user or allow for input providing
+convenient control, as shown in Figure 2-4. There is more here than meets
+the eye.
+
+<P><B>The windows used to create an instance of the xmh application</B>
+
+<P><IMG SRC="imgs/fig.2.04.gif" ALT="fig.2.04.gif" BORDER=0  ALIGN=ABSCENTER>
+<H3>
+Window Characteristics</H3>
+&nbsp;What are the characteristics of a window? There are
+many.
+
+<P>First of all, a window always has a <I>parent</I> window,
+which is assigned as the window is created. Each window is contained within
+the limits of its parent. The window cannot display output in areas outside
+itself and cannot receive input from the keyboard or the pointer while
+the pointer is outside itself (unless a <I>grab</I> or <I>keyboard focus</I>
+is in effect, as described in Sections 8.3.2.1 and 8.3.2.2). Every window
+fits in a hierarchy set up by its children, its parent, its parent's parent,
+and so on. The very first window, the only one that has no parent, is called
+the root window and fills the entire screen. The root window is created
+by the X server as it starts up.
+
+<P>Second, each window has its own coordinate system. As
+shown in Figure 2-5, the origin of a window is the top-left corner of the
+window and the x and y coordinates increase to the right and bottom.
+
+<P>In the X Window System:
+<UL>
+<LI>
+The horizontal axis is <I>x</I>, and the vertical axis is
+<I>y</I>.</LI>
+
+<LI>
+<I>x</I> and <I>y</I> are 0 at the upper-left corner inside
+the border (if there is one) of the window currently in use. This point
+is referred to as the window's <I>origin</I>.</LI>
+
+<LI>
+Coordinates increase toward the right and bottom of the window.</LI>
+
+<LI>
+Coordinates are integral and coincide with pixel centers.</LI>
+</UL>
+All measurements for placing graphics and for positioning
+subwindows are made from the origin. When we say that a point is <I>relative
+to</I> a window, this means that the x and y coordinates of the point are
+measured from the window's origin.
+
+<P>Each window is given a unique identifying number (ID)
+when it is created. All the routines that affect a particular window use
+a window ID as an argument and act in this window environment, so positions
+in the window are specified relative to the upper-left corner inside the
+border. It is not necessary to know the position of a window to correctly
+locate subwindows or draw graphics within the window.
+
+<P>For example, to create a window using <B><A HREF="xlib/window/XCreateWindow.html">XCreateWindow()</A></B>
+or <B><A HREF="xlib/window/XCreateWindow.html">XCreateSimpleWindow()</A></B>,
+you supply an offset from the upper-left corner of the parent to position
+the new window. When the parent moves, the new window stays in the same
+position relative to its parent.
+
+<P>Third, a window has a <I>position</I>, which locates its
+upper-left corner relative to its parent's corner, a certain <I>width</I>
+and <I>height</I> of usable pixels within the border, and a <I>border width</I>.
+These characteristics are shown in Figure 2-5. By convention, the window
+width and height do not include the border. Since several windows may have
+the same parent, a window must also have a <I>stacking order</I> among
+these windows to determine which will be visible if they overlap. These
+four characteristics are collectively known as the <I>window configuration</I>
+because they affect the layout of windows on the screen.
+
+<P><B>Elements of the window configuration</B>
+
+<P><IMG SRC="imgs/fig.2.05.gif" ALT="fig.2.05.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;To summarize, the window configuration includes:
+<UL>
+<LI>
+A window's width and height in pixels, not including the
+border.</LI>
+
+<LI>
+A window's border. It can vary in width; zero makes the border
+invisible.</LI>
+
+<LI>
+A window's particular position on the screen, specified by
+<I>x</I> and <I>y</I> in pixels, measured from the origin of the parent
+(the upper-left corner, inside the border) to the upper-left corner of
+the child, outside its border.</LI>
+
+<LI>
+A window's particular stacking order among the windows with
+the same parent.</LI>
+</UL>
+The width, height, and position are collectively called the
+window <I>geometry</I>. Applications often allow users to specify the geometry
+and border width of the window as a command line argument or through the
+user defaults mechanism.
+
+<P>Fourth, a window has characteristics referred to as <I>depth</I>
+and <I>visual</I>, which together determine its color characteristics.
+The depth is the number of bits available for each pixel to represent color
+(or gray scales). The visual represents the way pixel values are translated
+to produce color or monochrome output on the monitor.
+
+<P>Fifth, a window has a <I>class</I> of either <B>InputOutput</B>
+or <B>InputOnly</B>. As the names imply, <B>InputOutput</B> windows may
+receive input and may be used to display output, and <B>InputOnly</B> windows
+are used for input only. There is no such thing as an output-only window
+because certain types of input, called events, are needed by all windows.
+
+<P>Sixth, a window has a set of <I>attributes</I>. The window
+attributes control many aspects of the appearance and response of the window:
+<UL>
+<LI>
+What color or pattern is used for the border and background
+of the window?</LI>
+
+<LI>
+How are partial window contents relocated during resizing?</LI>
+
+<LI>
+When are the contents of the window saved automatically as
+they become covered and then exposed?</LI>
+
+<LI>
+Which event types are received, and which types are thrown
+away (not passed on to ancestor windows)?</LI>
+
+<LI>
+Should this window be allowed to be displayed, moved, or
+resized without notifying the window manager?</LI>
+
+<LI>
+Which colormap is used to interpret pixel values drawn in
+this window?</LI>
+
+<LI>
+Which cursor should be displayed when the pointer is in this
+window?</LI>
+</UL>
+This may seem like a dizzying array of variables, but in
+practice, many of them default to reasonable values and can be safely ignored.
+And the flexibility they provide makes the system much more powerful. All
+of these window characteristics will be explained in more detail later
+in this chapter, and most will be covered again later in the manual.
+
+<P>But first, a little more detail is necessary on the basic
+framework of X: the window hierarchy, the stacking order, and the concept
+of wrapping. These are the subjects of the next three sections.
+<H3>
+Window Hierarchy</H3>
+Windows are arranged in a hierarchy like a family tree, except
+that only one parent is required to create a child window. There is a separate
+hierarchy for each screen. At the top is the <I>root</I> window, which
+fills the entire screen and is created when the server initializes. The
+first windows to be created by each client are children of the root window.
+In the client's first call to <B>XCreateWindow()</B> or <B>XCreateSimpleWindow()</B>
+(either of which creates a new window), the root window is the parent.
+
+<P>The children of the root window are special, because they
+are the top-level windows of each application and they are managed by the
+window manager. Chapter 3, "Basic Window Program," describes the special
+procedures required of a client before displaying, moving, or resizing
+this window.
+
+<P>Each child may also have its own child windows. These
+child windows of the top-level windows are used to create application features
+like command buttons and scrollbars.
+
+<P>Figure 2-6 shows a window hierarchy as it might appear
+on the screen, and Figure 2-7 shows the same hierarchy in schematic form.
+Note that the windows <I>A</I> through <I>G</I> represent subwindows of
+each application, which may not overlap like this in real applications.
+Normally the subwindows are used as command buttons or panes which are
+laid out in non-overlapping fashion, as was shown in Figure 2-4. However,
+this hypothetical hierarchy serves to demonstrate the effects of the stacking
+order and the window hierarchy.
+
+<P><B>A sample window hierarchy on the screen</B>
+
+<P><IMG SRC="imgs/fig.2.06.gif" ALT="fig.2.06.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P><B>A sample window hierarchy in schematic form</B>
+
+<P><IMG SRC="imgs/fig.2.07.gif" ALT="fig.2.07.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;A child may be positioned partially or completely
+outside its parent window, but output to the child is displayed and input
+received only in the area where the child overlaps with the parent. Figure
+2-6 shows that the child windows do not extend beyond the borders of the
+parent even when they are positioned in such a way that they would otherwise
+overlap the parent's edge. (For example, in Figure 2-6, window <I>G</I>
+will not be drawn beyond the bottom of window <I>3</I> even if its height
+would suggest that it should.) If a window is moved in such a way that
+it would extend beyond the parent, it is clipped, so that only the part
+overlapping the parent is displayed.
+
+<P>These are the terms used to describe subsets of the window
+hierarchy:
+<DL>
+<DT>
+<I>Parent</I></DT>
+
+<DD>
+The window used when creating a child window.</DD>
+
+<DT>
+<I>Child</I></DT>
+
+<DD>
+A window created with another window as parent.</DD>
+
+<DT>
+<I>Subwindow</I></DT>
+
+<DD>
+Synonymous with child. Not the same as descendant.</DD>
+
+<DT>
+<I>Siblings</I></DT>
+
+<DD>
+Windows created with the same parent (brothers and sisters).</DD>
+
+<DT>
+<I>Descendants</I></DT>
+
+<DD>
+The children of a window, their children, and so on. Descendants
+could also be called <I>inferiors</I>. This term is more inclusive than
+<I>child</I> or <I>subwindow</I>, since it can include several generations
+in the window hierarchy.</DD>
+
+<DT>
+<I>Ancestors</I></DT>
+
+<DD>
+The parent of a window, its parent, and so on, including
+the root window. Ancestors could also be called <I>superiors</I>.</DD>
+</DL>
+
+<H3>
+Window Stacking Order</H3>
+When one window overlaps one of its sibling windows, the
+one on top obscures part of the other. The stacking order determines which
+window appears on top. This order can be changed with various routines
+to raise, lower, or circulate windows relative to their siblings. These
+routines affect only a group of siblings and their descendants but not
+their ancestors.
+
+<P>Child windows always stay in front of their parent. When
+a window with children is moved in the stacking order, all its child windows
+move with it, just as they do (because of the window-based coordinate system)
+when the parent is moved around the screen.
+
+<P>Figures 2-6 and 2-7 showed a set of windows on the screen
+and their hierarchy, and if you look carefully, you can see how the stacking
+order affects each group of sibling windows. Notice that window <I>2</I>
+is above window <I>C</I> and all the other children of window <I>1</I>.
+<H3>
+Mapping and Visibility</H3>
+A newly created window does not immediately appear on the
+screen. It is an abstract entity that cannot be drawn to (unless a backing
+store feature--discussed later in this section--is implemented on that
+server and turned on with the appropriate window attribute). <I>Mapping</I>
+marks a window as eligible for display. If it is not obscured by siblings
+or siblings of ancestors, it may be visible, and only then can it be drawn
+to.
+
+<P><B>XMapWindow()</B> maps a window in its current position
+in the stacking order, while <B>XMapRaised()</B> places the window at the
+top of the stacking order of its siblings before mapping it. For a new
+window never mapped before, these two calls are equivalent, since the initial
+stacking position of a new window is on top.
+
+<P>You must map a window before you have any chance of seeing
+it, but that alone is not enough. A number of factors can affect whether
+any window, newly created or already mapped, is visible:
+<OL>
+<LI>
+The window must be mapped with <B>XMapWindow()</B> or related
+routines.</LI>
+
+<LI>
+All of the window's ancestors must be mapped.</LI>
+
+<LI>
+The window must not be obscured by visible sibling windows
+or siblings of ancestors. If sibling windows are overlapping, whether or
+not a window is obscured depends on the stacking order. The stacking order
+can be manipulated with <B>XCirculateSubwindows()</B>, <B>XConfigureWindow()</B>,
+and <B>XRestackWindows()</B>.</LI>
+
+<LI>
+The request buffer must be flushed by a routine that gets
+events, with a call to <B>XFlush()</B>, or by a function that requests
+information from the server. More information on this topic was provided
+in Section 2.1.2, "Buffering."</LI>
+
+<LI>
+The initial mapping of a top-level window is a special case,
+since the window's visibility may be delayed by the window manager due
+to substructure redirection that was briefly described in Section 2.1.5,
+"The Window Manager." For complicated reasons, a client must wait for the
+first <B>Expose</B> event before assuming that its window is visible and
+drawing into it. It is not important to understand why this is true at
+this point.</LI>
+</OL>
+An important consequence of these rules, and one of the reasons
+for them, is that unmapping a window (with <B>XUnmapWindow()</B>) erases
+the window and all its descendants from the screen. X allows you (or, actually,
+the window manager) to control the placement and visibility of an entire
+client made up of a hierarchy of windows simply by manipulating the top-level
+window.
+
+<P>The window configuration and window attributes are maintained
+when a window is unmapped. But it is important to remember that the X server
+does not automatically preserve the visible contents of a window. Graphic
+operations on a window that is not visible or that is unmapped have no
+effect. Graphics visible in a window will be erased when that window is
+obscured and then exposed. For these reasons, it is important for the client
+to be prepared to redraw the contents of the window on demand, as described
+in Section 2.5, "Introduction to Events."
+
+<P>On some high performance servers, a "backing store" feature
+is available that maintains the window contents when a window is unmapped
+or covered by other windows, so that the window is automatically refreshed
+with the current contents when it becomes visible again. This feature is
+expensive in terms of computing resources and should be invoked only for
+windows whose contents are difficult to recreate. On many types of equipment,
+this feature is not supported, so for the sake of portability, programs
+should be capable of recreating the contents of their windows in other
+ways. This portability is particularly important in X, because network
+environments often employ various brands of equipment.
+
+<P>Mapping is done with the <B>XMapWindow()</B> or <B>XMapSubwindows()</B>
+routines. Unmapping is done with the <B>XUnmapWindow()</B> or <B>XUnmapSubwindows()</B>
+routines.
+<BR>
+<HR>
+<H2>
+Introduction to X Graphics</H2>
+This section provides a brief introduction to the terms and
+concepts used in graphics under the X Window System. You will see these
+terms used in Chapters 3, <I>Basic Window Program</I> and 4, <I>Window
+Attributes</I> before we get to a serious treatment of graphics in Chapters
+5, <I>The Graphics Context</I>, 6, <I>Drawing Graphics and Text</I>, and
+7, <I>Color</I>.
+<H3>
+Pixels and Colors</H3>
+The X Window System is designed to control bitmapped graphics
+displays. In the simplest black-and-white display, there is a single bit
+per pixel: the state of that bit determines whether the pixel will be black
+or white. In color systems or on monochrome systems allowing gray-scale
+displays, there are multiple bits per pixel.
+
+<P>The state of the multiple bits assigned to each pixel
+does not directly control the color or gray-scale intensity of that pixel.
+Instead they are used as an index to a lookup table called a <I>colormap</I>,
+as shown in Figure 2-8. On a color display, a pixel consists of separate
+red, green, and blue phosphors, each sensitive to a separate electron beam;
+the relative intensity of these three colors fools the eye into thinking
+it sees a single color. Accordingly, the colormap contains an array of
+red, green, and blue (RGB) triples. In other words, if the value of the
+bits for a given pixel (a <I>pixel value</I>) is 14, the RGB values of
+the fourteenth member of the colormap will be displayed at that location
+on the screen.
+
+<P><B>Mapping of pixel value into color through colormap</B>
+
+<P><IMG SRC="imgs/fig.2.08.gif" ALT="fig.2.08.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;Each member of a colormap is called a <I>colorcell</I>,
+each of which translates a pixel value into a specified set of red, green,
+and blue values. All bitmapped displays have at least one hardware colormap,
+though in the case of a single-plane monochrome screen, it may consist
+of only two colorcells. In most cases, all clients share the single colormap
+by allocating only the number of colorcells they need and sharing as many
+as possible. When clients have special requirements, however, X allows
+them to have private colorcells or to create virtual colormaps which are
+then swapped into the hardware colormap (if it is writable) when necessary.
+
+<P>Note that each window can potentially specify a different
+colormap. This is the significance of the fact that the colormap is a window
+attribute.
+<H3>
+Pixels and Planes</H3>
+The number of bits per pixel is also referred to as the number
+of <I>planes</I> in the graphics display. Black-and-white systems have
+a single plane, color displays have from 4 to 28 planes, and gray-scale
+displays usually have from 2 to 4 planes. X11 supports up to 32 planes.
+
+<P>As can be inferred from the previous discussion of bits
+per pixel as an index to the colormap, the number of possible colors or
+shades of gray that can be <I>simultaneously</I> displayed on the screen
+is 2<I>n</I>, where <I>n</I> is the number of planes in the display. (Of
+course, additional colors can be made available even on a system with only
+a few planes, at the cost of existing colors, simply by loading different
+RGB values into the hardware colormap if it is writable.)
+
+<P>All graphics calculations are performed on the pixel values
+before they are translated into RGB. The <I>source</I> pixel values specified
+in a drawing request and the <I>old destination</I> pixel values are combined
+according to a plane mask, clip mask, and logical function to arrive at
+the final <I>destination</I> pixel values. The plane mask, clip mask, and
+logical function are aspects of a structure called the graphics context
+(GC) and are described in Chapter 5, "The Graphics Context."
+
+<P>The macros <B>BlackPixel()</B> and <B>WhitePixel()</B>
+return pixel values that map to black and white using the default colormap
+for that screen. These macros are intended for use in monochrome programs
+so that they will work on monochrome, gray-scale, or color displays. On
+color hardware, the colors of black and white may not actually be black
+and white, but they are guaranteed to be contrasting.
+<H3>
+Pixmaps and Drawables</H3>
+A window is not the only valid destination for drawing. Pixmaps
+are also valid destinations for most graphics requests. A <I>pixmap</I>
+is a block of off-screen memory in the server. Windows and pixmaps are
+collectively known as <I>drawables</I>.
+
+<P>A pixmap is an array of pixel values. It has a depth just
+like a window. It does not, however, have a position relative to any other
+window or pixmap, and it does not have window attributes such as a colormap.
+All of those things affect a pixmap only when it is copied into a window.
+And a pixmap becomes visible only when copied to a window.
+
+<P>There are several routines for creating pixmaps. The simplest
+is <B>XCreatePixmap()</B>, which creates an empty pixmap with undefined
+contents. Always remember to clear a pixmap created with <B>XCreatePixmap()</B>
+before using it, otherwise it may contain garbage. Several others create
+pixmaps and fill a pixmap from data stored in a file. These functions will
+be mentioned later in the context of the various uses of pixmaps.
+
+<P>Some routines operate only on pixmaps or only on windows.
+These routines specify either <B>Pixmap</B> or <B>Window</B> as the argument.
+If either is allowed, the argument to the Xlib routine will be specified
+as a <B>Drawable</B>. All the drawing routines specify the <B>Drawable</B>
+argument type.
+
+<P>A pixmap is not susceptible to being covered by other
+windows. Windows, on the other hand, may only be drawn to usefully when
+they are visible, since their contents are not maintained when they are
+obscured or unmapped (unless the backing store feature is available and
+in effect).
+
+<P>To be copied to a window with <B>XCopyArea()</B>, a pixmap
+must have the same depth as the window it is to be copied to. Once copied,
+the colormap associated with the window is used to translate the pixel
+values from the pixmap to visible colors. After copying, additional drawing
+into the pixmap does <I>not</I> appear in the window. A single plane of
+a pixmap of any depth can be copied into any window with <B>XCopyPlane()</B>.
+
+<P>In short, windows have the disadvantage that, when they
+are not visible, drawing to them will not do anything. A pixmap, which
+represents an area of the screen, resides in memory and can be drawn to
+at any time. Unfortunately, pixmaps must be copied into a visible window
+before the user can see them. This copying can have performance penalties.
+Perhaps more importantly, off-screen memory in the server used for pixmaps
+may be limited in quantity. Therefore, programs that use a lot of pixmaps
+may not work on PC servers and X terminals.
+
+<P>A pixmap of depth 1 is known as a <I>bitmap</I>, though
+there is no separate type or resource called Bitmap. A bitmap is a two-dimensional
+array of bits used for many purposes including cursor definitions, fonts,
+and templates for two-color pictures. Each bit represents a single pixel
+value that is either set (1) or unset (0). Depending on the visual type,
+these pixel values can be interpreted as two colors or simply as black
+and white.
+<H3>
+Drawing and the Graphics Context</H3>
+As in any graphics language, X provides routines for drawing
+points, lines, rectangles, polygons, arcs, text, and so on. Routines that
+draw graphics are generically called <I>graphics primitives</I>. But in
+X, a given graphics primitive does not contain all the information needed
+to draw a particular graphic. A server resource called the <I>graphics
+context</I> (GC) specifies the remaining variables, such as the line width,
+colors, and fill patterns. The ID of a GC is specified as an argument to
+the drawing routine and modifies the appearance of everything that is drawn
+into the drawable.
+
+<P>The GC must be created by the client before any drawing
+is done. The created GC is stored in the server, so that the information
+it contains does not have to be sent with every graphics primitive--only
+its ID is passed. This improves the performance of drawing significantly
+since it reduces the traffic over the connection between Xlib and the server.
+All GC settings apply to all graphics drawn using that GC.
+
+<P>More than one GC can be created, and each can be set with
+different values. This allows a program to switch between GCs and get different
+effects with the same graphics primitive.
+<H3>
+Tiles and Stipples</H3>
+When pixmaps are used for patterning an area, such as for
+the background of a window or in a GC, they are often referred to as tiles
+or stipples.
+
+<P>A <I>tile</I> is a pixmap with the same depth as the drawable
+it is used to pattern. The tile is typically 16 by 16 pixels but can be
+other sizes--certain sizes are drawn faster--depending on the hardware
+(see <B>XQueryBestTile()</B>). It is typically composed of only two different
+pixel values since this is the easiest type to create, but multiple pixel
+values are permitted. Areas drawn by any of the drawing routines can be
+tiled by placing certain values in the GC. The background and border of
+windows can be tiled by specifying a pixmap in the window attributes.
+
+<P>A <I>stipple</I> is a pixmap of depth 1. A stipple is
+used in conjunction with a foreground pixel value and sometimes a background
+pixel value to pattern an area in a way similar to a tile. There are two
+styles of stippling that can be set in the graphics context. In one, set
+bits in the stipple are drawn in the foreground color and unset bits are
+drawn in the background color. In the other, only the set bits in the stipple
+are drawn in the foreground pixel value, and the pixels in the destination
+represented by unset bits in the stipple are not changed. Like tiling,
+stippling affects only those pixels that are selected by the graphics request,
+such as the pixels drawn for a line or a character. Stipples are only present
+in the GC and cannot be used for window backgrounds.
+
+<P>Figure 2-9 shows how a tile is used to pattern the background
+of a window.
+
+<P><B>Tiling of a window background</B>
+
+<P><IMG SRC="imgs/fig.2.09.gif" ALT="fig.2.09.gif" BORDER=0  ALIGN=ABSCENTER>&nbsp;
+<HR>
+<H2>
+More on Window Characteristics</H2>
+This section expands on the overview of window characteristics
+in Section 2.2.1, "Window Characteristics" and describes in more detail
+the window attributes, window configuration, class, and depth and visual.
+<H3>
+Window Attributes</H3>
+The window attributes consist of information about how a
+window is to look and act. Each window has a separate set of attributes,
+which can be set with <B>XChangeWindowAttributes()</B> or, in some cases,
+with routines that change individual attributes. The attributes control
+the following window features:
+<DL>
+<DT>
+Background</DT>
+
+<DD>
+Can be a solid color, a tiled pixmap, or transparent.</DD>
+
+<DT>
+Border</DT>
+
+<DD>
+Can be a solid color or a tiled pixmap.</DD>
+
+<DT>
+Bit Gravity</DT>
+
+<DD>
+Determines how partial window contents are preserved when
+a window is resized.</DD>
+
+<DT>
+Window Gravity</DT>
+
+<DD>
+Determines how child windows are relocated when a window
+is resized.</DD>
+
+<DT>
+Backing Store</DT>
+
+<DD>
+Provides hints about when a window's contents should be automatically
+saved while the window is unmapped or obscured, which display planes should
+be saved, and what pixel value is to be used when restoring unsaved planes.
+Not all servers are capable of backing. Check the value returned from the
+<B>DoesBackingStore()</B> macro to determine whether this feature is supported
+on a particular screen on your server.</DD>
+
+<DT>
+Saving Under</DT>
+
+<DD>
+Provides hints about whether or not the screen area beneath
+a window should be saved while a window, such as a pop-up menu, is in place
+to save obscured windows from having to redraw themselves when the pop
+up is removed. Not all servers can save under windows. You can find out
+whether this feature is supported on a particular screen with the <B>DoesSaveUnders()</B>
+macro.</DD>
+
+<DT>
+Events</DT>
+
+<DD>
+Indicate which events should be received and which events
+should not be sent to ancestor windows.</DD>
+
+<DT>
+Substructure Redirect Override</DT>
+
+<DD>
+Determines whether this window should be allowed to be mapped
+on the screen without intervention by the window manager. This override
+is usually done for menus and other windows that are frequently mapped
+and then almost immediately unmapped again.</DD>
+
+<DT>
+Colormap</DT>
+
+<DD>
+Determines which virtual colormap should be used for this
+window.</DD>
+
+<DT>
+Cursor</DT>
+
+<DD>
+Determines which cursor should be displayed when the pointer
+is in this window.</DD>
+</DL>
+It may clarify the picture to describe the features that
+window attributes <I>do not</I> affect. Setting the window attributes does
+not determine the size or position of a window, its parent, or its border
+width; these comprise the window configuration. Setting the window attributes
+does not affect the depth, class, or visual of a window; these are permanently
+set when the window is created. Attributes do not determine how graphics
+requests are interpreted; this is the job of the graphics context (GC).
+<H3>
+Window Configuration</H3>
+A window's configuration consists of its position, width
+and height, border width, and stacking position, as described in Section
+2.2.1, "Window Characteristics." These factors are handled differently
+from the window attributes (even though they are stored internally in the
+<B>XWindowAttributes</B> structure) for an important reason: changing the
+configuration of a top-level window (a child of the root window) must be
+done in cooperation with the window manager.
+
+<P>We will not go into detail here about how the application
+must interact with the window manager when attempting to map a window or
+change a window's configuration. For now, suffice it to say that there
+are certain rules the application must follow so that the window manager
+can be responsible for controlling what is on the screen and where. See
+Chapter 3, "Basic Window Program," for an introduction to client-window
+manager interaction and Chapter 12, "Interclient Communication," for a
+complete description.
+<H3>
+Class: InputOutput and InputOnly Windows</H3>
+The X Window System provides two classes of windows: <B>InputOutput</B>
+and <B>InputOnly</B>. The main difference between the two classes is that
+an <B>InputOnly</B> window cannot be used as a drawable (a destination
+for a graphics request). Consequently, <B>InputOnly</B> windows have a
+more limited set of window attributes, have no border and a transparent
+background, and cannot have <B>InputOutput</B> windows as children.
+
+<P><B>InputOnly</B> windows make an invisible area of the
+screen in which input has a different purpose but the display is not changed.
+<B>InputOnly</B> windows usually are assigned a different cursor to distinguish
+them. <B>InputOnly</B> windows are rarely used.
+
+<P>The class of a window is assigned at creation and cannot
+be changed.
+<H3>
+Depth and Visual</H3>
+The depth and visual of a window are assigned at creation
+and cannot be changed. The depth is the number of planes that are to be
+used to represent gray scales or color within a window; depth is also the
+number of bits per pixel. The maximum depth allowable for an <B>InputOutput</B>
+window is the number of planes supported by the screen with which it is
+associated. If a screen has 12 planes, a window may have at most 12 bits
+per pixel, and therefore there are at most 2 12 possible different shades
+of gray or color.
+
+<P>The depth of an <B>InputOnly</B> window is always 0. For
+<B>InputOutput</B> windows, the symbol <B>CopyFromParent</B>, when used
+as the depth argument in <B>XCreateWindow()</B>, copies the depth of the
+parent window. Most windows use the default depth, inherited from the root
+window.
+
+<P>The visual accounts for the differences between various
+types of display hardware in determining the way pixel values are translated
+into visible colors within a particular window. A screen may support only
+one visual or several types of visuals. An <B>XVisualInfo</B> structure
+contains all the information about a particular visual. One member of <B>XVisualInfo</B>
+is the visual class, which has one of the values <B>DirectColor</B>, <B>GrayScale</B>,
+<B>PseudoColor</B>, <B>StaticColor</B>, <B>StaticGray</B>, or <B>TrueColor</B>.
+These values specify the characteristics of the colormaps that can be used
+with the window--whether the colormap is read-only or read/write, color
+or monochrome, split into three primary colors or composite. Other members
+of <B>XVisualInfo</B> specify the valid range of pixel values; how many
+bits of the pixel are allocated to red, green, and blue; and several other
+variables.
+
+<P>Both the depth and visual are inherited from the parent
+when a window is created with <B>XCreateSimpleWindow()</B>. For more information
+on the visual class, see Chapter 7, "Color."
+<H3>
+Icons</H3>
+An <I>icon</I> is a small marker window that indicates that
+a larger "main" window exists and is available but is not currently mapped
+on the screen.
+
+<P>Most window managers allow the user to <I>iconify</I>
+an application to get it out of the way without destroying it. Deiconifying
+an application is faster and more convenient than running the application
+from scratch. Also, the iconified application keeps running whatever processes
+it was at work on when iconified (unless the application is programmed
+to halt when it is iconified). When input is required, the program may
+either wait until the window is deiconified or accept input in the icon.
+
+<P>Figure 2-10 shows an <I>xterm</I> window before and after
+it is iconified. The <I>xterm</I> application does not create an icon pixmap,
+and therefore, the window manager <I>uwm</I> simply draws its icon name
+into the icon. The appearance and placement of icons varies between window
+managers.
+
+<P><B>An application and its icon</B>
+
+<P><IMG SRC="imgs/fig.2.10.gif" ALT="fig.2.10.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;Icon windows are managed and, in many cases, created
+by the window manager. Through the window manager hints (which will be
+detailed in Section 3.2.8, "Communicating with the Window Manager" and
+Chapter 12, "Interclient Communication"), an application passes its icon's
+name and pixmap to be displayed in the icon window. If an application needs
+to perform operations on its own icon window (perhaps to be able to change
+the background at any time, as the mail handler <I>xmh</I> does to indicate
+that mail has arrived), it can create its own icon window and pass the
+window ID to the window manager. Otherwise, the window manager will create
+the icon window.
+
+<P>The window manager may specify in a property on the root
+window what sizes of icon pixmaps it prefers. If this property is set,
+the application should attempt to provide an icon pixmap of an acceptable
+size. The window manager may also specify where icons will be placed. These
+are optional features of the window manager that may not be present. In
+fact, most current window managers do not specify icon sizes or control
+icon location.
+<H3>
+Special Characteristics of the Root Window</H3>
+The root window is created when the X server program is initialized.
+The root window's characteristics differ slightly from those of other windows.
+
+<P>The root window is an <B>InputOutput</B> window. It is
+always mapped. Its size cannot be changed. Its upper-left corner is always
+at the upper-left corner of the screen, where the global coordinates are
+(<B>0</B>,<B>0</B>). The root window has a zero-width border. Its size
+is accessible through macros that will be described in Chapter 3, "Basic
+Window Program."
+
+<P>The default window attributes of the root window include
+a background pixmap with diagonal cross-hatchings, the default colormap,
+and a default cursor that is a large X. Any of these can be changed. The
+event mask attribute can be changed, but by default, no events that occur
+in the root window are sent to any client. None of the other attributes
+are applicable to the root window. See Chapter 4, "Window Attributes,"
+for more information on setting window attributes.
+
+<P>The root window is never iconified by the window manager,
+because among other reasons, it cannot be unmapped.
+<BR>
+<HR>
+<H2>
+Introduction to Events</H2>
+This section provides a brief introduction to events. You
+will need this knowledge to fully understand Chapter 3, "Basic Window Program,"
+and some of the window attributes described in Chapter 4, "Window Attributes."
+Events are covered completely in Chapter 8, "Events," and Chapter 9, "The
+Keyboard and Pointer."
+<H3>
+What is an Event?</H3>
+Moving the pointer or pressing a keyboard key causes an input
+event to occur. These are two of the simplest and most common event types,
+but there are many others. An event is a packet of information that is
+generated by the server when certain actions occur and is queued for later
+use by the client. The queued events can be read at any subsequent time
+in any order, but they are usually read and processed in the order in which
+they occurred.
+
+<P>Here are some other sorts of events:
+<UL>
+<LI>
+Mouse (or other pointer) button pressed or released. (<B>ButtonPress</B>,
+<B>ButtonRelease</B>)</LI>
+
+<LI>
+Window mapped or unmapped. (<B>MapNotify</B>, <B>UnmapNotify</B>)</LI>
+
+<LI>
+Mouse crossing a window boundary. (<B>EnterNotify</B>, <B>LeaveNotify</B>)</LI>
+</UL>
+These event types are usually used for user input and to
+control a user interface.
+
+<P>A second group of events reports side effects of window
+operations. For example, when a window becomes visible after being obscured,
+it receives an <B>Expose</B> event. When window gravity (a window attribute
+that controls the position of a window when the parent is resized) takes
+effect, a <B>GravityNotify</B> event is generated.
+
+<P>A third purpose of events is to allow various clients
+to communicate with each other and with the window manager. The events
+that report the following actions are usually used for the second purpose.
+<UL>
+<LI>
+A client may request that all keyboard input be sent to a
+particular window regardless of the pointer position; this is called a
+<I>keyboard focus</I> window. Changing keyboard focus from one window to
+another causes <B>FocusIn</B> and <B>FocusOut</B> events, indicating to
+the client whether or not it can expect further keyboard events.</LI>
+
+<LI>
+Changing the mapping between keyboard keys and codes they
+generate causes a <B>MappingNotify</B> event to be sent to all clients.</LI>
+
+<LI>
+Reparenting a window is sometimes done by the window manager
+to add a frame to windows on the screen. This action causes a <B>ReparentNotify</B>
+event.</LI>
+
+<LI>
+A <B>PropertyNotify</B> event is generated when a client
+changes a property on a window.</LI>
+
+<LI>
+<B>SelectionClear</B>, <B>SelectionNotify</B>, and <B>SelectionRequest</B>
+events are used to communicate back and forth between a client that is
+allowing a user to select a section of text (or other information) and
+a client that is allowing the user to place the information in its window.
+Some of these events are sent with <B>XSendEvent</B>.</LI>
+</UL>
+At this point, it is only important to understand in general
+what events are, not precisely what each one is for or how to use them.
+Chapter 8, "Events," and Chapter 9, "The Keyboard and Pointer," will provide
+complete details.
+<H3>
+Selection and Propagation of Events</H3>
+A client must select the event types that it wants the server
+to send for each window. The selection is made by calling <B>XSelectInput()</B>,
+which sets the <B>event_mask</B> window attribute, by setting that attribute
+with the more general <B>XChangeWindowAttributes()</B> routine, or when
+calling <B>XCreateWindow()</B>.
+
+<P>For example, a scrollbar may require mouse button events
+but not keyboard events, while the main window of an application may require
+keyboard but not mouse events. One would select different event types on
+each of these windows.
+
+<P>Keyboard and pointer events are generated in the smallest
+window enclosing the pointer (or grabbing the pointer, as discussed in
+Section 8.3.2.2, "Keyboard and Pointer Grabbing"). Then an event of one
+of these types (only) propagates upward through the window hierarchy until
+the event type is found in the <B>event_mask</B> or <B>do_not_propagate_mask</B>
+attributes of the window. If the event is found in an <B>event_mask</B>
+first (or in both on the same window), then the event is sent as if it
+occurred in that window, and if it is found in a <B>do_not_propagate_mask</B>
+first, then it is never sent. The ID of the window that finally received
+the event (if any) is put in the <B>window</B> member of the event structure.
+
+<P>The <B>do_not_propagate_mask</B> can only be set with
+<B>XChangeWindowAttributes()</B> or <B>XCreateWindow()</B>. Events other
+than keyboard and pointer events do not propagate. They occur in the window
+in which they were selected when the appropriate action occurs.
+
+<P>For most types of events, a copy of an event can be sent
+to more than one client if each client has selected that event type on
+that window. Each client has its own event mask for each window. The client
+that created the window need not do anything to cooperate. The second client
+that wants to get an event from a window that it did not create simply
+needs to find out the ID of the window and then select the desired event
+types with <B>XSelectInput()</B> on that window. A duplicate event is sent
+to each window, and these events propagate independently up through the
+hierarchy in the two applications. This is rarely done, because there is
+usually no reason for any program other than the window manager to play
+with another application's windows.
+<H3>
+The Event Queue</H3>
+What do we mean when we say that an event is queued? Each
+client has its own event queue which receives the selected events in the
+order they are sent by the server, as was shown in Figure 2-2.
+
+<P>The client then can remove each event at any time and
+process it according to its type and the other information in each event
+structure. There are several functions that get input, and they differ
+in how many windows are monitored and what types of events are sought.
+The client can also read events on the queue without removing them, remove
+one and then put it back, or clear the queue by throwing away all the events.
+Events can also be created by a program and sent to the window manager
+or other programs.
+<H3>
+An Event Structure</H3>
+<B>Expose</B> is one of the most important event types, and
+its event structure is shown in Example 2-1. It is generated when an area
+of a window becomes visible on the screen and indicates that the client
+must redraw that area. This happens when a window is mapped, moved, resized,
+or deiconified or when an obscuring window is unmapped. Exposure events
+are common and can happen at any time, since they may be caused by the
+actions of other clients.
+
+<P><B>An event structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp; /* # of last request processed by
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from a SendEvent
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; int x, y;
+&nbsp;&nbsp; int width, height;
+&nbsp;&nbsp; int count;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* If nonzero, more expose events
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * follow */
+} XExposeEvent;</TT></PRE>
+</BLOCKQUOTE>
+The type of event is reported in every event structure--in
+the <B>XExposeEvent</B> structure, the type field would be the symbolic
+constant <B>Expose</B>. The window to which the event propagated is reported
+in the window member, present in all but five event types (those dealing
+with selections and graphics exposure). All other information in the event
+structures is specific to certain event types and is described in detail
+in Appendix E, <I>Event Reference</I>.
+<H3>
+The Event Loop</H3>
+Because events can arrive in any order, the structure of
+code to handle them is predetermined. Every program contains an event loop
+in which each event is received and processed. Normally this loop is implemented
+as an infinite <B>while</B> loop, beginning with an event-getting routine
+and followed by a <B>switch</B> statement that branches according to the
+event type. Within each branch for an event type, there may be additional
+branches corresponding to the window in which the event occurred or other
+fields in the event structure.
+
+<P>The loop will almost always include exposure events. X
+does not normally keep track of the contents of the obscured regions of
+windows. It is the responsibility of the program to make sure that the
+window contents can be redrawn when exposure occurs. The program must be
+prepared to receive and act on an exposure event at any time, meaning at
+every invocation of the event-gathering routine. A program may work perfectly
+as long as there are no other programs running, but that is not good enough
+in a window environment!
+
+<P>When a window is first mapped, the first function of the
+program must be to read the exposure event that is generated by mapping
+the window. Then the program can draw the window's contents. As it turns
+out, this is also how the program should respond when an exposure event
+arrives at any later time. The first drawing and later redrawing are done
+in exactly the same way, using the same code.
+
+<P>Note, however, that another type of event, <B>ConfigureNotify</B>,
+must be handled in case the window manager modified the size of the application
+before mapping it and in case the user later resizes the window. More will
+be said about this in Chapter 3, "Basic Window Program."
+<BR>
+<HR>
+<H2>
+How to Program with Xlib</H2>
+This section reviews what is important to know about X programming
+before you write any code. Describing what goes into the designing, writing,
+and debugging of X programs should give you a better start when you begin
+your own programming.
+
+<P>The basic program described in Chapter 3, "Basic Window
+Program" illustrates many of the issues described here.
+<H3>
+Designing an X Application</H3>
+Let's begin by outlining the major tasks any X application
+must perform.
+
+<P>From the user's standpoint, almost any application under
+any window system will do the obvious things: create a window on the screen
+of an appropriate size, determine a position for some text and/or graphics
+within the window, draw into the window, and accept keyboard and/or pointer
+input, changing the screen accordingly. Essentially, the top-level window
+of the application is treated very much like the whole screen would be
+treated on a PC. These tasks are straightforward and most programmers should
+find them familiar.
+
+<P>There are, of course, a few complications resulting from
+the unique features of window systems in general and the X Window System
+in particular. These complications determine the design requirements for
+an application that is to run under X.
+<H4>
+Design Requirements</H4>
+The following four paragraphs describe the things X applications
+must do that are not obvious. These are things that must be done for the
+application to operate properly under X but that the average user might
+not notice or know about.
+
+<P>First, X allows workstations to be connected in a network
+in which any host or node may run X programs and display them on any other
+node, given permission. This means that the program must be able to accept
+the user's specification of which display to use. (Remember that each display
+has its own server, so choosing the display is equivalent to establishing
+the connection between the client and a particular server.) This requirement
+turns out to be built in and requires virtually no programming, as is described
+in Section 3.2.2, "Connecting to a Server."
+
+<P>Second, the application must be responsible in its use
+of the limited resources of the display, chiefly screen space and colormaps.
+This is because there may be many applications running concurrently on
+a single screen, sharing those limited resources. The client in charge
+of managing these limited resources is the window manager. There are certain
+requirements for communication between each application and the window
+manager to ensure that competing needs can be fairly arbitrated and to
+help make sure that the user sees a consistent user interface. These requirements
+are not difficult to meet for simple applications, but they get more complex
+for serious applications. This area is described in Chapter 12, "Interclient
+Communication."
+
+<P>Third, other clients may be moved over your client and
+then moved away, requiring your client to redraw its window or windows.
+X cannot maintain the contents of an unlimited number of overlapping windows,
+and it is inefficient for it to try to maintain even a few. Your client
+will be told when redrawing is necessary and in what areas. This requirement
+is not hard to meet, but it encourages programming in a way that records
+the current "state" of each window so that it can be redrawn. The handling
+of exposure is described in Section 3.2.13, "Setting Up an Event-gathering
+Loop."
+
+<P>Fourth, the user may resize your application, so it should
+be capable of recalculating the dimensions and placement of subwindows
+and graphics to fit within the given window.
+
+<P>In a nutshell, these four aspects are all that is required
+of an X program beyond its basic functionality. Fortunately, for most clients
+without unique needs such as a custom colormap, these requirements are
+straightforward to satisfy.
+<H4>
+The User Interface</H4>
+The first step in designing an application will be to determine
+what its features will be. Determining how the user will invoke those features
+is probably the next step. This means designing a user interface.
+
+<P>X was purposely designed to be "policy free," and therefore
+it does not come with a standard user interface like many other window
+systems do. You will have to write all parts of the user interface yourself,
+unless you choose to use one of the toolkits that are available. Using
+a toolkit makes building a user interface much easier and is strongly recommended.
+Otherwise, you must write menus, command buttons, dialog boxes, and so
+forth and determine how they are to be used. Although there are many ways
+to write these user interface features, there is a simple implementation
+of a menu in the <I>winman</I> program shown in Chapter 16, "Window Management,"
+and an example of a dialog box routine in Chapter 9, "The Keyboard and
+Pointer." The writing of a command button routine should be straightforward.
+
+<P>The key elements that interact in the design of a user
+interface are the hierarchy of windows and the selection and processing
+of events, chiefly pointer and keyboard events. Since these device events
+propagate through the hierarchy depending on whether they are selected
+for each window, both the hierarchy and the selection together determine
+how events are received. For every user action, there must be a path (possibly
+unique, possibly common for several different user actions) through the
+event-handling code that yields some sort of response to the user, either
+by a visible change, a message, or a beep. Therefore, the job of the event
+loop is to distinguish all the possible user actions and invoke the proper
+code. In the main event loop, each case statement for an event type must
+then have another switch, depending on the window which received the event,
+before calling the function that performs the action the user requested.
+The event type and the window in which it occurred are only two of the
+most common event structure members--there may be additional switch statements
+based on other members, too, such as which keys or buttons were being held
+while a key or button press occurred.
+
+<P>Especially for complex programs, a careful design of the
+window hierarchy and selection of events can simplify the code and save
+hours of debugging. We recommend drawing out the hierarchy of windows and
+the types of events selected by each one and then drawing in the events
+that will be propagated to ancestor windows. This helps find problems before
+any code is written.
+<H3>
+Writing an X Application</H3>
+The best way to start writing an X application is probably
+to copy the existing application that is most similar to your intended
+purpose or to start from a skeleton program such as <I>basicwin</I>, described
+in Chapter 3, "Basic Window Program." Select one from the core portion
+of the standard distribution from MIT, because these are the most likely
+to follow current conventions.
+
+<P>The following sections describe some basic facts about
+the actual process of coding and compiling an application.
+<H4>
+Resources and User Customizability</H4>
+An application should not hardcode all the options that are
+possible under X, such as colors and fonts. It should allow the user to
+specify the colors of all windows, the font to use, the display and screen
+to use, the initial size and position of the application, and a large number
+of other standard and application specific options.
+
+<P>An application should provide command line options, but
+there are too many variables to support all of them as command line options.
+The developers of X have designed a better way for the user to specify
+options, called resources. The user places the desired options in a file
+using a particular format and runs the X application <I>xrdb</I> specifying
+this file as a command line argument. <I>xrdb</I> places a property on
+the root window whose value is the contents of this file. Applications
+use a set of Xlib routines collectively called the resource manager to
+return a setting for each variable required. The routine <B>XGetDefault()</B>
+makes this process quite easy for the application. If the user has not
+called <I>xrdb</I> to set the property on the root window, <B>XGetDefault()</B>
+reads in a file called <I>.Xdefaults</I> in the user's home directory.
+The application itself should contain a default value for each variable
+in case neither of these sources contains a value for one of them.
+
+<P>This use of the term resource is completely different
+from the term <I>server resource</I>, which refers to windows and GCs.
+
+<P>A resource specification is a key/value pair. A key/value
+pair may apply only to a particular window within a particular application,
+to an entire application, to a certain class of applications such as editors,
+or to all applications. The algorithm used to find the value for a particular
+variable operates quite differently from a normal database manager. Given
+an incomplete specification of a key, it uses an algorithm to determine
+which of the keys in the resource database is the best match and returns
+the indicated value. It always returns only one value. This is much different
+from a normal database manager which would return many values if the key
+were too general.
+
+<P>The resource manager and providing user customizability
+are described in detail in Chapter 13, "Managing User Preferences."
+<H4>
+Compiling and Linking X Programs</H4>
+To use all the functions in the X library, you need to include
+&lt;<I>X11/Xlib.h</I>>, &lt;<I>X11/Xutil.h</I>>, &lt;<I>X11/keysym.h</I>>,
+and &lt;<I>X11/Xresource.h</I>>. These files define data structures, macros,
+and symbols and declare the types of functions. It is also a good idea
+to include &lt;<I>X11/Xos.h</I>>, which includes certain header files commonly
+used in C programs that differ in name or location between various operating
+systems, notably System V and BSD. To compile and link your program with
+all the available Xlib libraries, including a symbol table for a symbolic
+debugger, use:
+<BLOCKQUOTE>
+<PRE><TT>cc -g -o outputfile inputfile.c -lX11</TT></PRE>
+</BLOCKQUOTE>
+The <I>-lX11</I> option specifies linking with the standard
+X library, Xlib.
+
+<P>A set of routines to make it easier to port programs from
+X Version 10 to Version 11 is provided in a separate library. To use the
+X Version 10 compatibility functions, include &lt;<I>X11/X10.h</I>> in
+your source file and link with both the <I>-lX11</I> and <I>-loldX</I>
+options to your <I>cc</I> command. You may wish to include &lt;<I>X11.Xos.h</I>>
+if you use system calls, file manipulation, or string manipulation utilities.
+This header file includes the right files for various operating systems.
+
+<P>Several other libraries are available in the X distribution
+from MIT: Xmu, the miscellaneous utilities library, and Xext, the extensions
+library (which requires additional server-side software in order to function).
+These are not yet adopted standards of the X Consortium but are widely
+available. If you use <I>-lXmu</I>, it must be placed before Xlib on the
+compiling command line. All toolkit libraries based on Xlib such as Xt
+must also appear before <I>-lX11</I> on the command line. <I>-lXext</I>
+can appear before or after <I>-lX11</I> because it does not use Xlib.
+
+<P>If, when compiling, you get errors about header files
+in &lt;<I>X11/Xos.h</I>> not being found, you are probably on a System
+V system that does not define the symbol <B>SYSV</B>. To solve this problem,
+add <I>-DSYSV</I> to the command line.
+
+<P>You will probably want to use <I>make</I>(1) when compiling
+time could be saved by compiling smaller functions separately before linking.
+(For more information, see the Nutshell Handbook <I>Managing Projects with
+Make</I>.) Even better is to use <I>make</I> in combination with <I>imake</I>,
+which generates makefiles from a portable description file. <I>imake</I>
+is provided with the X distribution. For more information see <I>The X
+Resource</I>, Issue 2, Spring 1992.
+<H4>
+Naming Conventions</H4>
+There are a number of conventions for the naming of Xlib
+functions and constants. You should be familiar with these conventions
+in order to name your own functions and constants properly. The major conventions
+are:
+<UL>
+<LI>
+The names of all Xlib functions begin with an X (capital
+x). Compound words are constructed by capitalizing the first letter of
+each word. For example, a typical function name is <B>XAllocColor()</B>.</LI>
+
+<LI>
+The names of most user-visible data structures and structure
+types begin with an X. The only exceptions are <B>Depth</B>, <B>Display</B>,
+<B>GC</B>, <B>Screen</B>, <B>ScreenFormat</B>, and <B>Visual</B>. Pointers
+to these six structures are quite commonly used in programs, but their
+members should not be accessed except through pre-existing macros.</LI>
+
+<LI>
+The names of all members of data structures use lower case.
+Compound words, where needed, are constructed with underscores (_).</LI>
+
+<LI>
+The names of macros do not begin with an X. To distinguish
+macros from user symbols (which are all caps), the first letter of each
+word in the macro is capitalized. (The macros used for quarks are an exception
+to this rule, perhaps because they were once part of a separate library.
+Their names begin with <B>Xrm</B>.)</LI>
+
+<LI>
+The names of symbolic constants defined in X header files
+(<B>#defined</B>) use mixed case, with the first letter of each word capitalized,
+and do not begin with X. Lowercase symbols are reserved for variables and
+all uppercase for user symbols, according to existing convention. The only
+exception is that predefined atom names use all uppercase letters, with
+underscores separating the words. Atom names begin with <B>XA_</B> to distinguish
+them from user symbols.</LI>
+</UL>
+You should choose constants and routine names that will not
+be confused with standard Xlib functions, macros, or constants. User function
+names should not begin with X and perhaps should have the first letter
+of the first word lower case to avoid confusion with Xlib macros. User
+constants should be all upper case. Variable names can be lower case as
+usual, with underscores separating the words if desired, since X structure
+member references will always be accompanied by the variable declared as
+the structure.
+<H4>
+Using Structures, Symbols, and Masks</H4>
+Xlib programming takes advantage of many structure definitions
+and defined constants. This style of programming may be unfamiliar to some
+programmers. We will describe how structures and constants are typically
+used so that the idea will be familiar when you see the examples.
+
+<P>Pointers to structures are the major way of specifying
+data to and returning data from Xlib routines. If the routine returns data,
+the returned value will be a pointer to the data structure, unless the
+routine returns more than one structure, in which case one or all of the
+structures will be arguments. In some routines (primarily those concerning
+color), a pointer-to-structure argument specifies some information and
+returns some other information.
+
+<P>When setting the characteristics of a server resource,
+such as a set of window attributes, a graphics context, the cells in a
+colormap, or a hardware characteristic (such as key click), both a structure
+and a mask are specified as arguments. The <I>mask</I> specifies which
+values in the specified structure should be read when updating the resource
+values. One bit in the mask is assigned to each member in the structure,
+and a special constant is defined in the Xlib header files to represent
+that member when constructing the mask. Each of the mask constants has
+one bit set. The mask argument is made by combining any number of the mask
+constants with the bitwise OR operator (<I>|</I>). For example, the <B>CWBackgroundPixmap</B>
+constant is used to indicate that the <B>background_pixmap</B> member of
+the specified window attributes structure is to be read and the corresponding
+member in the resource changed.
+
+<P>The other major use of defined constants in Xlib (other
+than for masks) is as values for structure members themselves. They indicate
+which of a number of alternatives is true. For example, several of the
+structure members can have only the values <B>True</B> or <B>False</B>.
+As another example, the <B>type</B> member of each event structure can
+have one of 33 different values, each represented by a different defined
+constant such as <B>Expose</B>. Defined constants are also used as returned
+values.
+
+<P>Defined constants are also used for predefined atoms.
+As described in Section 2.1.4, "Properties and Atoms" an atom is an integer
+value identifying a property. Atoms are used to avoid passing arbitrary-length
+property name strings back and forth between the client and the server.
+<H4>
+Performance Optimizing</H4>
+While designing, writing, and debugging your application,
+you can look for ways to improve its performance.
+
+<P>Whenever possible, you should use Xlib functions that
+do not require protocol replies. That is, in functions that are called
+frequently, especially in the event loop, avoid Xlib routines with names
+containing <B>Fetch</B>, <B>Get</B>, or <B>Query</B>. Most of these functions
+return information from the server, and as such, they are subject to network
+delays and will slow down your application. Much of this information can
+be had from events.
+
+<P>In general, keep the feedback loop between the user's
+action and the program's response as short as possible.
+<H4>
+ANSI-C and POSIX Portability</H4>
+The MIT Release 5 X distribution is compliant with ANSI-C
+and POSIX standards, and portable across a wide variety of platforms. While
+the goal of the ANSI-C and POSIX standards is portability, many systems
+do not implement these standards, or do not implement them fully, so the
+MIT R5 distribution defines new header files that attempt to mask the differences
+between systems. The header files are <I>&lt;X11/Xfuncproto.h></I>, <I>&lt;X11/Xfuncs.h></I>,
+<I>&lt;X11/Xosdefs.h></I>, and <I>&lt;X11/Xos.h></I>. The contents and
+usage of these header files are described in Chapter 15, <I>Other Programming
+Techniques</I>. None of these files are part of the official R5 standard,
+so they may not be shipped with your system. But they can be very useful
+in writing portable applications, so we have included them with the code
+from this book, which you can get as described in the <I>Preface</I>.
+<H3>
+Debugging an X Application</H3>
+All programmers know that debugging is by far the most difficult
+and time consuming aspect of programming. This is where you catch all the
+problems caused during the writing stage and often also problems in the
+design stage. One can rarely foresee all the issues when designing a program.
+
+<P>There are some techniques that make debugging X applications
+easier. One, of course, is to have good tools. The C program checker <I>lint</I>
+helps find problems such as mismatches in the number of arguments to a
+function, variables declared but not used, or misused pointers. Although
+it often finds something to complain about that you do not consider an
+error, it also provides useful information.
+
+<P>Use of a good debugger such as <I>dbx</I> avoids the need
+to continually place <B>printf</B> statements in the code and recompile.
+
+<P>The standard application <I>xwininfo</I> is good for displaying
+information about a window, including its window ID and name, parent and
+children IDs and names, all the window attributes, and the window manager
+hints set for that window. Use the <I>-all</I> option or see the <I>xwininfo</I>
+reference page in <I>Volume Three, X Window System User's Guide</I>, for
+information on printing just the needed information.
+
+<P>The standard application <I>xprop</I>, which displays
+the name, type, and value of each property set on a window, is useful in
+debugging applications that set or read properties. It can also display
+font properties. This application is also described in Volume Three.
+
+<P>If your application generates protocol errors during debugging,
+it is easier to locate the error if you turn off Xlib's request buffering
+(described in Section 2.1.2, "Buffering"). This is done with the <B>XSynchronize()</B>
+call placed immediately after the call to connect with the sever (<B>XOpenDisplay()</B>).
+
+<P>One of the most common places to have difficulty debugging
+is in event handling. For this reason, we recommend that all programs under
+development contain <B>printf</B> statements at the beginning of each branch
+of their event handling, so that the programmer can watch the sequence
+of events in one window and the visible performance of the application
+in another. This print statement can be placed within a compile-time <B>#ifdef
+DEBUG</B>, <B>#endif</B> pair. Then define this symbol on the compiling
+command line. Later, all the print statements can be taken out of the compiled
+code by simply changing the command line when recompiling. Although the
+event types are coded as numbers and will normally be printed that way
+by the <B>printf</B> statements, they are easily translated back into strings
+that match their symbols using the technique described in Section 8.2.5,
+"Printing the Event Type."
+
+<P>X applications are difficult to test thoroughly. Here
+are some of the miscellaneous tests you should put your application through:
+<UL>
+<LI>
+Be sure to try all combinations of raising and lowering different
+windows to test the application's response to exposure. Does it redraw
+unnecessarily?</LI>
+
+<LI>
+Try all combinations of pressing and releasing different
+pointer buttons to see if anything breaks.</LI>
+
+<LI>
+Try operating the program in a busy network environment.</LI>
+
+<LI>
+Try the application on a variety of different servers. Does
+it work on both color and monochrome systems?</LI>
+
+<LI>
+Try running the application on machines with different architectures
+and bit and byte orders.</LI>
+
+<LI>
+What happens when you type function keys or other unique
+keys on a particular keyboard?</LI>
+
+<LI>
+Is it possible to crash the application by specifying the
+wrong set of resources or command line arguments?</LI>
+</UL>
+If your application can pass all these tests, you have done
+a good job.
+<H4>
+Errors</H4>
+There are really three levels of error handling in programs
+using Xlib. The first level you implement yourself by monitoring the return
+status of the routines that create server resources. This allows the client
+to modify the arguments of the request and try again. The second level,
+protocol errors, is usually caused by a programming error, and the third
+by a fatal system error such as a crash of the machine running the server
+or network failure. The second two types are handled by two separate error-handling
+functions that can be set by the client but, by default, simply print a
+message and exit the client.
+
+<P>As an example of the first level of error handling, a
+client should always check to see whether it was successfully connected
+to the display server with <B>XOpenDisplay()</B> before proceeding. If
+this connection did not succeed, the client should print a message to <I>stderr</I>
+indicating what happened and which server it attempted to connect to. This
+process will be demonstrated in Chapter 3, "Basic Window Program."
+
+<P>X protocol errors occur when routine arguments do not
+conform to accepted ranges or when IDs do not match existing resources,
+etc. These types of errors are sent to <B>XErrorHandler</B>. Fatal errors,
+such as a broken connection with the server, are unrecoverable conditions
+and invoke the <B>XIOErrorHandler</B>. Both error handlers by default display
+an intelligible (if not intelligent) message and then exit.
+
+<P>The possible X protocol error messages and their general
+causes are listed in Appendix B, <I>Error Messages and Protocol Requests</I>,
+of <I>Volume Two, Xlib Reference Manual</I>. These error messages also
+specify which protocol request caused the error, which you can also look
+up in Volume Two, Appendix B, <I>Error Messages and Protocol Requests</I>
+to determine which Xlib routine may have caused the error. This mapping
+is not unique because several Xlib routines often generate the same protocol
+request.
+
+<P>User-defined error-handling routines will be called from
+the error handlers if you pass procedure names to <B>XSetIOErrorHandler()</B>
+or <B>XSetErrorHandler()</B>. If either is passed a <B>NULL</B> function
+pointer, the respective default handler will be reinstated.
+
+<P>If you write your own error-handling routines, it is recommended
+that you use <B>XGetErrorText()</B> or <B>XGetErrorDatabaseText()</B> to
+get the string describing an error code, so that the codes of extensions
+can be handled properly. <B>XGetErrorDatabaseText()</B> uses the resource
+manager to provide error messages from the file <I>XErrorDB</I>, located
+by default in <I>/usr/lib/X11</I>.
+
+<P>Only the error-handling routine <B>XErrorHandler</B> (or
+the one you define) receives error events. These events cannot be selected
+or received by windows.
+<H4>
+The XErrorEvent Structure</H4>
+Example 2-2 shows the <B>XErrorEvent</B> structure and its
+members. The value of each member of this structure is displayed by the
+default X protocol error handler.
+
+<P><B>The XErrorEvent structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct _XErrorEvent {
+&nbsp;&nbsp;&nbsp; int type;
+&nbsp;&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp;&nbsp; XID resourceid;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Resource ID */
+&nbsp;&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Serial number of failed request */
+&nbsp;&nbsp;&nbsp; unsigned char error_code;&nbsp;&nbsp; /* Error code of failed request */
+&nbsp;&nbsp;&nbsp; unsigned char request_code; /* Major opcode of failed request */
+&nbsp;&nbsp;&nbsp; unsigned char minor_code;&nbsp;&nbsp; /* Minor opcode of failed request */
+} XErrorEvent;</TT></PRE>
+</BLOCKQUOTE>
+The following list describes each member of the <B>XErrorEvent</B>
+structure in detail:
+<UL>
+<LI>
+The <B>serial</B> member is the number of requests sent over
+the network connection since it was opened, starting from 1. The difference
+between <B>serial</B> and the last request processed as reported in error
+messages tells you how many requests to count back in order to find the
+request that caused the error.</LI>
+
+<LI>
+The <B>request_code</B> is a protocol representation of the
+name of the protocol request that failed; these are decoded in Appendix
+B, <I>Error Messages and Protocol Requests</I>, of <I>Volume Two, Xlib
+Reference Manual</I>.</LI>
+
+<LI>
+The <B>error_code</B> is one of the items described in Volume
+Two, Appendix B, <I>Error Messages and Protocol Requests</I>, such as <B>BadWindow</B>.</LI>
+
+<LI>
+The <B>minor_code</B> is zero unless the request is part
+of an extension. If it is, the <B>minor_code</B> indicates which request
+in the extension caused the error.</LI>
+
+<LI>
+The <B>resource_id</B> indicates one of the server resources
+(window, colormap, etc.) that was associated with the request that caused
+the error.</LI>
+</UL>
+
+<H4>
+Synchronizing Errors</H4>
+Since error events are not displayed precisely when they
+occur, it is often informative to look up the protocol request as well
+as the error code to determine which function the error occurred in. You
+cannot rely on the debugger to indicate where the error occurred because
+of Xlib's request buffering and other delays.
+
+<P>It is useful to use <B>XSynchronize()</B> to make sure
+that protocol errors are displayed as soon as they occur. When <B>XSynchronize()</B>
+is invoked, the performance of graphics will be drastically reduced. The
+same result occurs by setting the global variable <B>_Xdebug</B> to any
+nonzero value when running a program under a debugger (UNIX only).
+<H4>
+Software Interrupts</H4>
+Xlib does not handle software interrupts. Therefore, if you
+recursively call back into Xlib from a signal handler, the program will
+hang or crash. This is mostly an issue on systems that feature threads
+or multiple processors. The correct way to handle signals is to never make
+Xlib calls from signal handlers.
+<BR>
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

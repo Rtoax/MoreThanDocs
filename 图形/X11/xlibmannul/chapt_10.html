@@ -1,0 +1,1728 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_09.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_11.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H1>
+Internationalization</H1>
+There are several good reasons to internationalize your applications,
+including sales to foreign markets and simple courtesy to users who would
+prefer to run those applications in different languages. Because internationalization
+involves some confusing concepts, the topic is divided into two chapters.
+If there is any chance, however, that you will someday have to port your
+applications to run in a different country or language, you should at least
+be familiar with the concepts and techniques introduced in these chapters.
+If you know what is involved in internationalization, you can avoid writing
+applications that will be difficult to internationalize later on.
+
+<P>An internationalized application is one that runs, without
+changes to the binary, in any given "locale." Among other things, this
+means that a program must display all text in the user's language, accept
+input of all text in that same language, and display times, dates, and
+numbers in the user's accustomed format.
+
+<P>The internationalization of terminal-based programs is
+a problem that has been satisfactorily solved where terminals exist that
+can display and accept input for a particular language. The ANSI-C library
+contains mechanisms for this terminal-based internationalization, and R5
+internationalization is based on these mechanisms. This chapter begins
+with a detailed overview of the goals, concepts, and techniques of internationalization,
+starting with ANSI-C internationalization and progressing to the new R5
+internationalization features. After the overview, each section covers
+an individual topic in X internationalization. Internationalized text input
+with R5 is a large subject and is given its own chapter following this
+one.
+
+<P>Internationalization is implemented with a separate set
+of functions for handling keyboard input and drawing text, that are new
+in Release 5. All the input and drawing techniques shown in previous chapters
+continue to work, but they do not support internationalization. So it is
+up to you which set of functions to use depending on your needs.
+
+<P>Also note that the internationalization features of R5
+are not self contained, and therefore may not work on all systems. If you
+do not have the ANSI-C internationalization features, you may be able to
+make do with alternatives provided by Xlib and by contributed libraries,
+but these have not been thoroughly tested and you may encounter difficulties.
+In ANSI-C internationalization, the C library reads a "localization database"
+customized for each locale. Many systems (systems sold in the U.S., at
+least) support ANSI-C internationalization, but do not ship databases for
+any but a default locale.
+
+<P>One more warning and disclaimer is required. These internationalization
+features are new in Release 5, and therefore there is no experience in
+their use. So the coverage in this book probably does not yet answer every
+question you might have, nor present a foolproof procedure for writing
+an internationalized application. We hope to add more practical instructions
+once we know better what to tell you.
+
+<P>A final point of terminology: the word "internationalization"
+contains 20 letters. In the MIT X documentation and elsewhere, you may
+find it abbreviated as <I>i18n</I>--the letter "i" followed by 18 letters
+and the letter "n."
+<BR>
+<HR>
+<H2>
+An Overview of Internationalization</H2>
+If you are a native English speaker, particularly an American,
+you may never have thought much about what is required for the internationalization
+of programs for the simple reason that all the programs you use already
+speak your language. There are four general areas that require attention
+when writing an internationalized application:
+<UL>
+<LI>
+An internationalized application must display all text in
+the user's native or preferred language. This includes prompts, error messages,
+and text displayed by buttons, menus, and other widgets. The obvious approach
+to this sort of internationalization is to remove all strings that will
+be displayed from the source code of the application and put them instead
+in a file that will be read in when the application starts up. Then it
+is a relatively simple matter to translate the file of strings to other
+languages and have the application read the appropriate one at startup.
+Many X applications that use the X resource manager to provide an app-defaults
+file are already internationalized in this way, though some still have
+non-internationalized error messages. Another approach to the internationalization
+of strings is the message catalog facility defined by the <I>X/Open Portability
+Guide, Issue 3</I> (often known as XPG3).&nbsp; The three functions <B>catopen</B>,
+<B>catgets</B>, and <B>catclose</B>, provide a simple mechanism for retrieving
+numbered strings from a plain text file. These functions are available
+on some systems, but are not part of any formal standard, and are not universally
+available.</LI>
+
+<LI>
+An internationalized application must display times, dates,
+numbers, etc. in the format that the user is accustomed to. Where an American
+user sees a date in the form <I>month</I>/<I>day</I>/<I>year</I>, an English
+user should see <I>day</I>/<I>month</I>/<I>year</I>, and a German user
+should see <I>day</I>.<I>month</I>.<I>year</I>. And where an American user
+sees the number 1,234.56, a French user should see 1.234,56. The definition
+of "alphabetical order" is a similar customary usage that varies from country
+to country. In Spain, for example, the string "ch" is treated as a single
+letter that comes after "c." So while the strings "Chile" and "Colombia"
+are in alphabetical order for an American user, they are out of order for
+a Spanish user. These and related problems of local customs are resolved
+with the ANSI-C <B>setlocale</B> mechanism. Calling this function causes
+the ANSI-C library to read a database of localization information. Other
+functions in the C library (such as <B>printf</B> for displaying numbers
+and <B>strcoll</B> for comparing strings) use the information in this database
+so that they can behave correctly in the current locale. The R5 internationalization
+mechanisms are built upon this <B>setlocale</B> mechanism. It is described
+in more detail in the next section.</LI>
+
+<LI>
+An internationalized program must be capable of displaying
+all the characters used in the user's language, and must allow the user
+to generate all these characters as input. For terminal-based applications,
+this can be thought of as a hardware issue: a French user's terminal must
+be capable of displaying the accented characters used in French, and there
+must be some way to generate those characters from the keyboard. With X
+and bit-mapped displays, character display is not a problem--simply a matter
+of finding the required font or fonts. For languages like Chinese, fonts
+with many characters are required, but X supports 16-bit fonts, which is
+large enough for almost all languages. Keyboard input for Chinese and other
+ideographic Asian languages is another matter, however. When there are
+more characters in a language than there are keys on a keyboard, some sort
+of "input method" is required for converting multiple keystrokes into a
+single character. Ideographic languages require complex input methods,
+and often there is more than one standard method for a language. An internationalized
+application must support any input method chosen by the user. R5 provides
+this capability; it is described in Chapter 10, "Internationalization."</LI>
+
+<LI>
+An internationalized program must operate regardless of the
+encoding of characters in the user's language. A program (or operating
+system) that ignores or truncates the eightth bit of every character won't
+work in Europe, because the accented characters used in many European languages
+are represented with numbers greater than 127. An application that assumes
+that every character is 8 bits long won't work in Japan where there are
+many thousands of ideographic characters. Furthermore, common Japanese
+usage intermixes 16-bit Japanese characters with 8-bit Latin characters,
+so it is not even safe to assume that characters are of a uniform width.
+When internationalizing an application, two areas of particular difficulty
+are string manipulation (how, for example, can you iterate through the
+characters of a string when those characters have differing widths) and
+text input and output. (How, for example, do you display a Japanese string
+that contains characters from different fonts?)One approach to the encoding
+problem is to side-step it by defining a universal encoding used everywhere.
+The Latin-1 encoding is suitable for English and most western European
+languages, and this shared encoding dramatically simplifies the problem
+of porting applications to work in many European countries. But this approach
+does not work outside of Europe, and while ANSI-C provides some rudimentary
+internationalized string manipulation functions, it leaves issues of text
+input and output to the terminal hardware or terminal driver software.
+It is here that R5 makes its real contribution to internationalization--in
+an extension to the <B>setlocale</B> model, an internationalized X application
+reads a localization file at startup that contains information about the
+text encoding used in the locale. This information allows X to correctly
+parse strings into characters and figure out how to display them. There
+are a number of issues surrounding character encoding in internationalized
+applications, and it is possible to explore them in full and confusing
+detail. In practice, though, most of the string encoding details are hidden
+by the operating system, or with X internationalization, by Xlib. Section
+10.1.2, "Text Representation in an Internationalized Application" explains
+some of the basics of text encoding in more detail.</LI>
+</UL>
+When thinking about applications that run in other languages,
+it is important to recognize the distinction between an internationalized
+application and a multilingual application. A text editor that works in
+any given locale is internationalized; a mail reading program that labels
+its push buttons with text in the language of the locale is internationalized,
+but if it also allows a user to compose mail in a second language and include
+excerpts from a message in a third language, then it is multilingual. The
+requirements and problems of multilingual applications are not yet well
+understood, and the X Consortium made a considered decision that R5 would
+support internationalized applications but not explicitly support multilingual
+ones.
+
+<P>The following sections continue this introduction to internationalization
+with a description of the ANSI-C <B>setlocale</B> mechanism and a further
+discussion of character encoding and text representation issues.
+<H3>
+Internationalization with ANSI-C</H3>
+Clearly it is not feasible to write an application that has
+special case code for the formatting customs of every country in the world.
+A simpler approach is to use a library that reads a customizing database
+at startup time. This database would contain the currency symbol, the decimal
+separator symbol, abbreviations for the days of the weeks and names of
+the months in the local language, the collation sequence of the alphabet,
+etc. This is the approach taken by the ANSI-C library. The process of writing
+an application that is flexible enough to use the values from this database
+is called internationalization, and the process of creating the runtime
+database for a locale is called <I>localization</I>.
+
+<P>The first step in any internationalized application is
+to establish the locale--to cause the localization database to be read
+in. This is done with the C library function <B>setlocale</B>. It takes
+two arguments: a locale category and the locale name. The locale name specifies
+the database that should be used to localize the program, and the locale
+category specifies which behaviors (for example, the collation sequence
+of the alphabet or the formatting of times and dates) of the program should
+be changed. <B>setlocale</B> will most often be used as shown below:
+<BLOCKQUOTE>
+<PRE><TT>setlocale(LC_ALL, "");</TT></PRE>
+</BLOCKQUOTE>
+Passing the empty string as the locale name will cause <B>setlocale</B>
+to get the name of the locale from the operating system environment variable
+named <B>LANG</B>. This allows the application writer to leave the choice
+of locale to the end user of the application. There is no standard format
+for locale names, but they often have the form:
+<BLOCKQUOTE>
+<PRE><TT><I>language</I>[_<I>territory</I>[.<I>codeset</I>]]</TT></PRE>
+</BLOCKQUOTE>
+So the locale "Fr" might be used in France, while "En_GB"
+might specify English as used in Great Britain, and "En_US" English as
+used in the U.S. The <I>codeset</I> field can be used to specify the encoding
+(i.e., the mapping between numbers and characters) to be used for all strings
+in the application when there is not a single default encoding used for
+the language in the territory. The locale "ja_JP.ujis" is an example--"ujis"
+is the name of one of the encodings in common use for Japanese. The name
+of the default locale is simply "C." This locale is familiar to American
+computer users and all C programmers. Finally, note that the return value
+of <B>setlocale</B> is a <B>char *</B>. It returns the name of the locale
+that was just set, or if it is passed a locale name of <B>NULL</B> (not
+the same as <B>""</B>), it will return the name of the current locale.
+
+<P>The category <B>LC_ALL</B> instructs <B>setlocale</B>
+to set all internationalization behavior defined by ANSI-C to operate in
+the given locale. The locale may also be specified for each category individually.
+The standard categories (other, non-standard, categories may also be defined)
+and the aspects of program behavior that they control are listed below:
+<DL>
+<DT>
+<B>LC_COLLATE</B></DT>
+
+<DD>
+This category defines the collation sequence used by the
+ANSI-C library functions <B>strcoll</B> and <B>strxfrm</B> which are used
+to order strings alphabetically.</DD>
+
+<DT>
+<B>LC_CTYPE</B></DT>
+
+<DD>
+This category defines the behavior of the character classification
+and case conversion macros (such as <B>isspace</B> and <B>tolower</B>)
+defined in the header file <I>&lt;ctype.h></I>. Different languages will
+have different classifications for characters. Not all characters have
+uppercase equivalents, for example, and characters with codes between 128
+and 255 which are non-printing in ASCII are important alphabetic characters
+in many European languages.</DD>
+
+<DT>
+<B>LC_MONETARY</B></DT>
+
+<DD>
+This category does not affect the behavior of any C library
+functions. The problem of formatting monetary quantities was deemed too
+intricate for any standard library function, so the library simply provides
+a way for an application to look up any of the localized parameters it
+needs to do its own formatting of monetary quantities. The ANSI-C function
+<B>localeconv</B> returns a pointer to a structure of type <B>lconv</B>
+that contains the parameters (such as decimal separator, currency symbol,
+and flags that indicate whether the currency symbol should appear before
+or after positive and negative quantities, etc.) needed for numeric and
+monetary formatting in the current locale.</DD>
+
+<DT>
+<B>LC_NUMERIC</B></DT>
+
+<DD>
+This category affects the decimal separator used by <B>printf</B>
+(and its variants), <B>scanf</B> (and its variants), <B>gcvt</B> (and related
+functions), <B>strtod</B>, and <B>atof</B>. It also affects the values
+in the <B>lconv</B> structure returned by <B>localeconv</B>.</DD>
+
+<DT>
+<B>LC_TIME</B></DT>
+
+<DD>
+This category affects the behavior of the time and date formatting
+functions <B>strftime</B> and <B>strptime</B>. It defines such things as
+the names of the days of the week and their standard abbreviations in the
+language of the locale.</DD>
+</DL>
+If you use <B>setlocale</B> and the new C library functions
+mentioned above (and carefully avoid the use of the old C functions that
+they replace), you will be well on your way to an internationalized application.
+For more information on <B>setlocale</B> and the functions it affects,
+see the documentation supplied by your vendor (a UNIX system should have
+reference pages for these functions). The <I>POSIX Programmer's Guide</I>
+by Donald Lewine, published by O'Reilly &amp; Associates, may also be useful--it
+has a chapter on ANSI-C internationalization and a complete reference section
+of ANSI-C and POSIX (IEEE standard UNIX) functions.
+<H3>
+Text Representation in an Internationalized Application</H3>
+Think for a minute about the fundamentals of text representation
+by computer. Remember that characters displayed by your computer are represented
+by numbers. The correspondence between numbers and characters (on most
+American computers) is defined by the ASCII (American Standard Code for
+Information Interchange) encoding. There is nothing special about ASCII
+except that it is one of the most firmly established standards of the computer
+world. Text composed in one encoding (ASCII, for example) and displayed
+in another (perhaps EBCDIC, still used by IBM mainframes) will be nonsense
+because the number-to-character mappings of the encodings are not the same.
+
+<P>We've been using the term encoding rather loosely. Before
+we consider text representation any further, some definitions are appropriate.
+A <I>character</I> is an abstract element of text, distinct from a <I>font
+glyph</I>, which is the actual image that gets displayed. A <I>character
+set</I> is simply a set of characters; there are no numbers associated
+with those characters. We are all familiar with the character set used
+by ASCII. The Latin-1 character set used by many Western European Latin-based
+languages is an extension of ASCII that contains the accented characters
+required by many of those languages. An encoding is any numeric representation
+of the characters in a character set. The term <I>codeset</I> is sometimes
+used as a synonym for encoding. A <I>charset</I> (not the same as a character
+set) is an encoding in which all characters have the same number of bits.
+ASCII is a 7-bit encoding, for example, and is therefore a charset. Figure
+10-1 diagrams the relationship between character sets, charsets, fonts,
+and font glyphs.
+
+<P><B>Character sets, encodings, charsets, fonts, and glyphs</B>
+
+<P><IMG SRC="imgs/fig.10.01.gif" ALT="fig.10.01.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;The last two fields of an X font name specify a
+charset. By definition, the index of a font glyph in the font is the same
+as the encoding of the corresponding character in that charset. When the
+encoding of a locale is a charset, this obviously simplifies matters a
+great deal: text in the locale can be displayed using glyphs from a single
+font, and the character encoding can be used directly as the index of the
+corresponding font glyph.
+
+<P>Not all languages can be represented with a single charset,
+however. Japanese text, for example, commonly requires Japanese ideographic
+characters, Japanese phonetic characters, and Latin characters. Each of
+these character sets has its own standard fixed-width encoding, and is
+therefore a charset. Note, however, that the ideographic charset is 16-bits
+wide while the phonetic and Latin charsets are 8-bits wide. Full Japanese
+text display requires a font for each charset, and Japanese text representation
+requires a "super-encoding" that combines each of the component encodings.
+There are, in fact, several encodings commonly used for Japanese text.
+What they have in common is the use of "shift sequences" to indicate which
+charset the following character belongs to.
+
+<P>It is crucial to the concept of a locale that each locale
+has a single well-defined encoding. Many languages have only a single standardized
+encoding. If a language can be encoded in more than one standard way, each
+encoding defines a locale of its own, and the name of the encoding is part
+of the name of the locale.
+<H4>
+ISO8859-1 and Other Encodings</H4>
+If you examine the names of the X fonts on your system (using
+<B>xlsfonts</B>) you will probably find that most of them have the charset
+"iso8859-1." This charset is sometimes called "Latin-1" and was designed
+to be suitable for use by most Western European languages (Greek being
+a notable exception). The character set of ISO8859-1 comprises all the
+ASCII characters plus a wide variety of accented and special characters.
+(You can take a look at the characters using the <B>xfd</B> program.) Because
+there are fewer than 256 characters in the set, ISO8859-1 can use a state-independent
+8-bit encoding. This means that all characters are 8 bits long, and there
+are no special shift sequences that modify the interpretation of characters.
+Because there are not any shift sequences, it is possible to use the encoding
+of all Latin-1 characters directly as font indices.
+
+<P>ISO8859-1 contains a superset of the ASCII characters.
+Every character in the ASCII character set has the same encoding in Latin-1
+as it does in ASCII. (But Latin-1 does not define any control characters
+such as linefeed, backspace or the bell character.) Because it is an 8-bit
+encoding, Latin-1 strings can be represented using the usual C null-terminated
+array of <B>char</B>. Because the characters are a uniform 8 bits and because
+strings do not contain embedded shift states, it is possible to use Latin-1
+strings with the standard C string manipulation routines (<B>strlen</B>,
+<B>strcat</B>, etc.) In conjunction with the ANSI-C internationalization
+facilities, the careful design of ISO8859-1 means that most programs originally
+written for ASCII use can easily be ported for use in most Western European
+countries.
+
+<P>But it is not so simple once we try to go beyond Western
+Europe and Latin-based alphabets. Japanese text, for example, commonly
+uses (at least within the computer industry) words written in the Latin
+alphabet along with phonetic characters from the <I>katakana</I> and <I>hiragana</I>
+alphabets and ideographic <I>kanji</I> characters. Each of these types
+of text has its own charset (8- or 16-bit), but they must be combined into
+a single encoding for Japanese text. This is done with shift sequences,
+bytes embedded in the running text which control the character set in which
+the following character will be interpreted. It is possible to use "locking
+shifts" which modify the interpretation of the next and subsequent characters,
+but this scheme is infrequently used because it makes strings of text very
+difficult to manipulate.
+
+<P>Compound Text is another text representation that is used
+in X applications. Compound Text strings identify their encoding using
+embedded escape sequences (they can also have multiple sub-strings with
+multiple encodings) and are therefore locale-independent. The Compound
+Text representation was standardized as part of X11R4 for use as a text
+interchange format for interclient communication. It is often used to encode
+text properties and for the transfer of text via selections, and is not
+intended for text representation internal to an application. There are
+new R5 routines that convert X property values to and from the Compound
+Text representation. Note that Compound Text is not the same thing as the
+Compound Strings used by the Motif widget set.
+<H4>
+Multi-byte Strings and Wide-character Strings</H4>
+Strings in encodings that contain shift sequences and characters
+with non-uniform width can be stored in standard <B>NULL</B>-terminated
+arrays of characters, but can be difficult to work with in this form: the
+number of characters in a string cannot be assumed to be equal to the number
+of bytes, and it is not possible to iterate through the characters in a
+string by simply incrementing a pointer. On the other hand, strings of
+<B>char</B> are usefully passed to standard functions like <B>strcat</B>
+and <B>strcpy</B>, and assuming a terminal that understands the encoding,
+functions like <B>printf</B> work correctly with these strings.
+
+<P>As an alternative to these multi-byte strings, ANSI-C
+defines a wide-character type, <B>wchar_t</B>, in which each character
+has a fixed size and occupies one array element in the string. (The <B>wchar_t</B>
+is 2 bytes on some systems, 4 bytes on others, and may be 1 byte on systems
+that support nothing but the default C locale.) ANSI-C defines functions
+to convert between multi-byte and wide-character strings: <B>mblen</B>,
+<B>mbstowcs</B>, <B>mbtowc</B>, <B>wcstombs</B>, and <B>wctomb</B>.&nbsp;
+As you can see here, and as you will see with the R5 internationalized
+text input and output functions, "multi-byte" is commonly abbreviated "mb"
+in function names, and "wide character" is abbreviated "wc." Multi-byte
+strings are usually more compact than wide-character strings, but wide-character
+strings are easier to work with. Note that ANSI-C does not provide wide-character
+string manipulation functions. There is, however, a contributed library
+of wide character functions that is shipped with the MIT R5 release; see
+the directory <I>contrib/lib/Xwchar</I>.
+
+<P>In an internationalized application, you must take care
+to handle all strings properly. Unfortunately the ANSI-C library does not
+provide adequate functions or conventions for sophisticated internationalized
+text manipulation. Note, though, that many applications can do internationalized
+text input and output without performing any manipulations on that text.
+The following list gives a few guidelines for handling internationalized
+strings:
+<UL>
+<LI>
+Multi-byte strings are null-terminated. There is no single
+convention for the termination of wide character strings, but strings passed
+to <B>wcstombs</B> are null-terminated. As was the case before R5, X text
+output and input functions take and return strings with a count of the
+characters they contain.</LI>
+
+<LI>
+If an encoding is state-dependent (i.e., if it uses locking
+shifts) multi-byte strings are assumed to begin in the default shift state
+of the encoding. There is no convention for the shift state at the end
+of a string, so when concatenating two strings, the first may need to be
+reset to the default shift state in order to guarantee correct interpretation
+of the second. In practice, state-dependent encodings are rarely used.</LI>
+
+<LI>
+None of the C library string-handling functions work with
+wide-character strings.</LI>
+
+<LI>
+The following C string-handling functions may be safely used
+with multi-byte strings (in a state-independent encoding): <B>strcat</B>,
+<B>strcmp</B>, <B>strcpy</B>, <B>strlen</B>, <B>strncmp</B>. Note that
+the string comparison routines are only useful to check for byte-for-byte
+equality. To compare strings for sorting, use <B>strcoll</B>.</LI>
+
+<LI>
+Multi-byte strings can be written to file or output streams.
+Assuming a terminal that operates in the current locale, printing a multi-byte
+string to <B>stdout</B> or <B>stderr</B> will cause the correct text to
+be displayed.</LI>
+
+<LI>
+Multi-byte strings can be read from files or from the <B>stdin</B>
+input stream. If the file is encoded in the current locale, or the terminal
+operates in the locale, then the strings that are read will be meaningful.</LI>
+</UL>
+
+<H3>
+Internationalization Using X</H3>
+The techniques of internationalization described so far have
+had little to do with X, and they have been sufficient only to internationalize
+a terminal-based application. X applications draw text directly into their
+windows and get input directly from keyboard events. When an application
+must use multi-byte strings in an encoding that contains shift sequences
+and non-uniform width characters, deciding which characters to draw can
+be tricky, and when a language contains far more characters than fit on
+a keyboard, interpreting KeyPress events becomes difficult. Additionally,
+X clients often communicate with other clients. Because internationalized
+clients can run in different locales an internationalized interclient communication
+method is required. Also, X clients make heavy use of resource files and
+databases, and will need a mechanism for the correct localization of resources.
+The internationalization of R5 is based on the ANSI-C locale model, but
+the function <B>setlocale</B> is not sufficient for locale management in
+an X application. Two new functions are defined which are used along with
+<B>setlocale</B> when an X application starts up. Finally, all these new
+internationalization features of Xlib will require some changes to the
+Xt architecture as well.
+
+<P>The sections below cover these topics as follows:
+<UL>
+<LI>
+Section 10.2, "Locale Management in X" describes the X locale
+management functions.</LI>
+
+<LI>
+Section 10.3, "Internationalized Text Output in X" describes
+internationalized text output with R5.</LI>
+
+<LI>
+Section 10.4, "String Encoding Changes for Internationalization"
+describes string encoding changes in various Xlib functions.</LI>
+
+<LI>
+Section 10.5, "Internationalized Interclient Communication"
+describes interclient communication using internationalized properties
+and interlocale string conversions.</LI>
+
+<LI>
+Section 10.6, "Localization of Resource Databases" describes
+the localization of resource databases.</LI>
+
+<LI>
+Section 10.7, "Summary: Writing an Internationalized Application"
+describes changes to the X Toolkit to support internationalization.</LI>
+</UL>
+Chapter 11, "Internationalized Text Input," covers the lengthy
+topic of internationalized text input.
+<BR>
+<HR>
+<H2>
+Locale Management in X</H2>
+An internationalized X application begins in the same way
+as a ANSI-C terminal-based internationalized program: with a call to <B>setlocale</B>.
+An X program, however, generally goes two steps further.
+
+<P>Immediately after calling <B>setlocale</B>, an application
+should call <B>XSupportsLocale()</B> to determine if the Xlib implementation
+supports the current locale. This function takes no arguments and return
+a <B>Bool</B>. If this function returns <B>False</B>, an application will
+typically print a "Locale not supported" message and exit.
+
+<P>After verifying that the locale is supported, an application
+should call <B>XSetLocaleModifiers()</B>. A "locale modifier" can be thought
+of as an extension to the name of a locale; it specifies more information
+about the desired localized behavior of an application. R5 as shipped by
+MIT recognizes one locale modifier, used to specify the input method (see
+Chapter 10, "Internationalization") to be used for internationalized text
+input for the locale.
+
+<P><B>XSetLocaleModifiers()</B> allows the programmer to
+specify a list of modifiers (usually none) which will be concatenated with
+a list of user-specified modifiers from an operating system environment
+variable (<B>XMODIFIERS</B> in POSIX). The strings passed to <B>XSetLocaleModifiers()</B>
+and set in the <B>XMODIFIERS</B> environment variable are a series of concatenated
+"@<I>category</I>=<I>value</I>" strings. Thus to specify that the "Xwnmo"
+input method should be used by an application, a user might set the XMODIFIERS
+as follows:
+<BLOCKQUOTE>
+<PRE><TT>setenv XMODIFIERS @im=_XWNMO</TT></PRE>
+</BLOCKQUOTE>
+Example 10-1 shows code that uses <B>setlocale</B> and the
+two functions described here to correctly establish its locale.
+
+<P><B>Establishing the locale of an X application</B>
+<BLOCKQUOTE>
+<PRE><TT>#include &lt;stdio.h>
+#include &lt;X11/Xlib.h>
+/*
+&nbsp;* include &lt;locale.h> or the non-standard X substitutes
+&nbsp;* depending on the X_LOCALE compilation flag
+&nbsp;*/
+#include &lt;X11/Xlocale.h>
+main(argc, argv)
+int argc;
+char *argv[];
+{
+&nbsp;&nbsp;&nbsp; char *program_name = argv[0];
+&nbsp;&nbsp;&nbsp; /*
+&nbsp;&nbsp;&nbsp;&nbsp; * The error messages in this program are all in English.
+&nbsp;&nbsp;&nbsp;&nbsp; * In a truly internationalized program, they would not be
+&nbsp;&nbsp;&nbsp;&nbsp; * hardcoded; they would be looked up in a database of some sort.
+&nbsp;&nbsp;&nbsp;&nbsp; */
+&nbsp;&nbsp;&nbsp; if (setlocale(LC_ALL, "") == NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "%s: cannot set locale., program_name);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if (!XSupportsLocale()) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "%s: X does not support locale %s.,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; program_name, setlocale(LC_ALL, NULL));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if (XSetLocaleModifiers("") == NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "%s: Warning: cannot set locale modifiers.,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; program_name);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+}</TT></PRE>
+</BLOCKQUOTE>
+Not all systems support the <B>setlocale</B> function, but
+X can be built for these systems by defining the <B>X_LOCALE</B> compilation
+flag. When writing programs in an environment that does not have <B>setlocale</B>,
+include the header file <I>&lt;X11/Xlocale.h></I>. If this file is compiled
+with <B>X_LOCALE</B> defined, it defines <B>setlocale</B> as a macro for
+an Xlib-internal function. Otherwise, it simply includes the standard header
+<I>&lt;locale.h></I> to get the correct declaration of the real <I>setlocale</I>.
+<BR>
+<HR>
+<H2>
+Internationalized Text Output in X</H2>
+Before R5, the Xlib drawing routines made the fundamental
+assumption that the encoding of a character was equal to the index of the
+character's glyph in the font. As explained in Section 10.1.2, "Text Representation
+in an Internationalized Application," this is a useful and valid assumption
+when text in a language can be most naturally encoded as an 8- or 16-bit
+wide charset. Unfortunately, it is not valid in many important cases.
+
+<P>R5 bases its new text output routines on a new Xlib abstraction,
+the <B>XFontSet</B>. An <B>XFontSet</B> is bound to the locale in which
+it is created, and contains all the fonts needed to display text in that
+locale, or all the independent charsets used in the encoding of that locale.
+Technical Japanese text, for example, often mixes Latin with Japanese characters,
+so for a Japanese locale, fonts might be required with the charsets jisx0208.1983-0
+for Kanji ideographic characters, jisx0201.1976-0 for Kana phonetic characters,
+and iso8859-1 for Latin characters.
+
+<P>Drawing internationalized text in R5 is conceptually very
+similar to drawing text in X11R4--there are routines that allow you to
+query font metrics, measure strings, and draw strings. The new R5 functions
+use an <B>XFontSet</B> rather than an <B>XFontStruct</B> or a font specified
+in a graphics context. The drawing and measuring routines interpret text
+in the encoding of the locale of the fontset, and correctly map wide or
+multi-byte characters to the corresponding font glyph (or glyphs).
+<H3>
+Creating and Manipulating Fontsets</H3>
+A fontset is created with a call to <B>XCreateFontSet()</B>.
+This function checks the current setting of the locale to determine which
+charsets are required for the locale, and uses a supplied <I>base font
+name list</I> to load a set of fonts that supply those charsets. A base
+font name list can be a single wildcarded font name that specifies little
+more than the desired size of the fonts, or it can be a (comma separated)
+list of partially wildcarded font names, or it can even be a list of fully-specified
+names. Note of course that if a fully-specified base font name list is
+used, it will only work for one particular locale. Generally you will want
+to use a very generic base font name, and allow the end user to override
+it (to choose individual typefaces that look good together, for example)
+with application resources.
+
+<P><B>XCreateFontSet()</B> returns a list of the charsets
+for which no font could be found, and a default string that will be drawn
+in place of characters from the missing charset or charsets. The list of
+missing charsets should be freed with a call to <B>XFreeStringList()</B>.
+The returned default string should not be freed by the programmer. Example
+10-2 shows how to create an <B>XFontSet</B>.
+
+<P><B>Creating an XFontSet</B>
+<BLOCKQUOTE>
+<PRE><TT>XFontSet fontset;
+char **missing_charsets;
+int num_missing_charsets = 0;
+char *default_string;
+int i;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+fontset = XCreateFontSet(dpy,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "-misc-fixed-*-*-*-*-*-130-75-75-*-*-*-*",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;missing_charsets, &amp;num_missing_charsets,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;default_string);
+/*
+&nbsp;* if there are charsets for which no fonts can
+&nbsp;* be found, print a warning message.
+&nbsp;*/
+if (num_missing_charsets > 0) {
+&nbsp;&nbsp;&nbsp; (void)fprintf(stderr, "%s: The following charsets are missing:,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; program_name);
+&nbsp;&nbsp;&nbsp; for(i=0; i &lt; num_missing_charsets; i++)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void)fprintf(stderr, "%s: %s, program_name,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; missing_charsets[i]);
+&nbsp;&nbsp;&nbsp; (void)fprintf(stderr, "%s: The string %s will be used in place,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; program_name, default_string);
+&nbsp;&nbsp;&nbsp; (void)fprintf(stderr, "%s: of any characters from those sets.,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; program_name);
+&nbsp;&nbsp;&nbsp; XFreeStringList(missing_charsets);
+}
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .</TT></PRE>
+</BLOCKQUOTE>
+If you use a very generic base font name list, be aware that
+<B>XCreateFontSet()</B> may have to search through a large number of font
+names in order to find fonts of the appropriate charset. Also, when using
+an R5 X server, try to specify a base font name that will not require scaling.
+For example, many of the Japanese fonts shipped with the MIT distribution
+are defined at odd point sizes (11, 13, 15, etc.) instead of the even sizes
+more commonly used for Latin-1 fonts. If your base font name list specifies
+a 14-point font, the X server or font server may have to scale thousands
+of ideographic characters, causing a significant delay in your application;
+the server may even freeze up while the scaling is performed. See Chapter
+6 and Appendix A for more information about font scaling.
+
+<P>The following routines also use or operate on font sets:
+<DL>
+<DT>
+<B>XFreeFontSet()</B></DT>
+
+<DD>
+Frees an <B>XFontSet</B> and all information associated with
+it.</DD>
+
+<DT>
+<B>XFontsOfFontSet()</B></DT>
+
+<DD>
+Returns the list of <B>XFontStruct</B>s and font names associated
+with an XFontSet.</DD>
+
+<DT>
+<B>XBaseFontNameListOfFontSet()</B></DT>
+
+<DD>
+Returns a string containing the comma-separated base font
+name list for the given <B>FontSet</B>.</DD>
+
+<DT>
+<B>XLocaleOfFontSet()</B></DT>
+
+<DD>
+Returns the name of the locale of the specified <B>XFontSet</B>.</DD>
+</DL>
+Complete documentation for these (and all functions described
+in this chapter) can be found in the reference section of this book.
+<H3>
+Querying Fontset Metrics</H3>
+Because the <B>XFontSet</B> is an opaque structure, it is
+not possible to read font metrics directly from an <B>XFontSet</B> as is
+done with an <B>XFontStruct</B>. Instead, R5 defines the function <B>XExtentsOfFontSet()</B>
+which takes an <B>XFontSet</B> as its sole argument and returns a pointer
+to a structure of type <B>XFontSetExtents</B>. This structure is shown
+in Example 10-3.
+
+<P><B>The XFontSetExtents() structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp;&nbsp; XRectangle max_ink_extents;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* over all drawable characters */
+&nbsp;&nbsp;&nbsp; XRectangle max_logical_extents;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* over all drawable characters */
+} XFontSetExtents;</TT></PRE>
+</BLOCKQUOTE>
+Each <B>XRectangle</B> specifies, as usual, the upper left-hand
+corner of a rectangle, and a positive width and height. The <B>max_ink_extents</B>
+rectangle specifies the bounding box around the actual glyph image of all
+characters in all fonts of the font set. The <B>max_ logical_extents</B>
+rectangle describes the bounding box for all characters in all fonts of
+the font set that encloses the character ink plus intercharacter and interline
+spacing. For the layout of running text, the logical extents will be more
+useful. Note that these rectangles do not simply describe the biggest character
+in the font set, but describe a bounding box that will enclose all characters
+in the font set; a box big enough to accommodate the largest descent, the
+largest ascent, and so on. The <B>XFontSetExtents()</B> structure returned
+by <B>XExtentsOfFontSet()</B> is private to Xlib and should not be modified
+or freed by the application.
+<H3>
+Context Dependencies in Displayed Text</H3>
+In some text, such as Arabic script, there is not a one-to-one
+mapping between characters and font glyphs--the glyph used to display a
+character depends on the position of the character in the string. In other
+languages, a sequence of characters may map to a single glyph or a single
+character may map to multiple glyphs. In cases like this, it is not possible
+to assume that the width of a string is the sum of the widths of its component
+characters, and it may not be possible to insert or delete a character
+from a displayed string without redrawing the surrounding characters. The
+only safe assumption is that context dependencies do not extend beyond
+whitespace in a string. An example of context dependencies in the English
+language is the use of ligatures in typeset text--the substitution of the
+special glyphs "fl ligature" and "fi ligature" for the character sequences
+"fl" and "fi." This is an artificial example though, and for practical
+purposes, no Latin-based language has context dependencies.
+
+<P>The function <B>XContextDependentDrawing()</B> returns
+<B>True</B> if the locale associated with a font set includes context dependencies
+in text drawing. An internationalized application could use this function
+to check if it can take the various shortcuts allowed in non-context dependent
+locales. If <B>XSupportsLocale()</B> returns <B>True</B>, then any context
+dependencies in the text of a locale are correctly handled by the text-measuring
+and text-displaying routines described below.
+
+<P>There is another, more difficult, kind of context dependency
+in languages such as Hebrew and Arabic which are drawn right-to-left except
+for numbers which are drawn left-to-right. In this case it is not valid
+to assume that characters that are adjacent in a string will be adjacent
+when displayed. R5 does not make any provisions for handling this sort
+of text with mixed drawing directions.
+<H3>
+Measuring Strings</H3>
+R5 provides internationalized versions of <B>XTextWidth()</B>
+and <B>XTextExtents()</B>. They require an <B>XFontSet</B> and either a
+multi-byte or wide-character string. They are described below:
+<DL>
+<DT>
+<B>Xmb/XwcTextEscapement()</B></DT>
+
+<DD>
+Return the number of pixels the given string would require
+in the x dimension if drawn.</DD>
+
+<DT>
+<B>Xmb/XwcTextExtents()</B></DT>
+
+<DD>
+Return the text escapement as the value of the function,
+and also return a bounding box for all the ink in the string, and a bounding
+box for all the ink plus intercharacter and interline spacing.</DD>
+</DL>
+The term "escapement" is used instead of "width" to emphasize
+that <B>Xmb/XwcTextEscapement()</B> returns a positive value whether text
+is drawn left-to-right or right-to-left. This differs from <B>XTextWidth()</B>
+which returns a negative width for strings drawn right-to-left.
+
+<P>There is another pair of text extent functions that are
+useful when there are context dependencies in the displayed text. <B>Xmb/XwcTextPerCharExtents()</B>
+return the escapement and extents of a string as the above functions do,
+but also return the ink extents and the logical extents of each character
+in the string. These extents are measured relative to the drawing origin
+of the string, not the origin of the particular glyph. Note that these
+extents are returned for each character of the string, not for each font
+glyph displayed. If a sequence of characters map to a single glyph, each
+of those characters will have identical extent rectangles. Similarly if
+a single character requires several font glyphs to display, its extents
+will be the combined extents of those glyphs. The dimensions of the rectangle
+are independent of the drawing direction of the character.
+
+<P>Example 10-4 in the next section shows a use of <B>XmbTextExtents()</B>
+and <B>XmbTextPerCharExtents()</B>.
+<H3>
+Drawing Internationalized Text</H3>
+R5 provides internationalized wide-character and multi-byte
+versions of <B>XDrawString()</B>, <B>XDrawImageString()</B>, and <B>XDrawText()</B>.
+They are listed below:
+<DL>
+<DT>
+<B>Xmb/XwcDrawString()</B></DT>
+
+<DD>
+Draw the specified string. The foreground pixels of each
+font glyph are drawn, but the background pixels of each glyph are not.</DD>
+
+<DT>
+<B>Xmb/XwcDrawImageString()</B></DT>
+
+<DD>
+Draw the specified string. Both the foreground and background
+pixels of each glyph are drawn.</DD>
+
+<DT>
+<B>Xmb/XwcDrawText()</B></DT>
+
+<DD>
+Draw text with complex spacing or font set changes. These
+routines draw text described in an array of <B>XmbTextItem</B> or <B>XwcTextItem</B>
+structures. These structures are shown in Example 10-4.</DD>
+</DL>
+These functions are passed a graphics context and a font
+set, and draw with fonts from the font set rather than the font of the
+GC. For this reason, they may modify the font value of the GC. Other than
+the font, they use the same GC elements as their pre-R5 text-drawing analogs.
+When using these functions, remember that context dependencies may mean
+that it is not valid to draw or modify displayed strings a single character
+at a time.
+
+<P><B>The XmbTextItem() and XwcTextItem() structures</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp;&nbsp; char&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *chars;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* pointer to string */
+&nbsp;&nbsp;&nbsp; int&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; nchars;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* number of bytes in string */
+&nbsp;&nbsp;&nbsp; int&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; delta;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* pixel delta between strings */
+&nbsp;&nbsp;&nbsp; XFontSet&nbsp;&nbsp;&nbsp; font_set;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* fonts, None means don't change */
+} XmbTextItem;
+typedef struct {
+&nbsp;&nbsp;&nbsp; wchar_t&nbsp;&nbsp;&nbsp;&nbsp; *chars;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* pointer to wide char string */
+&nbsp;&nbsp;&nbsp; int&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; nchars;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* number of wide characters */
+&nbsp;&nbsp;&nbsp; int&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; delta;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* pixel delta between strings */
+&nbsp;&nbsp;&nbsp; XFontSet&nbsp;&nbsp;&nbsp; font_set;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* fonts, None means don't change */
+} XwcTextItem;</TT></PRE>
+</BLOCKQUOTE>
+Example 10-5 shows the use of <B>XwcDrawImageString()</B>.
+
+<P><B>Centering and drawing a multi-byte string</B>
+<BLOCKQUOTE>
+<PRE><TT>#include &lt;X11/Xlib.h>
+/*
+&nbsp;* This function draws a specified multi-byte string centered in
+&nbsp;* a specified region of a window.
+&nbsp;*/
+void DrawCenteredMbString(dpy, w, fontset, gc,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; str, num_bytes, x, y, width, height)
+Display *dpy;
+Window w;
+XFontSet fontset;
+GC gc;
+char *str;
+int num_bytes;
+int x, y, width, height;
+{
+&nbsp;&nbsp;&nbsp; XRectangle boundingbox;
+&nbsp;&nbsp;&nbsp; XRectangle dummy;
+&nbsp;&nbsp;&nbsp; int originx, originy;
+&nbsp;&nbsp; /*
+&nbsp;&nbsp;&nbsp; * Figure out how big the string will be.
+&nbsp;&nbsp;&nbsp; * We should be able to pass NULL instead of &amp;dummy, but
+&nbsp;&nbsp;&nbsp; * XmbTextExtents is buggy in the Xsi implementation.
+&nbsp;&nbsp;&nbsp; * Also, it should return the escapement of the string, but doesn't.
+&nbsp;&nbsp;&nbsp; */
+&nbsp;&nbsp;&nbsp; (void) XmbTextExtents(fontset, str, num_bytes,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;dummy, &amp;boundingbox);
+&nbsp;&nbsp; /*
+&nbsp;&nbsp;&nbsp; * The string we want to center may be drawn left-to-right,
+&nbsp;&nbsp;&nbsp; * right-to-left, or some of both, so computing the
+&nbsp;&nbsp;&nbsp; * drawing origin is a little tricky.&nbsp; The bounding box's x
+&nbsp;&nbsp;&nbsp; * and y coordinates are the upper left hand corner and are
+&nbsp;&nbsp;&nbsp; * relative to the drawing origin.
+&nbsp;&nbsp;&nbsp; * if boundingbox.x is 0, the string is pure left-to-right.
+&nbsp;&nbsp;&nbsp; * If it is equal to -boundingbox.width then the string is pure
+&nbsp;&nbsp;&nbsp; * right-to-left, but it may not be either of these, so what
+&nbsp;&nbsp;&nbsp; * we've got to do is choose the origin so that the bounding box
+&nbsp;&nbsp;&nbsp; * is centered in the window without assuming that the origin is
+&nbsp;&nbsp;&nbsp; * at one end or another of the string.
+&nbsp;&nbsp;&nbsp; */
+&nbsp;&nbsp;&nbsp; originx = x + (width - boundingbox.width)/2 - boundingbox.x;
+&nbsp;&nbsp;&nbsp; originy = y + (height - boundingbox.height)/2 - boundingbox.y;
+&nbsp;&nbsp; /*
+&nbsp;&nbsp;&nbsp; * now draw the string
+&nbsp;&nbsp;&nbsp; */
+&nbsp;&nbsp;&nbsp; XmbDrawImageString(dpy, w, fontset, gc,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; originx, originy,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; str, num_bytes);
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<HR>
+<H2>
+String Encoding Changes for Internationalization</H2>
+Perhaps the most fundamental concern of internationalization
+is the encoding of strings. So far we've considered text drawing and string
+input, and have used multi-byte or wide-character strings in the encoding
+of the locale. Because X is a networked window system, however, an X client
+must communicate with the X server, usually with a window manager, sometimes
+with a session manager, and often with other clients through the X selection
+mechanism (which is used to implement copy-and-paste). When we allow the
+internationalization of X programs, we must confront the issues of communication
+between clients that use different locales, and of communication between
+an internationalized client and a "locale-neutral" X server. Furthermore
+we must make decisions about the encodings of any other strings used in
+the X and Xt specifications.
+
+<P>Some of the issues that must be considered are the appropriate
+encoding for color and font names passed to the X server, the encoding
+of bitmap files, the encoding of strings selected in one client and copied
+to another, and the encoding of resource values and names. When making
+decisions on questions like these, the designers of X internationalization
+had several choices. They could specify that particular strings were:
+<UL>
+<LI>
+In the encoding of the locale.</LI>
+
+<LI>
+In the COMPOUND_TEXT encoding, in which each string is encoded
+along with the name of its encoding.</LI>
+
+<LI>
+In the STRING encoding, which is Latin-1 plus the newline
+and tab control characters.</LI>
+
+<LI>
+In ASCII, which as the encoding of the C language, is actually
+fairly portable.</LI>
+
+<LI>
+In an implementation-dependent encoding.</LI>
+
+<LI>
+Not in any encoding, and are simply interpreted as a sequence
+of bytes.</LI>
+</UL>
+Compound text is an encoding designed to represent text from
+any locale. As such it is well suited to be a standard string format for
+clients that communicate using string properties. It does not, however,
+address the problem of converting strings from one locale to another, and
+often this is simply not possible. In most cases it is not meaningful to
+select text from an application running in one locale and paste it into
+an application running in a different one. This is the realm of multilingual
+applications which are not addressed by R5.
+
+<P>Note that the above list refers to the COMPOUND_TEXT and
+STRING encodings. These capitalized names refer to the Atom names used
+in the ICCCM to specify the type of a "Property." The ICCCM also specifies
+a selection conversion target Atom, TEXT, which simply means a string in
+whatever encoding is convenient for the selection owner.
+
+<P>Sometimes the best choice of encodings is ASCII. It may
+seem unfair to non-English locales that the ASCII encoding should be singled
+out for special treatment, but for strings that are to be shared between
+X client and X server (such as Display, Property, and font and color names)
+some standard encoding must be specified. Because ASCII is widespread and
+is the usual encoding for C programming, it is a natural choice. In many
+cases, though, it is not the specific ASCII encoding that is important,
+but the fact that there is some common encoding for all the characters
+used by ASCII. R5 never actually refers to ASCII. Instead, it defines the
+<I>X Portable Character Set</I> as a set of basic characters that must
+exist in all locales supported by Xlib. Those characters are:
+<BLOCKQUOTE>
+<PRE><TT>a..z A..Z 0..9
+!"#$%&amp;'()*+,-./:;&lt;=>?@[\]^_`{|}~
+&lt;space>, &lt;tab>, and &lt;newline></TT></PRE>
+</BLOCKQUOTE>
+R5 also defines the <I>Host Portable Character Encoding</I>
+as the encoding for that character set. The encoding itself is not defined;
+the only requirement is that the same encoding is used for all locales
+on a given host machine. A string in the Host Portable Character Encoding
+is understood to contain only characters from the X Portable Character
+Set. Finally, the <I>Latin Portable Character Encoding</I> is the characters
+of the X Portable Character Set encoded as a subset of the Latin-1 encoding.
+(Latin-1 is itself a superset of ASCII.) Note that if an X client running
+on one host has a different portable encoding than an X server running
+on a different host, then translation from one encoding to the other will
+be required (for color names, font names, etc.) and would be done by the
+Xlib communication layer. In practice, however, it is likely that all systems
+will simply use an encoding which is a superset of ASCII, (with the possible
+exception of mainframes that use EBCDIC) and therefore all characters in
+the X Portable Character Set will share a single, standard (ASCII) encoding.
+Appendix K of <I>Volume Two, Xlib Reference Manual</I> summarizes all the
+encodings.
+
+<P>String-encoding issues arise throughout Xlib, and particularly
+so for functions that involve X properties and resource databases. The
+internationalization of client-to-window-manager and client-to-client communication
+via properties is described in 10.5 below and the internationalization
+of X resource databases is discussed in 10.6. Here we itemize the remaining
+changes to the Xlib specification that involve string encodings. Table
+10-1 lists Xlib functions and the encodings of the strings that are passed
+in and out of them. These are not so much changes to the Xlib specification
+as clarifications of it to make the encodings explicit.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 10-1 : </B>String Encodings Used by Various
+Xlib Functions</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Function</TH>
+
+<TH>String Encoding</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XDrawImageString() XDrawString() XQueryTextExtents()
+XTextExtents() XTextWidth() XTextItem</B> structure<B>XChar2b</B> structure</TD>
+
+<TD>No encoding; "characters" are treated as glyph indexes
+into the font, independent of locale.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XServerVendor() ServerVendor() macro</B></TD>
+
+<TD>If the X server uses the Latin Portable Character Encoding,
+this function will return a string in the Host Portable Character Encoding;
+otherwise the encoding is implementation-dependent.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XOpenDisplay() XDisplayName() DisplayName() macro
+XDisplayString() DisplayString() macro</B></TD>
+
+<TD>Display names in the Host Portable Character Encoding
+are supported; additional encodings are implementation dependent.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XAllocNamedColor() XLookupColor() XStoreNamedColor()
+XParseColor()</B></TD>
+
+<TD>Color names in the Host Portable Character Encoding are
+supported; Xlib implementations may support additional encodings, and may
+look up color names in locale-specific databases before passing them to
+the server.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XLoadFont() XLoadQueryFont()</B></TD>
+
+<TD>Font names in the Host Portable Character Encoding are
+supported; implementations may support additional encodings.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XListFonts() XListFontsWithInfo()</B></TD>
+
+<TD>Font patterns in the Host Portable Character Encoding
+are supported; implementations may support additional encodings. Returned
+strings are in the Host Portable Character Encoding if the server returns
+strings in the Latin Portable Character Encoding; otherwise the encoding
+is implementation-dependent.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XSetFontPath() XGetFontPath()</B></TD>
+
+<TD>The encoding and interpretation of the font path is implementation-dependent.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XParseGeometry() XGeometry() XWMGeometry()</B></TD>
+
+<TD>Geometry strings in the Host Portable Character Encoding
+are supported; implementations may support additional encodings.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XInternAtom()</B></TD>
+
+<TD>Atom names in the Host Portable Character Encoding are
+supported; implementations may support additional encodings.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XGetAtomName()</B></TD>
+
+<TD>The returned atom name is in the Host Portable Character
+Encoding if the server returns a value in the Latin Portable Character
+Encoding.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XStringToKeysym()</B></TD>
+
+<TD>Keysym names in the Host Portable Character Encoding
+are supported; implementations may support additional encodings.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XKeysymToString()</B></TD>
+
+<TD>The returned string is in the Host Portable Character
+Encoding.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XInitExtension() XQueryExtension()</B></TD>
+
+<TD>Extension names in the Host Portable Character Encoding
+are supported; implementations may support additional encodings.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XListExtensions()</B></TD>
+
+<TD>The returned strings are in the Host Portable Character
+Encoding if the server returns strings in the Latin Portable Character
+Encoding.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XReadBitmapFile()</B></TD>
+
+<TD>The bitmap file is parsed in the encoding of the current
+locale.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XWriteBitmapFile()</B></TD>
+
+<TD>The file is written in the encoding of the current locale.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XFetchBytes() XFetchBuffer() XStoreBytes() XStoreBuffer()</B></TD>
+
+<TD>No encoding; data in cut buffers is treated as uninterpreted
+bytes.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XGetErrorDatabaseText()</B></TD>
+
+<TD>Name and message arguments in the Host Portable Character
+Encoding are supported; implementations may support additional encodings.
+The <I>default_string</I> argument is encoded in the current locale, and
+the returned text is also in encoded in the current locale.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XGetErrorText()</B></TD>
+
+<TD>The returned text is in the current locale.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XSetWMProperties() XSetStandardProperties() XStoreName()
+XSetIconName() XSetCommandP() XSetClassHint()</B></TD>
+
+<TD>Strings in the Host Portable Character Encoding are supported;
+implementations may support additional encodings. The strings are set as
+the values of a property of type STRING.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XFetchName() XGetIconName() XGetCommand() XGetClassHint()</B></TD>
+
+<TD>Returned strings are in the Host Portable Character Encoding
+if the data returned by the server is in the Latin Portable Character Encoding.</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>
+<HR>
+<H2>
+Internationalized Interclient Communication</H2>
+You'll need to understand non-internationalized interclient
+communication before reading this; see Chapter 12.
+
+<P>When writing an internationalized application it is not
+safe to assume that all interclient communication with text properties
+will be done with Latin-1 or ASCII strings. R5 provides some new functions
+that do not make this assumption. The first is a convenience routine for
+communication with window managers. <B>XmbSetWMProperties()</B> is a function
+very similar to <B>XSetWMProperties()</B>, except that the window_name
+and icon_name arguments are multi-byte strings (rather than <B>XTextProperty</B>
+pointers) in the encoding of the locale. If these strings can be converted
+to the <B>STRING</B> encoding (Latin-1 plus newline and tab), then their
+corresponding <B>WM_NAME</B> and <B>WM_ICON_NAME</B> properties are created
+with type <B>STRING</B>. If this conversion cannot be performed, the strings
+are converted to Compound Text (this conversion can always be done, by
+the definition of Compound Text), and the properties are created with type
+<B>COMPOUND_TEXT</B>. Note that there is no wide-character version of this
+function.
+
+<P>Since X properties have a single contiguous block of data
+as their value, they cannot directly represent types such as <B>char **</B>.
+But sometimes such a complex type must be represented (imagine a text editor
+setting a property to a set of disjointed selected strings). To allow this,
+X11R4 defined the <B>XTextProperty</B> structure (shown in Example 10-6)
+and the functions <B>XStringListToTextProperty()</B> and <B>XTextPropertyToStringList()</B>.
+
+<P><B>The XTextProperty structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unsigned char *value;&nbsp;&nbsp; /* property data */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Atom encoding;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* type of property */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int format;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* 8, 16, or 32 */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unsigned long nitems;&nbsp;&nbsp; /* number of items in value */
+} XTextProperty;</TT></PRE>
+</BLOCKQUOTE>
+These functions assume input strings are in Latin-1 and always
+create properties of type STRING, which is not correct behavior in internationalized
+applications. So R5 provides the new functions <B>Xmb/XwcTextListToTextProperty()</B>
+and <B>Xmb/XwcTextPropertyToTextList()</B> which operate correctly with
+localized strings, converting between text encoded in the locale and <B>STRING</B>
+or <B>COMPOUND_TEXT</B> types. The <B>Xmb/wcTextListToTextProperty()</B>
+functions take a new argument of type <B>XICCEncodingStyle</B>, which is
+shown in Example 10-7.
+
+<P><B>The XICCEncodingStyle type</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef enum {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XStringStyle,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* STRING */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XCompoundTextStyle,&nbsp;&nbsp;&nbsp;&nbsp; /* COMPOUND_TEXT */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XTextStyle,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* text in owner's encoding (current locale) */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XStdICCTextStyle&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* STRING, else COMPOUND_TEXT */
+} XICCEncodingStyle;</TT></PRE>
+</BLOCKQUOTE>
+The style argument to these functions specifies how the text
+is to be converted. The possible values have the following meanings:
+<UL>
+<LI>
+<B>XStringStyle</B> specifies that the text should be converted
+to the <B>STRING</B> encoding, and the encoding field of the returned <B>XTextProperty</B>
+should be set to the Atom <B>STRING</B>. Note that text cannot always be
+converted to this type without loss of data--only characters that are in
+the Latin-1 character set will be convertible.</LI>
+
+<LI>
+<B>XCompoundTextStyle</B> specifies that the text should
+be converted to the Compound Text encoding and the encoding field of the
+returned <B>XTextProperty</B> should be set to the Atom <B>COMPOUND_TEXT</B>.</LI>
+
+<LI>
+<B>XTextStyle</B> specifies that the text should be left
+unconverted in the encoding of the current locale. The encoding field of
+the returned <B>XTextProperty</B> structure is set to an Atom which names
+that encoding.</LI>
+
+<LI>
+<B>XStdICCTextStyle</B> specifies that the text should be
+converted to STRING if that conversion is possible and otherwise it should
+be converted to Compound Text. The encoding field of the returned <B>XTextProperty</B>
+will be set to the Atom <B>STRING</B> or <B>COMPOUND_TEXT</B> depending
+on which conversion was performed.</LI>
+</UL>
+The returned <B>XTextProperty</B> is suitable to pass to
+<B>XSetTextProperty()</B>.
+
+<P>The other two routines, <B>Xmb/XwcTextPropertyToTextList()</B>,
+perform the conversion in the opposite direction. They are passed an <B>XTextProperty</B>
+(obtained with a call to <B>XGetTextProperty()</B>, perhaps) and return
+an array of pointers to <B>char*</B> or an array of pointers to <B>wchar_t*</B>.
+These routines do not require an argument of type <B>XICCEncodingStyle</B>;
+they always convert from the encoding of the property to the encoding of
+the current locale if such a conversion is possible. The application is
+responsible for freeing the memory allocated by these functions. To free
+the array of multi-byte strings (and the strings themselves) returned by
+<B>XmbTextPropertyToTextList()</B> use <B>XFreeStringList()</B>, which
+is a pre-R5 function. To free the array of wide-character strings (and
+the strings themselves) allocated by <B>XwcTextPropertyToTextList()</B>
+use the new function <B>XwcFreeStringList()</B>.
+
+<P>These four functions return an integer. The possible values
+and their meanings are as follows:
+<DL>
+<DT>
+<B>Success</B></DT>
+
+<DD>
+The conversion is completely successful; all characters were
+converted.</DD>
+
+<DT>
+<B>XNoMemory</B></DT>
+
+<DD>
+There was not enough memory available to perform the conversion.</DD>
+
+<DT>
+<B>XLocaleNotSupported</B></DT>
+
+<DD>
+The current locale is not supported. By definition, no conversions
+are possible to or from the encoding of an unsupported locale. This error
+code will never be returned if <B>XSupportsLocale()</B> has returned <B>True</B>
+for the current locale.</DD>
+
+<DT>
+<B>XConverterNotFound</B></DT>
+
+<DD>
+No converter could be found between the encoding of the text
+property and the current locale. There is always a converter for converting
+between <B>STRING</B> and <B>COMPOUND_TEXT</B> and encoding of the current
+locale (if that locale is supported, of course), so <B>Xmb/wcTextListToTextProperty()</B>
+never returns this error code, and <B>Xmb/XwcTextPropertyToTextList()</B>
+will never return it if the text property is in the <B>STRING</B> or <B>COMPOUND_TEXT</B>
+encodings.</DD>
+
+<DT>
+<I>any value > 0</I></DT>
+
+<DD>
+There were unconvertible characters in the string, and the
+return value indicates how many. Even when the current locale is supported,
+and an appropriate converter is found, it is by no means guaranteed that
+all the characters of the string can be converted. If two locales use the
+same character set but simply encode those characters differently, then
+strings will be fully convertible between the locales. But imagine trying
+to convert from French text to ASCII--any accented characters would be
+unconvertible because they simply do not exist in the ASCII character set.
+When converting between languages as dissimilar as Arabic and Korean, for
+example, there will be no convertible characters.&nbsp; Note that the return
+value <B>Success</B> has a value of 0, and the other return values, <B>XNoMemory</B>,
+<B>XLocaleNotSupported</B>, and <B>XConverterNotFound</B> all have negative
+values. Therefore any positive return value indicates unconvertible characters.</DD>
+</DL>
+Table 10-2shows the possible results of the conversions performed
+by <B>Xmb/XwcTextListToTextProperty()</B> and <B>Xmb/XwcTextPropertyToTextList()</B>.
+<PRE><B>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Xmb/XwcTextListToTextProperty()</B></PRE>
+
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 10-2 : </B>Results of Converting to and
+from the Encoding of a Supported Locale</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>XICCEncodingStyle</TH>
+
+<TH>Converter found?</TH>
+
+<TH>Characters convertible?</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XStringStyle</B></TD>
+
+<TD>yes</TD>
+
+<TD>maybe</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XCompoundTextStyle</B></TD>
+
+<TD>yes</TD>
+
+<TD>yes</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XTextStyle</B></TD>
+
+<TD>yes</TD>
+
+<TD>yes</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XStdICCStyle</B></TD>
+
+<TD>yes</TD>
+
+<TD>yes</TD>
+</TR>
+</TABLE>
+&nbsp;
+<PRE><B>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Xmb/XwcTextPropertyToTextList()</B></PRE>
+
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 10-3 : </B>Results of Converting to and
+from the Encoding of a Supported Locale (continued)</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Encoding of property</TH>
+
+<TH>Converter found?</TH>
+
+<TH>Characters convertible?</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>same as current locale</TD>
+
+<TD>yes</TD>
+
+<TD>yes</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>STRING</B></TD>
+
+<TD>yes</TD>
+
+<TD>maybe</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>COMPOUND_TEXT</B></TD>
+
+<TD>yes</TD>
+
+<TD>maybe</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>other locale</TD>
+
+<TD>maybe</TD>
+
+<TD>maybe</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>When there are unconvertible characters in a string, the
+conversion functions substitute a locale-dependent default string (encoded
+in the current locale). The value of the default string may be queried
+with <B>XDefaultString()</B>, and may be the empty string (<B>""</B>).
+There is no way to set the value of the default string. The default string
+is independent of the default string used by the R5 text-drawing routines
+when an <B>XFontSet</B> does not contain all the characters needed to represent
+text in a locale.
+<BR>
+<HR>
+<H2>
+Localization of Resource Databases</H2>
+We've seen that X resources are a useful way to allow the
+localization of strings--rather than hardcoding its strings, an X client
+can look them all up by name from a locale-dependent resource file. The
+twist here is that although resource values can be localized, and may contain
+text in the encoding of the locale, resource <I>names</I> must still be
+hardcoded into the application. As you might expect, R5 specifies that
+resource names in the Host Portable Character Encoding are always supported,
+and that any other encodings are implementation-dependent. What this means
+is that a Chinese user who wishes to customize the behavior of an application
+written by a Japanese programmer will have to specify values for resources
+that are named using Latin characters in the X Portable Character Set.
+Those resource names may be English phonetic representations of Japanese
+words which are mnemonic to the Japanese programmer, but which are meaningless
+to the Chinese (or American) user. This situation is unfortunate but there
+is no way around it within the scope of the X Resource Manager mechanisms.
+If resource names are to be localized, they would have to be looked up
+in a database as well, and then we would need hardcoded names for the names.
+Another approach would be to use resource numbers in place of resource
+names. These remain constant across all locales, but where a resource name
+is mnemonic to the original programmer, at least, a resource number would
+be mnemonic to no one.
+
+<P>When a resource file or string are parsed into an <B>XrmDatabase()</B>,
+that parsing is done in the current locale, and the database is bound to
+that locale even if the current locale changes. We can speak of the "locale
+of the database" in the same way that we speak of the "locale of the <B>XFontSet</B>."
+To determine the locale of a database, call <B>XrmLocaleOfDatabase()</B>.
+
+<P>The internationalization of resources requires additions
+to the Xlib specification to make explicit the encoding and interpretation
+of the strings that are passed in and out of the <B>Xrm</B> functions.
+Table 10-4 lists the resource manager functions that have been respecified.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 10-4 : </B>String Encoding and Locale Changes
+to Xrm Functions</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Function</TH>
+
+<TH>String Encoding and Locale Changes</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XrmStringToQuark()XrmStringToQuarkList()XrmStringToBindingQuarkList()</B></TD>
+
+<TD>Quark names in the Host Portable Character Encoding are
+supported; implementations may support additional encodings.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XrmQuarkToString()</B></TD>
+
+<TD>No specified encoding; the returned string is equal byte-for-byte
+to the string originally passed to one of the string-to-quark routines.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>X<B>rmGetFileDatabase()</B></TD>
+
+<TD>The file is parsed in the current locale.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XrmGetStringDatabase()</B></TD>
+
+<TD>The string is parsed in the current locale.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XrmPutLineResource()</B></TD>
+
+<TD>The line is parsed in the locale of the database. The
+resource name part of the line and the colon are in the Host Portable Character
+Encoding or some implementation-dependent encoding.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XrmPutFileDatabase()</B></TD>
+
+<TD>The resource file is written in the locale of the database.
+Resource names in the Host Portable Character Encoding, and resource values
+in the encoding of the locale of the database are supported; implementations
+may support additional encodings.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XrmPutResource()</B></TD>
+
+<TD>Resource specifiers and types in the Host Portable Character
+Encoding are supported; implementations may support additional encodings.
+The resource value is stored as uninterpreted bytes.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XrmQPutResource()</B></TD>
+
+<TD>The resource value is stored as uninterpreted bytes.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XrmPutStringResource()</B></TD>
+
+<TD>Resource specifiers in the Host Portable Character Encoding
+are supported; implementations may support additional encodings. The resource
+value is stored as uninterpreted bytes. The resource type is set to the
+quark for the string "String" encoded in the Host Portable Character Encoding.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XrmQPutStringResource()</B></TD>
+
+<TD>The resource value is stored as uninterpreted bytes.
+The resource type is set to the quark for the string "String" encoded in
+the Host Portable Character Encoding.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XrmGetResource()</B></TD>
+
+<TD>Resource names and classes in the Host Portable Character
+Encoding are supported; implementations may support additional encodings.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XrmMergeDatabases()</B></TD>
+
+<TD>The database values and types are merged as uninterpreted
+bytes regardless of the locales of the databases. The locale of the target
+database is not changed.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XResourceManagerString()</B></TD>
+
+<TD>The RESOURCE_MANAGER property is converted from STRING
+encoding to the encoding of the current locale in the same way that XmbTextPropertyToTextString
+performs conversions.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XrmParseCommand()</B></TD>
+
+<TD>The option strings in the XrmOptionDescList are compared
+byte-for-byte with the characters in argv, independent of locale. The name
+argument and the resource specifier strings in the XrmOptionDescList are
+in the Host Portable Character Encoding or in an additional implementation-dependent
+encoding. The resource values are stored in the database as uninterpreted
+bytes, and all database entries are created with their type set to the
+quark for the string "String" in the Host Portable Character Encoding.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XGetDefault()</B></TD>
+
+<TD>The use of this function is discouraged.</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>
+<HR>
+<H2>
+Summary: Writing an Internationalized Application</H2>
+This chapter has covered a lot of tricky material. The following
+guidelines summarize the requirements for ANSI-C and R5-based internationalization:
+<UL>
+<LI>
+Set the locale desired by the user by calling <B>setlocale</B>
+with the empty string (<B>""</B>) as the locale name argument. Verify that
+the locale is supported by Xlib with <B>XSupportsLocale()</B>. Set the
+X locale modifiers as desired by the user by passing the empty string to
+<B>XSetLocaleModifiers()</B>. In an X Toolkit application, use <B>XtSetLanguageProc</B>
+to register a procedure to set the locale. The default language procedure
+(which is not actually registered by default) performs all of the above
+functions.</LI>
+
+<LI>
+Use ANSI-C functions such as <B>strcoll</B> and <B>strftime</B>
+which make use of the current setting of the locale. Avoid the superseded
+functions that do not.</LI>
+
+<LI>
+Place all strings which will be displayed by the application
+in an X resource file. Use X Resource Manager functions in the application
+to look those strings up.</LI>
+
+<LI>
+Do not assume that the strings your application handles have
+a uniform state-independent encoding. Treat them as multi-byte strings
+or convert them to wide-character strings.</LI>
+
+<LI>
+Create an <B>XFontSet</B> for the locale and use it with
+the new R5 text output functions to measure and display multi-byte and
+wide-character strings.</LI>
+
+<LI>
+Use <B>XmbSetWMProperties()</B> to set the essential properties
+for communication with the window manager.</LI>
+
+<LI>
+Use the new R5 property routines to convert from or to the
+encoding of the current locale when setting or reading text properties.</LI>
+
+<LI>
+Pay attention to the encoding of strings such as Atom and
+Display names, font and color names, resource names, and resource values
+specifications.</LI>
+
+<LI>
+Use the new X input method mechanisms to get correctly encoded
+multi-byte and wide-character input. Chapter 11, "Internationalized Text
+Input " explains how to do this.</LI>
+</UL>
+
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

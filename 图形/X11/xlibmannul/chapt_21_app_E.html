@@ -1,0 +1,2780 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_20_D.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_22_app_F.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H2>
+Event Reference</H2>
+This appendix provides a detailed description of each event
+type in a reference page format. The information provided here is essential
+for a full understanding of the events, how they are selected and propagated,
+and the intricacies of their operation.
+
+<P>This appendix describes each event structure in detail
+and briefly shows how each event type is used. It covers the most common
+uses of each event type, the information contained in each event structure,
+how the event is selected, and the side effects of the event, if any. Each
+event is described on a separate reference page.
+<BR>
+<HR>
+<H2>
+Meaning of Common Structure Elements</H2>
+Example E-1 shows the <B>XEvent</B> union and a simple event
+structure that is one member of the union. Several of the members of this
+structure are present in nearly every event structure. They are described
+here before we go into the event-specific members (see also <I>Volume One,
+Xlib Programming Manual</I>, Section 8.2.2, "Event Types and XEvent Union").
+
+<P><B>XEvent union and XAnyEvent structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; int type;&nbsp;&nbsp; /* Must not be changed; first member */
+&nbsp;&nbsp; XAnyEvent xany;
+&nbsp;&nbsp; XButtonEvent xbutton;
+&nbsp;&nbsp; XCirculateEvent xcirculate;
+&nbsp;&nbsp; XCirculateRequestEvent xcirculaterequest;
+&nbsp;&nbsp; XClientMessageEvent xclient;
+&nbsp;&nbsp; XColormapEvent xcolormap;
+&nbsp;&nbsp; XConfigureEvent xconfigure;
+&nbsp;&nbsp; XConfigureRequestEvent xconfigurerequest;
+&nbsp;&nbsp; XCreateWindowEvent xcreatewindow;
+&nbsp;&nbsp; XDestroyWindowEvent xdestroywindow;
+&nbsp;&nbsp; XCrossingEvent xcrossing;
+&nbsp;&nbsp; XExposeEvent xexpose;
+&nbsp;&nbsp; XFocusChangeEvent xfocus;
+&nbsp;&nbsp; XNoExposeEvent xnoexpose;
+&nbsp;&nbsp; XGraphicsExposeEvent xgraphicsexpose;
+&nbsp;&nbsp; XGravityEvent xgravity;
+&nbsp;&nbsp; XKeymapEvent xkeymap;
+&nbsp;&nbsp; XKeyEvent xkey;
+&nbsp;&nbsp; XMapEvent xmap;
+&nbsp;&nbsp; XUnmapEvent xunmap;
+&nbsp;&nbsp; XMappingEvent xmapping;
+&nbsp;&nbsp; XMapRequestEvent xmaprequest;
+&nbsp;&nbsp; XMotionEvent xmotion;
+&nbsp;&nbsp; XPropertyEvent xproperty;
+&nbsp;&nbsp; XReparentEvent xreparent;
+&nbsp;&nbsp; XResizeRequestEvent xresizerequest;
+&nbsp;&nbsp; XSelectionClearEvent xselectionclear;
+&nbsp;&nbsp; XSelectionEvent xselection;
+&nbsp;&nbsp; XSelectionRequestEvent xselectionrequest;
+&nbsp;&nbsp; XVisibilityEvent xvisibility;
+} XEvent;
+typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window window;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* window on which event was requested&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * in event mask */
+} XAnyEvent;</TT></PRE>
+</BLOCKQUOTE>
+The first member of the <B>XEvent</B> union is the type of
+event. When an event is received (with <B>XNextEvent</B>, for example),
+the application checks the <B>type</B> member in the <B>XEvent</B> union.
+Then the specific event type is known and the specific event structure
+(such as <B>xbutton</B>) is used to access information specific to that
+event type.
+
+<P>Before the branching depending on the event type, only
+the <B>XEvent</B> union is used. After the branching, only the event structure
+which contains the specific information for each event type should be used
+in each branch. For example, if the <B>XEvent</B> union were called <B>report</B>,
+the <B>report.xexpose</B> structure should be used within the branch for
+<B>Expose</B> events.
+
+<P>You will notice that each event structure also begins
+with a <B>type</B> member. This member is rarely used, since it is an identical
+copy of the <B>type</B> member in the <B>XEvent</B> union.
+
+<P>Most event structures also have a <B>window</B> member.
+The only ones that do not are certain selection events (<B>SelectionNotify</B>
+and <B>SelectionRequest</B>) and events selected by the <B>graphics_exposures</B>
+member of the GC (<B>GraphicsExpose</B> and <B>NoExpose</B>). The <B>window</B>
+member indicates the event window that selected and received the event.
+This is the window where the event arrives if it has propagated through
+the hierarchy as described in Section 8.3.2, "Propagation of Device Events",
+of <I>Volume One, Xlib Programming Manual</I>. One event type may have
+two different meanings to an application, depending on which window it
+appears in.
+
+<P>Many of the event structures also have a <B>display</B>
+and/or <B>root</B> member. The <B>display</B> member identifies the connection
+to the server that is active. The <B>root</B> member indicates which screen
+the window that received the event is linked to in the hierarchy. Most
+programs only use a single screen and therefore do not need to worry about
+the <B>root</B> member. The <B>display</B> member can be useful, since
+you can pass the display variable into routines by simply passing a pointer
+to the event structure, eliminating the need for a separate display argument.
+
+<P>All event structures include a <B>serial</B> member that
+gives the number of the last protocol request processed by the server.
+This is useful in debugging, since an error can be detected by the server
+but not reported to the user (or programmer) until the next routine that
+gets an event. That means several routines may execute successfully after
+the error occurs. The last request processed will often indicate the request
+that contained the error.
+
+<P>All event structures also include a <B>send_event</B>
+flag, which, if <B>True</B>, indicates that the event was sent by <B>XSendEvent</B>
+(i.e., by another client rather than by the server).
+
+<P>The following pages describe each event type in detail.
+The events are presented in alphabetical order, each on a separate page.
+Each page describes the circumstances under which the event is generated,
+the mask used to select it, the structure itself, its members, and useful
+programming notes. Note that the description of the structure members does
+not include those members common to many structures. If you need more information
+on these members, please refer to this introductory section.
+<BR>(generated event).
+<H3>
+When Generated</H3>
+There are two types of pointer button events: <B>ButtonPress</B>
+and <B>ButtonRelease</B>. Both contain the same information.
+<H3>
+Select With</H3>
+May be selected separately, using <B>ButtonPressMask</B>
+and <B>ButtonReleaseMask</B>.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XButtonEvent xbutton;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+int type;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* of event */
+unsigned long serial;&nbsp;&nbsp;&nbsp;&nbsp; /* # of last request processed by server */
+Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from a SendEvent request */
+Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+Window window;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* event window it is reported relative to */
+Window root;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* root window that the event occurred under */
+Window subwindow;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* child window */
+Time time;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* when event occurred, in milliseconds */
+int x, y;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* pointer coordinates relative to receiving&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * window */
+int x_root, y_root;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* coordinates relative to root */
+unsigned int state;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* mask of all buttons and modifier keys */
+unsigned int button;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* button that triggered event */
+Bool same_screen;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* same screen flag */
+} XButtonEvent;
+typedef XButtonEvent XButtonPressedEvent;
+typedef XButtonEvent XButtonReleasedEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>subwindow</B></DT>
+
+<DD>
+If the source window is the child of the receiving window,
+then the <B>subwindow</B> member is set to the ID of that child.</DD>
+
+<DT>
+<B>time</B></DT>
+
+<DD>
+The server time when the button event occurred, in milliseconds.
+<B>Time</B> is declared as <B>unsignedlong</B>, so it wraps around when
+it reaches the maximum value of a 32-bit number (every 49.7 days).</DD>
+
+<DT>
+<B>x</B>, <B>y</B></DT>
+
+<DD>
+If the receiving window is on the same screen as the root
+window specified by <B>root</B>, then <B>x</B> and <B>y</B> are the pointer
+coordinates relative to the receiving window's origin. Otherwise, <B>x</B>
+and <B>y</B> are zero. When active button grabs and pointer grabs are in
+effect (see 9.4 of <I>Volume One, Xlib Programming Manual</I>), the coordinates
+relative to the receiving window may not be within the window (they may
+be negative or greater than window height or width).</DD>
+
+<DT>
+<B>x_root</B>, <B>y_root</B></DT>
+
+<DD>
+The pointer coordinates relative to the root window which
+is an ancestor of the event window. If the pointer was on a different screen,
+these are zero.</DD>
+
+<DT>
+<B>state</B></DT>
+
+<DD>
+The state of all the buttons and modifier keys just before
+the event, represented by a mask of the button and modifier key symbols:
+<B>Button1Mask</B>, <B>Button2Mask</B>, <B>Button3Mask</B>, <B>Button4Mask</B>,
+<B>Button5Mask</B>, <B>ControlMask</B>, <B>LockMask</B>, <B>Mod1Mask</B>,
+<B>Mod2Mask</B>, <B>Mod3Mask</B>, <B>Mod4Mask</B>, <B>Mod5Mask</B>, and
+<B>ShiftMask</B>. If a modifier key is pressed and released when no other
+modifier keys are held, the <B>ButtonPress</B> will have a <B>state</B>
+member of 0 and the <B>ButtonRelease</B> will have a non-zero <B>state</B>
+member indicating that itself was held just before the event.</DD>
+
+<DT>
+<B>button</B></DT>
+
+<DD>
+A value indicating which button changed state to trigger
+this event. One of the constants: <B>Button1</B>, <B>Button2</B>, <B>Button3</B>,
+<B>Button4</B>, or <B>Button5</B>.</DD>
+
+<DT>
+<B>same_screen</B></DT>
+
+<DD>
+Indicates whether the pointer is currently on the same screen
+as this window. This is always <B>True</B> unless the pointer was actively
+grabbed before the automatic grab could take place.</DD>
+</DL>
+
+<H3>
+Notes</H3>
+Unless an active grab already exists or a passive grab on
+the button combination that was pressed already exists at a higher level
+in the hierarchy than where the <B>ButtonPress</B> occurred, an automatic
+active grab of the pointer takes place when a <B>ButtonPress</B> occurs.
+Because of the automatic grab, the matching <B>ButtonRelease</B> is sent
+to the same application that received the <B>ButtonPress</B> event. If
+<B>OwnerGrabButtonMask</B> has been selected, the <B>ButtonRelease</B>
+event is delivered to the window which contained the pointer when the button
+was released, as long as that window belongs to the same client as the
+window in which the <B>ButtonPress</B> event occurred. If the <B>ButtonRelease</B>
+occurs outside of the client's windows or <B>OwnerGrabButtonMask</B> was
+not selected, the <B>ButtonRelease</B> is delivered to the window in which
+the <B>ButtonPress</B> occurred. The grab is terminated when all buttons
+are released. During the grab, the cursor associated with the grabbing
+window will track the pointer anywhere on the screen.
+
+<P>If the application has invoked a passive button grab on
+an ancestor of the window in which the <B>ButtonPress</B> event occurs,
+then that grab takes precedence over the automatic grab, and the <B>ButtonRelease</B>
+will go to that window, or it will be handled normally by that client depending
+on the <B>owner_events</B> flag in the <B>XGrabButton</B> call.
+<BR>(generated event).
+<H3>
+When Generated</H3>
+A <B>CirculateNotify</B> event reports a call to change the
+stacking order, and it includes whether the final position is on the top
+or on the bottom. This event is generated by <B>XCirculateSubwindows()</B>,
+<B>XCirculateSubwindowsDown()</B>, or <B>XCirculateSubwindowsUp()</B>.
+See also the <B>CirculateRequest</B> and <B>ConfigureNotify</B> reference
+pages.
+<H3>
+Select With</H3>
+This event is selected with <B>StructureNotifyMask</B> in
+the <B>XSelectInput</B> call for the window to be moved or with <B>SubstructureNotifyMask</B>
+for the parent of the window to be moved.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XCirculateEvent xcirculate;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window event;
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; int place;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* PlaceOnTop, PlaceOnBottom */
+} XCirculateEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>event</B></DT>
+
+<DD>
+The window receiving the event. If the event was selected
+by <B>StructureNotifyMask</B>, <B>event</B> will be the same as <B>window</B>.
+If the event was selected by <B>SubstructureNotifyMask</B>, <B>event</B>
+will be the parent of <B>window</B>.</DD>
+
+<DT>
+<B>window</B></DT>
+
+<DD>
+The window that was restacked.</DD>
+
+<DT>
+<B>place</B></DT>
+
+<DD>
+Either <B>PlaceOnTop</B> or <B>PlaceOnBottom</B>. Indicates
+whether the window was raised to the top or bottom of the stack.</DD>
+</DL>
+(generated event).
+<H3>
+When Generated</H3>
+A <B>CirculateRequest</B> event reports when <B>XCirculateSubwindows</B>,
+<B>XCirculateSubwindowsDown()</B>, <B>XCirculateSubwindowsUp()</B>, or
+<B>XRestackWindows()</B> is called to change the stacking order of a group
+of children.
+
+<P>This event differs from <B>CirculateNotify</B> in that
+it delivers the parameters of the request before it is carried out. This
+gives the client that selects this event (usually the window manager) the
+opportunity to review the request in the light of its window management
+policy before executing the circulate request itself or to deny the request.
+(<B>CirculateNotify</B> indicates the final outcome of the request.)
+<H3>
+Select With</H3>
+This event is selected for the parent window with <B>SubstructureRedirectMask</B>.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XCirculateRequestEvent xcirculaterequest;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window parent;
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; int place;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* PlaceOnTop, PlaceOnBottom */
+} XCirculateRequestEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>parent</B></DT>
+
+<DD>
+The parent of the window that was restacked. This is the
+window that selected the event.</DD>
+
+<DT>
+<B>window</B></DT>
+
+<DD>
+The window being restacked.</DD>
+
+<DT>
+<B>place</B></DT>
+
+<DD>
+<B>PlaceOnTop</B> or <B>PlaceOnBottom</B>. Indicates whether
+the window was to be placed on the top or on the bottom of the stacking
+order.</DD>
+</DL>
+(generated event).
+<H3>
+When Generated</H3>
+A <B>ClientMessage</B> event is sent as a result of a call
+to <B>XSendEvent()</B> by a client to a particular window. Any type of
+event can be sent with <B>XSendEvent()</B>, but it will be distinguished
+from normal events by the <B>send_event</B> member being set to <B>True</B>.
+If your program wants to be able to treat events sent with <B>XSendEvent()</B>
+as different from normal events, you can read this member.
+<H3>
+Select With</H3>
+There is no event mask for <B>ClientMessage</B> events, and
+they are not selected with <B>XSelectInput</B>. Instead <B>XSendEvent</B>
+directs them to a specific window, which is given as a window ID: the <B>PointerWindow</B>
+or the <B>InputFocus</B>.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XClientMessageEvent xclient;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; Atom message_type;
+&nbsp;&nbsp; int format;
+&nbsp;&nbsp; union {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; char b[20];
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; short s[10];
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; long l[5];
+&nbsp;&nbsp; } data;
+} XClientMessageEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>message_type</B></DT>
+
+<DD>
+An atom that specifies how the data is to be interpreted
+by the receiving client. The X server places no interpretation on the type
+or the data, but it must be a list of 8-bit, 16-bit, or 32-bit quantities,
+so that the X server can correctly swap bytes as necessary. The data always
+consists of twenty 8-bit values, ten 16-bit values, or five 32-bit values,
+although each particular message might not make use of all of these values.</DD>
+
+<DT>
+<B>format</B></DT>
+
+<DD>
+Specifies the format of the property specified by <B>message_type</B>.
+This will be on of the values <B>8</B>, <B>16</B>, or <B>32</B>.</DD>
+</DL>
+(generated event).
+<H3>
+When Generated</H3>
+A <B>ColormapNotify</B> event reports when the colormap attribute
+of a window changes or when the colormap specified by the attribute is
+installed, uninstalled, or freed. This event is generated by <B>XChangeWindowAttributes()</B>,
+<B>XFreeColormap()</B>, <B>XInstallColormap()</B>, and <B>XUninstallColormap()</B>.
+<H3>
+Select With</H3>
+This event is selected with <B>ColormapChangeMask</B>.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XColormapEvent xcolormap;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; Colormap colormap;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* a colormap or None */
+&nbsp;&nbsp; Bool new;
+&nbsp;&nbsp; int state;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* ColormapInstalled, ColormapUninstalled */
+} XColormapEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>window</B></DT>
+
+<DD>
+The window whose associated colormap or attribute changes.</DD>
+
+<DT>
+<B>colormap</B></DT>
+
+<DD>
+The colormap associated with the window, either a colormap
+ID or the constant <B>None</B>. It will be <B>None</B> only if this event
+was generated due to an <B>XFreeColormap</B> call.</DD>
+
+<DT>
+<B>new</B></DT>
+
+<DD>
+<B>True</B> when the colormap attribute has been changed,
+or <B>False</B> when the colormap is installed or uninstalled.</DD>
+
+<DT>
+<B>state</B></DT>
+
+<DD>
+Either <B>ColormapInstalled</B> or <B>ColormapUninstalled</B>;
+it indicates whether the colormap is installed or uninstalled.</DD>
+</DL>
+(generated event).
+<H3>
+When Generated</H3>
+A <B>ConfigureNotify</B> event announces actual changes to
+a window's configuration (size, position, border, and stacking order).
+See also the <B>CirculateRequest</B> reference page.
+<H3>
+Select With</H3>
+This event is selected for a single window by specifying
+the window ID of that window with <B>StructureNotifyMask</B>. To receive
+this event for all children of a window, specify the parent window ID with
+<B>SubstructureNotifyMask</B>.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XConfigureEvent xconfigure;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window event;
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; int x, y;
+&nbsp;&nbsp; int width, height;
+&nbsp;&nbsp; int border_width;
+&nbsp;&nbsp; Window above;
+&nbsp;&nbsp; Bool override_redirect;
+} XConfigureEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>event</B></DT>
+
+<DD>
+The window that selected the event. The <B>event</B> and
+<B>window</B> members are identical if the event was selected with <B>StructureNotifyMask</B>.</DD>
+
+<DT>
+<B>window</B></DT>
+
+<DD>
+The window whose configuration was changed.</DD>
+
+<DT>
+<B>x</B>, <B>y</B></DT>
+
+<DD>
+The final coordinates of the reconfigured window relative
+to its parent.</DD>
+
+<DT>
+<B>width</B>, <B>height</B></DT>
+
+<DD>
+The width and height in pixels of the window after reconfiguration.</DD>
+
+<DT>
+<B>border_width</B></DT>
+
+<DD>
+The width in pixels of the border after reconfiguration.</DD>
+
+<DT>
+<B>above</B></DT>
+
+<DD>
+If this member is <B>None</B>, then the window is on the
+bottom of the stack with respect to its siblings. Otherwise, the window
+is immediately on top of the specified sibling window.</DD>
+
+<DT>
+<B>override_redirect</B></DT>
+
+<DD>
+The <B>override_redirect</B> attribute of the reconfigured
+window. If <B>True</B>, it indicates that the client wants this window
+to be immune to interception by the window manager of configuration requests.
+Window managers normally should ignore this event if <B>override_redirect</B>
+is <B>True</B>.</DD>
+</DL>
+(generated event).
+<H3>
+When Generated</H3>
+A <B>ConfigureRequest</B> event reports when another client
+attempts to change a window's size, position, border, and/or stacking order.
+
+<P>This event differs from <B>ConfigureNotify</B> in that
+it delivers the parameters of the request before it is carried out. This
+gives the client that selects this event (usually the window manager) the
+opportunity to revise the requested configuration before executing the
+<B>XConfigureWindow()</B> request itself or to deny the request. (<B>ConfigureNotify</B>
+indicates the final outcome of the request.)
+<H3>
+Select With</H3>
+This event is selected for any window in a group of children
+by specifying the parent window with <B>SubstructureRedirectMask</B>.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XConfigureRequestEvent xconfigurerequest;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window parent;
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; int x, y;
+&nbsp;&nbsp; int width, height;
+&nbsp;&nbsp; int border_width;
+&nbsp;&nbsp; Window above;
+&nbsp;&nbsp; int detail;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Above, Below, BottomIf, TopIf, Opposite */
+&nbsp;&nbsp; unsigned long value_mask;
+} XConfigureRequestEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>parent</B></DT>
+
+<DD>
+The window that selected the event. This is the parent of
+the window being configured.</DD>
+
+<DT>
+<B>window</B></DT>
+
+<DD>
+The window that is being configured.</DD>
+
+<DT>
+<B>x</B>, <B>y</B></DT>
+
+<DD>
+The requested position for the upper-left pixel of the window's
+border relative to the origin of the parent window.</DD>
+
+<DT>
+<B>width</B>, <B>height</B></DT>
+
+<DD>
+The requested width and height in pixels for the window.</DD>
+
+<DT>
+<B>border_width</B></DT>
+
+<DD>
+The requested border width for the window.</DD>
+
+<DT>
+<B>above</B></DT>
+
+<DD>
+The sibling specified in the <B>XConfigureWindow</B> call,
+or <B>Above</B> if no sibling was specified.</DD>
+
+<DT>
+<B>detail</B></DT>
+
+<DD>
+<B>None</B>, <B>Above</B>, <B>Below</B>, <B>TopIf</B>, <B>BottomIf</B>,
+or <B>Opposite</B>. Specifies the sibling window on top of which the specified
+window should be placed. If this member has the constant <B>None</B>, then
+the specified window should be placed on the bottom.</DD>
+
+<DT>
+<B>value_mask</B></DT>
+
+<DD>
+A bit mask representing which elements of configuration are
+to be changed.</DD>
+</DL>
+
+<H3>
+Notes</H3>
+The geometry is derived from the <B>XConfigureWindow</B>
+request that triggered the event.
+<BR>(generated event).
+<H3>
+When Generated</H3>
+A <B>CreateNotify</B> event reports when a window is created.
+<H3>
+Select With</H3>
+This event is selected on children of a window by specifying
+the parent window ID with <B>SubstructureNotifyMask</B>. (Note that this
+event type cannot be selected by <B>StructureNotifyMask</B>.)
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XCreateWindowEvent xcreatewindow;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window parent;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* parent of the window */
+&nbsp;&nbsp; Window window;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* window ID of window created */
+&nbsp;&nbsp; int x, y;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* window location */
+&nbsp;&nbsp; int width, height;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* size of window */
+&nbsp;&nbsp; int border_width;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* border width */
+&nbsp;&nbsp; Bool override_redirect;&nbsp;&nbsp;&nbsp; /* creation should be overridden */
+} XCreateWindowEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>parent</B></DT>
+
+<DD>
+The ID of the created window's parent.</DD>
+
+<DT>
+<B>window</B></DT>
+
+<DD>
+The ID of the created window.</DD>
+
+<DT>
+<B>x</B>, <B>y</B></DT>
+
+<DD>
+The coordinates of the created window relative to its parent.</DD>
+
+<DT>
+<B>width</B>, <B>height</B></DT>
+
+<DD>
+The width and height in pixels of the created window.</DD>
+
+<DT>
+<B>border_width</B></DT>
+
+<DD>
+The width in pixels of the border of the created window.</DD>
+
+<DT>
+<B>override_redirect</B></DT>
+
+<DD>
+The <B>override_redirect</B> attribute of the created window.
+If <B>True</B>, it indicates that the client wants this window to be immune
+to interception by the window manager of configuration requests. Window
+managers normally should ignore this event if <B>override_redirect</B>
+is <B>True</B>.</DD>
+</DL>
+
+<H3>
+Notes</H3>
+For descriptions of these members, see the <B>XCreateWindow</B>
+function and the <B>XSetWindowAttributes</B> structure.
+<BR>(generated event).
+<H3>
+When Generated</H3>
+A <B>DestroyNotify</B> event reports that a window has been
+destroyed.
+<H3>
+Select With</H3>
+To receive this event type on children of a window, specify
+the parent window ID and pass <B>SubstructureNotifyMask</B> as part of
+the <B>event_mask</B> argument to <B>XSelectInput</B>. This event type
+cannot be selected with <B>StructureNotifyMask</B>.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XDestroyWindowEvent xdestroywindow;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window event;
+&nbsp;&nbsp; Window window;
+} XDestroyWindowEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>event</B></DT>
+
+<DD>
+The window that selected the event.</DD>
+
+<DT>
+<B>window</B></DT>
+
+<DD>
+The window that was destroyed.</DD>
+</DL>
+(generated event).
+<H3>
+When Generated</H3>
+<B>EnterNotify</B> and <B>LeaveNotify</B> events occur when
+the pointer enters or leaves a window.
+
+<P>When the pointer crosses a window border, a <B>LeaveNotify</B>
+event occurs in the window being left and an <B>EnterNotify</B> event occurs
+in the window being entered. Whether or not each event is queued for any
+application depends on whether any application selected the right event
+on the window in which it occurred.
+
+<P>In addition, <B>EnterNotify</B> and <B>LeaveNotify</B>
+events are delivered to windows that are <I>virtually crossed</I>. These
+are windows that are between the origin and destination windows in the
+hierarchy but not necessarily on the screen. Further explanation of virtual
+crossing is provided two pages following.
+<H3>
+Select With</H3>
+Each of these events can be selected separately with <B>XEnterWindowMask</B>
+and <B>XLeaveWindowMask</B>.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XCrossingEvent xcrossing;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* of event */
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window window;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* event window it is reported relative to */
+&nbsp;&nbsp; Window root;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* root window that the event occurred on */
+&nbsp;&nbsp; Window subwindow;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* child window */
+&nbsp;&nbsp; Time time;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* milliseconds */
+&nbsp;&nbsp; int x, y;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* pointer x,y coordinates in receiving&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * window */
+&nbsp;&nbsp; int x_root, y_root;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* coordinates relative to root */
+&nbsp;&nbsp; int mode;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* NotifyNormal, NotifyGrab, NotifyUngrab */
+&nbsp;&nbsp; int detail;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* NotifyAncestor, NotifyInferior,&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * NotifyNonLinear, NotifyNonLinearVirtual,&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * NotifyVirtual */
+&nbsp;&nbsp; Bool same_screen;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* same screen flag */
+&nbsp;&nbsp; Bool focus;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* boolean focus */
+&nbsp;&nbsp; unsigned int state;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* key or button mask */
+} XCrossingEvent;
+typedef XCrossingEvent XEnterWindowEvent;
+typedef XCrossingEvent XLeaveWindowEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+The following list describes the members of the <B>XCrossingEvent</B>
+structure.
+<DL>
+<DT>
+<B>subwindow</B></DT>
+
+<DD>
+In a <B>LeaveNotify</B> event, if the pointer began in a
+child of the receiving window, then the <B>child</B> member is set to the
+window ID of the child. Otherwise, it is set to <B>None</B>. For an <B>EnterNotify</B>
+event, if the pointer ends up in a child of the receiving window, then
+the <B>child</B> member is set to the window ID of the child. Otherwise,
+it is set to <B>None</B>.</DD>
+
+<DT>
+<B>time</B></DT>
+
+<DD>
+The server time when the crossing event occurred, in milliseconds.
+<B>Time</B> is declared as <B>unsignedlong</B>, so it wraps around when
+it reaches the maximum value of a 32-bit number (every 49.7 days).</DD>
+
+<DT>
+<B>x</B>, <B>y</B></DT>
+
+<DD>
+The point of entry or exit of the pointer relative to the
+event window.</DD>
+
+<DT>
+<B>x_root</B>, <B>y_root</B></DT>
+
+<DD>
+The point of entry or exit of the pointer relative to the
+root window.</DD>
+
+<DT>
+<B>mode</B></DT>
+
+<DD>
+Normal crossing events or those caused by pointer warps have
+mode <B>NotifyNormal</B>, events caused by a grab have mode <B>NotifyGrab</B>,
+and events caused by a released grab have mode <B>NotifyUngrab</B>.</DD>
+
+<DT>
+<B>detail</B></DT>
+
+<DD>
+The value of the <B>detail</B> member depends on the hierarchical
+relationship between the origin and destination windows and the direction
+of pointer transfer. Determining which windows receive events and with
+which <B>detail</B> members is quite complicated. This topic is described
+in the next section.</DD>
+
+<DT>
+<B>same_screen</B></DT>
+
+<DD>
+Indicates whether the pointer is currently on the same screen
+as this window. This is always <B>True</B> unless the pointer was actively
+grabbed before the automatic grab could take place.</DD>
+
+<DT>
+<B>focus</B></DT>
+
+<DD>
+If the receiving window is the focus window or a descendant
+of the focus window, the <B>focus</B> member is <B>True</B>; otherwise,
+it is <B>False</B>.</DD>
+
+<DT>
+<B>state</B></DT>
+
+<DD>
+The state of all the buttons and modifier keys just before
+the event, represented by a mask of the button and modifier key symbols:
+<B>Button1Mask</B>, <B>Button2Mask</B>, <B>Button3Mask</B>, <B>Button4Mask</B>,
+<B>Button5Mask</B>, <B>ControlMask</B>, <B>LockMask</B>, <B>Mod1Mask</B>,
+<B>Mod2Mask</B>, <B>Mod3Mask</B>, <B>Mod4Mask</B>, <B>Mod5Mask</B>, and
+<B>ShiftMask</B>.</DD>
+</DL>
+
+<H3>
+Virtual Crossing and the detail Member</H3>
+Virtual crossing occurs when the pointer moves between two
+windows that do not have a parent-child relationship. Windows between the
+origin and destination windows in the hierarchy receive <B>EnterNotify</B>
+and <B>LeaveNotify</B> events. The <B>detail</B> member of each of these
+events depends on the hierarchical relationship of the origin and destination
+windows and the direction of pointer transfer.
+
+<P>Virtual crossing is an advanced topic that you should
+not spend time figuring out unless you have an important reason to use
+it. We have never seen an application that uses this feature, and we know
+of no reason for its extreme complexity. With that word of warning, proceed.
+
+<P>Let's say the pointer has moved from one window, the origin,
+to another, the destination. First, we'll specify what types of events
+each window gets and then the detail member of each of those events.
+
+<P>The window of origin receives a <B>LeaveNotify</B> event
+and the destination window receives an <B>EnterNotify</B> event, if they
+have requested this type of event. If one is an inferior of the other,
+the <B>detail</B> member of the event received by the inferior is <B>NotifyAncestor</B>
+and the detail of the event received by the superior is <B>NotifyInferior</B>.
+If the crossing is between parent and child, these are the only events
+generated.
+
+<P>However, if the origin and destination windows are not
+parent and child, other windows are <I>virtually crossed</I> and also receive
+events. If neither window is an ancestor of the other, ancestors of each
+window, up to but not including the least common ancestor, receive <B>LeaveNotify</B>
+events, if they are in the same branch of the hierarchy as the origin,
+and <B>EnterNotify</B> events, if they are in the same branch as the destination.
+These events can be used to track the motion of the pointer through the
+hierarchy.
+<DL>
+<DT>
+&middot;</DT>
+
+<DD>
+In the case of a crossing between a parent and a child of
+a child, the middle child receives a <B>LeaveNotify</B> with detail <B>NotifyVirtual</B>.</DD>
+
+<DT>
+&middot;</DT>
+
+<DD>
+In the case of a crossing between a child and the parent
+of its parent, the middle child receives an <B>EnterNotify</B> with detail
+<B>NotifyVirtual</B>.</DD>
+
+<DT>
+&middot;</DT>
+
+<DD>
+In a crossing between windows whose least common ancestor
+is two or more windows away, both the origin and destination windows receive
+events with detail <B>NotifyNonlinear</B>. The windows between the origin
+and the destination in the hierarchy, up to but not including their least
+common ancestor, receive events with detail <B>NotifyNonlinearVirtual</B>.
+The least common ancestor is the lowest window from which both are descendants.</DD>
+
+<DT>
+&middot;</DT>
+
+<DD>
+If the origin and destination windows are on separate screens,
+the events and details generated are the same as for two windows not parent
+and child, except that the root windows of the two screens are considered
+the least common ancestor. Both root windows also receive events.</DD>
+</DL>
+Table E-1 shows the event types generated by a pointer crossing
+from window <I>A</I> to window <I>B</I> when window <I>C</I> is the least
+common ancestor of <I>A</I> and <I>B</I>.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table E-1 : </B>Border Crossing Events and Window
+Relationship</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH><B>LeaveNotify</B></TH>
+
+<TH><B>EnterNotify</B></TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Origin window (<I>A</I>)</TD>
+
+<TD>Destination window (<I>B</I>)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Windows between <I>A</I> and <I>B</I>, exclusive, if
+<I>A</I> is inferior</TD>
+
+<TD>Windows between <I>A</I> and <I>B</I>, exclusive, if
+<I>B</I> is inferior</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Windows between <I>A</I> and <I>C</I>, exclusive</TD>
+
+<TD>Windows between <I>B</I> and <I>C</I>, exclusive</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Root window on screen of origin if different from screen
+of destination</TD>
+
+<TD>Root window on screen of destination if different from
+screen of origin</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>Table E-2 lists the <B>detail</B> members in events generated
+by a pointer crossing from window <I>A</I> to window <I>B</I>.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table E-2 : </B>Event detail Member and Window
+Relationship</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH><B>detail</B> Flag</TH>
+
+<TH>Window Delivered To</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>NotifyAncestor</B></TD>
+
+<TD>Origin or destination when either is descendant</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>NotifyInferior</B></TD>
+
+<TD>Origin or destination when either is ancestor</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>NotifyVirtual</B></TD>
+
+<TD>Windows between <I>A</I> and <I>B</I>, exclusive, if
+either is descendant</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>NotifyNonlinear</B></TD>
+
+<TD>Origin and destination when <I>A</I> and <I>B</I> are
+two or more windows distant from least common ancestor <I>C</I></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>NotifyNonlinearVirtual</B> ancestor <I>C</I>; also
+on both root windows if <I>A</I> and <I>B</I> are on different screens</TD>
+
+<TD>Windows between <I>A</I> and <I>C</I>, exclusive, and
+between <I>B</I> and <I>C</I>, exclusive, when <I>A</I> and <I>B</I> have
+least common&nbsp;</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>For example, Figure E-1 shows the events that are generated
+by a movement from a window (window <I>A</I>) to a child (window <I>B1</I>)
+of a sibling (window <I>B</I>). This would generate three events: a <B>LeaveNotify</B>
+with detail <B>NotifyNonlinear</B> for the window <I>A</I>, an <B>EnterNotify</B>
+with detail <B>NotifyNonlinearVirtual</B> for its sibling window <I>B</I>,
+and an <B>EnterNotify</B> with detail <B>NotifyNonlinear</B> for the child
+(window <I>B1</I>).
+
+<P><B>Events generated by a move between windows</B>
+
+<P><IMG SRC="imgs/App.E.1.gif" ALT="App.E.1.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;<B>EnterNotify</B> and <B>LeaveNotify</B> events
+are also generated when the pointer is grabbed, if the pointer was not
+already inside the grabbing window. In this case, the grabbing window receives
+an <B>EnterNotify</B> and the window containing the pointer receives a
+<B>LeaveNotify</B> event, both with <B>modeNotifyUngrab</B>. The pointer
+position in both events is the position before the grab. The result when
+the grab is released is exactly the same, except that the two windows receive
+<B>EnterNotify</B> instead of <B>LeaveNotify</B> and vice versa.
+
+<P>Figure E-2 demonstrates the events and details caused
+by various pointer transitions, indicated by heavy arrows.
+
+<P><B>Border crossing events and detail member for pointer
+movement from window A to window B, for various window relationships</B>
+
+<P><IMG SRC="imgs/App.E.2.gif" ALT="App.E.2.gif" BORDER=0  ALIGN=ABSCENTER>(generated
+event).
+<H3>
+When Generated</H3>
+An <B>Expose</B> event is generated when a window becomes
+visible or a previously invisible part of a window becomes visible. Only
+<B>InputOutput</B> windows generate or need to respond to <B>Expose</B>
+events; <B>InputOnly</B> windows never generate or need to respond to them.
+The <B>Expose</B> event provides the position and size of the exposed area
+within the window and a rough count of the number of remaining exposure
+events for the current window.
+<H3>
+Select With</H3>
+This event is selected with <B>ExposureMask</B>.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XExposeEvent xexpose;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; int x, y;
+&nbsp;&nbsp; int width, height;
+&nbsp;&nbsp; int count;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* If nonzero, at least this many more */
+} XExposeEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>x</B>, <B>y</B></DT>
+
+<DD>
+The coordinates of the upper-left corner of the exposed region
+relative to the origin of the window.</DD>
+
+<DT>
+<B>width</B>, <B>height</B></DT>
+
+<DD>
+The width and height in pixels of the exposed region.</DD>
+
+<DT>
+<B>count</B></DT>
+
+<DD>
+The approximate number of remaining contiguous <B>Expose</B>
+events that were generated as a result of a single function call.</DD>
+</DL>
+
+<H3>
+Notes</H3>
+A single action such as a window movement or a function call
+can generate several exposure events on one window or on several windows.
+The server guarantees that all exposure events generated from a single
+action will be sent contiguously, so that they can all be handled before
+moving on to other event types. This allows an application to keep track
+of the rectangles specified in contiguous <B>Expose</B> events, set the
+<B>clip_mask</B> in a GC to the areas specified in the rectangle using
+<B>XSetRegion</B> or <B>XSetClipRectangles</B>, and then finally redraw
+the window clipped with the GC in a single operation after all the <B>Expose</B>
+events have arrived. The last event to arrive is indicated by a <B>count</B>
+of 0. In Release 2, <B>XUnionRectWithRegion</B> can be used to add the
+rectangle in <B>Expose</B> events to a region before calling <B>XSetRegion</B>.
+
+<P>If your application is able to redraw partial windows,
+you can also read each exposure event in turn and redraw each area.
+<BR>(generated event).
+<H3>
+When Generated</H3>
+<B>FocusIn</B> and <B>FocusOut</B> events occur when the
+keyboard focus window changes as a result of an <B>XSetInputFocus()</B>
+call. They are much like <B>EnterNotify</B> and <B>LeaveNotify</B> events
+except that they track the focus rather than the pointer.
+
+<P>When a focus change occurs, a <B>FocusOut</B> event is
+delivered to the old focus window and a <B>FocusIn</B> event to the window
+which receives the focus. In addition, windows in between these two windows
+in the window hierarchy are virtually crossed and receive focus change
+events, as described below. Some or all of the windows between the window
+containing the pointer at the time of the focus change and the root window
+also receive focus change events, as described below.
+<H3>
+Select With</H3>
+<B>FocusIn</B> and <B>FocusOut</B> events are selected with
+<B>FocusChangeMask</B>. They cannot be selected separately.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XFocusChangeEvent xfocus;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* FocusIn or FocusOut */
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window window;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Window of event */
+&nbsp;&nbsp; int mode;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* NotifyNormal, NotifyGrab, NotifyUngrab */
+&nbsp;&nbsp; int detail;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* NotifyAncestor, NotifyDetailNone,&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * NotifyInferior, NotifyNonLinear,&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * NotifyNonLinearVirtual, NotifyPointer,&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * NotifyPointerRoot, NotifyVirtual */
+} XFocusChangeEvent;
+typedef XFocusChangeEvent XFocusInEvent;
+typedef XFocusChangeEvent XFocusOutEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>mode</B></DT>
+
+<DD>
+For events generated when the keyboard is not grabbed, <B>mode</B>
+is <B>NotifyNormal</B>; when the keyboard is grabbed, <B>mode</B> is <B>NotifyGrab</B>;
+and when a keyboard is ungrabbed, <B>mode</B> is <B>NotifyUngrab</B>.</DD>
+
+<DT>
+<B>detail</B></DT>
+
+<DD>
+The <B>detail</B> member identifies the relationship between
+the window that receives the event and the origin and destination windows.
+It will be described in detail after the description of which windows get
+what types of events.</DD>
+</DL>
+
+<H3>
+Notes</H3>
+The <I>keyboard focus</I> is a window that has been designated
+as the one to receive all keyboard input irrespective of the pointer position.
+Only the keyboard focus window and its descendants receive keyboard events.
+By default, the focus window is the root window. Since all windows are
+descendants of the root, the pointer controls the window that receives
+input.
+
+<P>Most window managers allow the user to set a focus window
+to avoid the problem where the pointer sometimes gets bumped into the wrong
+window and your typing does not go to the intended window. If the pointer
+is pointing at the root window, all typing is usually lost, since there
+is no application for this input to propagate to. Some applications may
+set the keyboard focus so that they can get all keyboard input for a given
+period of time, but this practice is not encouraged.
+
+<P>Focus events are used when an application wants to act
+differently when the keyboard focus is set to another window or to itself.
+<B>FocusChangeMask</B> is used to select <B>FocusIn</B> and <B>FocusOut</B>
+events.
+
+<P>When a focus change occurs, a <B>FocusOut</B> event is
+delivered to the old focus window and a <B>FocusIn</B> event is delivered
+to the window which receives the focus. Windows in between in the hierarchy
+are virtually crossed and receive one focus change event each depending
+on the relationship and direction of transfer between the origin and destination
+windows. Some or all of the windows between the window containing the pointer
+at the time of the focus change and that window's root window can also
+receive focus change events. By checking the <B>detail</B> member of <B>FocusIn</B>
+and <B>FocusOut</B> events, an application can tell which of its windows
+can receive input.
+
+<P>The <B>detail</B> member gives clues about the relationship
+of the event receiving window to the origin and destination of the focus.
+The <B>detail</B> member of <B>FocusIn</B> and <B>FocusOut</B> events is
+analogous to the <B>detail</B> member of <B>EnterNotify</B> and <B>LeaveNotify</B>
+events but with even more permutations to make life complicated.
+<H3>
+Virtual Focus Crossing and the detail Member</H3>
+We will now embark on specifying the types of events sent
+to each window and the <B>detail</B> member in each event, depending on
+the relative position in the hierarchy of the origin window (old focus),
+destination window (new focus), and the pointer window (window containing
+pointer at time of focus change). Don't even try to figure this out unless
+you have to.
+
+<P>E-3 shows the event types generated by a focus transition
+from window <I>A</I> to window <I>B</I> when window <I>C</I> is the least
+common ancestor of <I>A</I> and <I>B</I>. This table includes most of the
+events generated, but not all of them. It is quite possible for a single
+window to receive more than one focus change event from a single focus
+change.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table E-3 : </B>FocusIn and FocusOut Events and
+Window Relationship</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH><B>FocusOut</B></TH>
+
+<TH><B>FocusIn</B></TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Origin window (<I>A</I>)</TD>
+
+<TD>Destination window (<I>B</I>)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Windows between <I>A</I> and <I>B</I>, exclusive, if
+<I>A</I> is inferior</TD>
+
+<TD>Windows between <I>A</I> and <I>B</I>, exclusive, if
+<I>B</I> is inferior</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Windows between <I>A</I> and <I>C</I>, exclusive</TD>
+
+<TD>Windows between <I>B</I> and <I>C</I>, exclusive</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Root window on screen of origin if different from screen
+of destination</TD>
+
+<TD>Root window on screen of destination if different from
+screen of origin</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Pointer window up to but not including origin window
+if pointer window is descendant of origin</TD>
+
+<TD>Pointer window up to but not including destination window
+if pointer window is descendant of destination</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Pointer window up to and including pointer window's root
+if transfer was from <B>PointerRoot</B></TD>
+
+<TD>Pointer window up to and including pointer window's root
+if transfer was to <B>PointerRoot</B></TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>E-4 lists the <B>detail</B> members in events generated
+by a focus transition from window <I>A</I> to window <I>B</I> when window
+<I>C</I> is the least common ancestor of <I>A</I> and <I>B</I>, with <I>P</I>
+being the window containing the pointer.
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table E-4 : </B>Event detail Member and Window
+Relationship</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH><B>detail</B> Flag</TH>
+
+<TH>Window Delivered To</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>NotifyAncestor</B></TD>
+
+<TD>Origin or destination when either is descendant</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>NotifyInferior</B></TD>
+
+<TD>Origin or destination when either is ancestor</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>NotifyVirtual</B></TD>
+
+<TD>Windows between <I>A</I> and <I>B</I>, exclusive, if
+either is descendant</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>NotifyNonlinear</B></TD>
+
+<TD>Origin and destination when <I>A</I> and <I>B</I> are
+two or more windows distant from least common ancestor <I>C</I></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>NotifyNonlinearVirtual</B></TD>
+
+<TD>Windows between <I>A</I> and <I>C</I>, exclusive, and
+between <I>B</I> and <I>C</I>, exclusive, when <I>A</I> and <I>B</I> have
+least common ancestor <I>C</I>; also on both root windows if <I>A</I> and
+<I>B</I> are on different screens</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>NotifyPointer</B></TD>
+
+<TD>Window <I>P</I> and windows up to but not including the
+origin or destination windows</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>NotifyPointerRoot</B></TD>
+
+<TD>Window <I>P</I> and all windows up to its root, and all
+other roots, when focus is set to or from <B>PointerRoot</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>NotifyDetailNone</B></TD>
+
+<TD>All roots, when focus is set to or from <B>None</B></TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>E-3 shows all the possible combinations of focus transitions
+and of origin, destination, and pointer windows and shows the types of
+events that are generated and their <B>detail</B> member. Solid lines indicate
+branches of the hierarchy. Dotted arrows indicate the direction of transition
+of the focus. At each end of this arrow are the origin and destination
+windows, windows <I>A</I> to <I>B</I>. Arrows ending in a bar indicate
+that the event type and detail described are delivered to all windows up
+to the bar.
+
+<P>In any branch, there may be windows that are not shown.
+Windows in a single branch between two boxes shown will get the event types
+and details shown beside the branch.
+
+<P><B>FocusIn and FocusOut event schematics</B>
+
+<P><IMG SRC="imgs/App.E.3.gif" ALT="App.E.3.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P><B>FocusIn and FocusOut event schematics (cont'd)</B>
+
+<P><IMG SRC="imgs/App.E.4.gif" ALT="App.E.4.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;<B>FocusIn</B> and <B>FocusOut</B> events are also
+generated when the keyboard is grabbed, if the focus was not already assigned
+to the grabbing window. In this case, all windows receive events as if
+the focus was set from the current focus to the grab window. When the grab
+is released, the events generated are just as if the focus was set back.
+<BR>(generated event).
+<H3>
+When Generated</H3>
+<B>GraphicsExpose</B> events indicate that the source area
+for a <B>XCopyArea()</B> or <B>XCopyPlane()</B> request was not available
+because it was outside the source window or obscured by a window. <B>NoExpose</B>
+events indicate that the source region was completely available.
+<H3>
+Select With</H3>
+These events are not selected with <B>XSelectInput</B> but
+are sent if the GC in the <B>XCopyArea</B> or <B>XCopyPlane</B> request
+had its <B>graphics_exposures</B> flag set to <B>True</B>. If <B>graphics_exposures</B>
+is <B>True</B> in the GC used for the copy, either one <B>NoExpose</B>
+event or one or more <B>GraphicsExpose</B> events will be generated for
+every <B>XCopyArea</B> or <B>XCopyPlane</B> call made.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XNoExposeEvent xnoexpose;
+&nbsp;&nbsp; XGraphicsExposeEvent xgraphicsexpose;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Drawable drawable;
+&nbsp;&nbsp; int x, y;
+&nbsp;&nbsp; int width, height;
+&nbsp;&nbsp; int count;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* if nonzero, at least this many more */
+&nbsp;&nbsp; int major_code;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* core is X_CopyArea or X_CopyPlane */
+&nbsp;&nbsp; int minor_code;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* not defined in the core */
+} XGraphicsExposeEvent;
+typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Drawable drawable;
+&nbsp;&nbsp; int major_code;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* core is X_CopyArea or X_CopyPlane */
+&nbsp;&nbsp; int minor_code;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* not defined in the core */
+} XNoExposeEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>drawable</B></DT>
+
+<DD>
+A window or an off-screen pixmap. This specifies the destination
+of the graphics request that generated the event.</DD>
+
+<DT>
+<B>x</B>, <B>y</B></DT>
+
+<DD>
+The coordinates of the upper-left corner of the exposed region
+relative to the origin of the window.</DD>
+
+<DT>
+<B>width</B>, <B>height</B></DT>
+
+<DD>
+The width and height in pixels of the exposed region.</DD>
+
+<DT>
+<B>count</B></DT>
+
+<DD>
+The approximate number of remaining contiguous <B>GraphicsExpose</B>
+events that were generated as a result of the <B>XCopyArea</B> or <B>XCopyPlane</B>
+call.</DD>
+
+<DT>
+<B>major_code</B></DT>
+
+<DD>
+The graphics request used. This may be one of the symbols
+<B>CopyArea</B> or <B>CopyPlane</B> or a symbol defined by a loaded extension.</DD>
+
+<DT>
+<B>minor_code</B></DT>
+
+<DD>
+Zero unless the request is part of an extension.</DD>
+</DL>
+
+<H3>
+Notes</H3>
+<B>Expose</B> events and <B>GraphicsExpose</B> events both
+indicate the region of a window that was actually exposed (<B>x</B>, <B>y</B>,
+<B>width</B>, and <B>height</B>). Therefore, they can often be handled
+similarly. The symbols <B>X_CopyPlane</B> and <B>X_CopyArea</B> are defined
+in <I>&lt;X11/Xproto.h></I>. These symbols are used to determine whether
+a <B>GraphicsExpose</B> or <B>NoExpose</B> event occurred because of an
+<B>XCopyArea</B> call or an <B>XCopyPlane</B> call.
+<BR>(generated event).
+<H3>
+When Generated</H3>
+A <B>GravityNotify</B> event reports when a window is moved
+because of a change in the size of its parent. This happens when the <B>win_gravity</B>
+attribute of the child window is something other than <B>StaticGravity</B>
+or <B>UnmapGravity</B>.
+<H3>
+Select With</H3>
+This event is selected for a single window by specifying
+the window ID of that window with <B>StructureNotifyMask</B>. To receive
+notification of movement due to gravity for a group of siblings, specify
+the parent window ID with <B>SubstructureNotifyMask</B>.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XGravityEvent xgravity;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window event;
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; int x, y;
+} XGravityEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>event</B></DT>
+
+<DD>
+The window that selected the event.</DD>
+
+<DT>
+<B>window</B></DT>
+
+<DD>
+The window that was moved.</DD>
+
+<DT>
+<B>x</B>, <B>y</B></DT>
+
+<DD>
+The new coordinates of the window relative to its parent.</DD>
+</DL>
+(generated event).
+<H3>
+When Generated</H3>
+<B>KeyPress</B> and <B>KeyRelease</B> events are generated
+for all keys, even those mapped to modifier keys such as Shift or Control.
+<H3>
+Select With</H3>
+Each type of keyboard event may be selected separately with
+<B>KeyPressMask</B> and <B>KeyReleaseMask</B>.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XKeyEvent xkey;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* of event */
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window window;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* event window it is reported relative to */
+&nbsp;&nbsp; Window root;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* root window that the event occurred on */
+&nbsp;&nbsp; Window subwindow;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* child window */
+&nbsp;&nbsp; Time time;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* milliseconds */
+&nbsp;&nbsp; int x, y;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* pointer coordinates relative to receiving&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * window */
+&nbsp;&nbsp; int x_root, y_root;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* coordinates relative to root */
+&nbsp;&nbsp; unsigned int state;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* modifier key and button mask */
+&nbsp;&nbsp; unsigned int keycode;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* server-dependent code for key */
+&nbsp;&nbsp; Bool same_screen;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* same screen flag */
+} XKeyEvent;&nbsp;&nbsp;&nbsp;
+typedef XKeyEvent XKeyPressedEvent;
+typedef XKeyEvent XKeyReleasedEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>subwindow</B></DT>
+
+<DD>
+If the source window is the child of the receiving window,
+then the <B>subwindow</B> member is set to the ID of that child.</DD>
+
+<DT>
+<B>time</B></DT>
+
+<DD>
+The server time when the button event occurred, in milliseconds.
+<B>Time</B> is declared as <B>unsignedlong</B>, so it wraps around when
+it reaches the maximum value of a 32-bit number (every 49.7 days).</DD>
+
+<DT>
+<B>x</B>, <B>y</B></DT>
+
+<DD>
+If the receiving window is on the same screen as the root
+window specified by <B>root</B>, then <B>x</B> and <B>y</B> are the pointer
+coordinates relative to the receiving window's origin. Otherwise, <B>x</B>
+and <B>y</B> are zero. When active button grabs and pointer grabs are in
+effect (see 9.4 of <I>Volume One, Xlib Programming Manual</I>), the coordinates
+relative to the receiving window may not be within the window (they may
+be negative or greater than window height or width).</DD>
+
+<DT>
+<B>x_root</B>, <B>y_root</B></DT>
+
+<DD>
+The pointer coordinates relative to the root window which
+is an ancestor of the event window. If the pointer was on a different screen,
+these are zero.</DD>
+
+<DT>
+<B>state</B></DT>
+
+<DD>
+The state of all the buttons and modifier keys just before
+the event, represented by a mask of the button and modifier key symbols:
+<B>Button1Mask</B>, <B>Button2Mask</B>, <B>Button3Mask</B>, <B>Button4Mask</B>,
+<B>Button5Mask</B>, <B>ControlMask</B>, <B>LockMask</B>, <B>Mod1Mask</B>,
+<B>Mod2Mask</B>, <B>Mod3Mask</B>, <B>Mod4Mask</B>, <B>Mod5Mask</B>, and
+<B>ShiftMask</B>.</DD>
+
+<DT>
+<B>keycode</B></DT>
+
+<DD>
+The <B>keycode</B> member contains a server-dependent code
+for the key that changed state. As such, it should be translated into the
+portable symbol called a keysym before being used. It can also be converted
+directly into ASCII with <B>XLookupString</B>. For a description and examples
+of how to translate keycodes, see 9.1.1.</DD>
+</DL>
+
+<H3>
+Notes</H3>
+Remember that not all hardware is capable of generating release
+events and that only the main keyboard (a-z, A-Z, 0-9), Shift, and Control
+keys are always found.
+
+<P>Keyboard events are analogous to button events, though,
+of course, there are many more keys than buttons and the keyboard is not
+automatically grabbed between press and release.
+
+<P>All the structure members have the same meaning as described
+for <B>ButtonPress</B> and <B>ButtonRelease</B> events, except that <B>button</B>
+is replaced by <B>keycode</B>.
+<BR>(generated event).
+<H3>
+When Generated</H3>
+A <B>KeymapNotify</B> event reports the state of the keyboard
+and occurs when the pointer or keyboard focus enters a window. <B>KeymapNotify</B>
+events are reported immediately after <B>EnterNotify</B> or <B>FocusIn</B>
+events. This is a way for the application to read the keyboard state as
+the application is "woken up," since the two triggering events usually
+indicate that the application is about to receive user input.
+<H3>
+Select With</H3>
+This event is selected with <B>KeymapStateMask</B>.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XKeymapEvent xkeymap;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; char key_vector[32];
+} XKeymapEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>window</B></DT>
+
+<DD>
+Reports the window which was reported in the <B>window</B>
+member of the preceding <B>EnterNotify</B> or <B>FocusIn</B> event.</DD>
+
+<DT>
+<B>key_vector</B></DT>
+
+<DD>
+A bit vector or mask, each bit representing one physical
+key, with a total of 256 bits. For a given key, its keycode is its position
+in the keyboard vector. You can also get this bit vector by calling <B>XQueryKeymap</B>.</DD>
+</DL>
+
+<H3>
+Notes</H3>
+The <B>serial</B> member of <B>KeymapNotify</B> does not
+contain the serial number of the most recent protocol request processed,
+because this event always follows immediately after <B>EnterNotify</B>
+or <B>FocusIn</B> events in which the <B>serial</B> member is valid.
+<BR>(generated event).
+<H3>
+When Generated</H3>
+The X server generates <B>MapNotify</B> and <B>UnmapNotify</B>
+events when a window changes state from unmapped to mapped or vice versa.
+<H3>
+Select With</H3>
+To receive these events on a single window, use <B>StructureNotifyMask</B>
+in the call to <B>XSelectInput</B> for the window. To receive these events
+for all children of a particular parent, specify the parent window ID and
+use <B>SubstructureNotifyMask</B>.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XMapEvent xmap;
+&nbsp;&nbsp; XUnmapEvent xunmap;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window event;
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; Bool override_redirect;&nbsp;&nbsp;&nbsp; /* boolean, is override set */
+} XMapEvent;
+typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window event;
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; Bool from_configure;
+} XUnmapEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>event</B></DT>
+
+<DD>
+The window that selected this event.</DD>
+
+<DT>
+<B>window</B></DT>
+
+<DD>
+The window that was just mapped or unmapped.</DD>
+
+<DT>
+<B>override_redirect</B> (<B>XMapEvent</B> only)</DT>
+
+<DD>
+<B>True</B> or <B>False</B>. The value of the <B>override_redirect</B>
+attribute of the window that was just mapped.</DD>
+
+<DT>
+<B>from_configure</B> (<B>XUnmapEvent</B> only)</DT>
+
+<DD>
+<B>True</B> if the event was generated as a result of a resizing
+of the window's parent when the window itself had a <B>win_gravity</B>
+of <B>UnmapGravity</B>. See the description of the <B>win_gravity</B> attribute
+in 4.3.4 of <I>Volume One, Xlib Programming Manual</I>. <B>False</B> otherwise.</DD>
+</DL>
+(generated event).
+<H3>
+When Generated</H3>
+A <B>MapRequest</B> event occurs when the functions <B>XMapRaised()</B>
+and <B>XMapWindow()</B> are called.
+
+<P>This event differs from <B>MapNotify</B> in that it delivers
+the parameters of the request before it is carried out. This gives the
+client that selects this event (usually the window manager) the opportunity
+to revise the size or position of the window before executing the map request
+itself or to deny the request. (<B>MapNotify</B> indicates the final outcome
+of the request.)
+<H3>
+Select With</H3>
+This event is selected by specifying the window ID of the
+parent of the receiving window with <B>SubstructureRedirectMask</B>. (In
+addition, the <B>override_redirect</B> member of the <B>XSetWindowAttributes</B>
+structure for the specified window must be <B>False</B>.)
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XMapRequestEvent xmaprequest;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window parent;
+&nbsp;&nbsp; Window window;
+} XMapRequestEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>parent</B></DT>
+
+<DD>
+The ID of the parent of the window being mapped.</DD>
+
+<DT>
+<B>window</B></DT>
+
+<DD>
+The ID of the window being mapped.</DD>
+</DL>
+(generated event).
+<H3>
+When Generated</H3>
+A <B>MappingNotify</B> event is sent when any of the following
+is changed by another client: the mapping between physical keyboard keys
+(keycodes) and keysyms, the mapping between modifier keys and logical modifiers,
+or the mapping between physical and logical pointer buttons. These events
+are triggered by a call to <B>XSetModifierMapping()</B> or <B>XSetPointerMapping()</B>,
+if the return status is <B>MappingSuccess</B>, or by any call to <B>XChangeKeyboardMapping()</B>.
+
+<P>This event type should not be confused with the event
+that occurs when a window is mapped; that is a <B>MapNotify</B> event.
+Nor should it be confused with the <B>KeymapNotify</B> event, which reports
+the state of the keyboard as a mask instead of as a keycode.
+<H3>
+Select With</H3>
+The X server sends <B>MappingNotify</B> events to all clients.
+It is never selected and cannot be masked with the window attributes.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XMappingEvent xmapping;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window window;&nbsp;&nbsp; /* unused */
+&nbsp;&nbsp; int request;&nbsp;&nbsp; /* one of MappingMapping, MappingKeyboard,&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * MappingPointer */
+&nbsp;&nbsp; int first_keycode;&nbsp;&nbsp; /* first keycode */
+&nbsp;&nbsp; int count;&nbsp;&nbsp; /* range of change with first_keycode*/
+} XMappingEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>request</B></DT>
+
+<DD>
+The kind of mapping change that occurred: <B>MappingModifier</B>
+for a successful <B>XSetModifierMapping</B> (keyboard Shift, Lock, Control,
+Meta keys), <B>MappingKeyboard</B> for a successful <B>XChangeKeyboardMapping</B>
+(other keys), and <B>MappingPointer</B> for a successful <B>XSetPointerMapping</B>
+(pointer button numbers).</DD>
+
+<DT>
+<B>first_keycode</B></DT>
+
+<DD>
+If the <B>request</B> member is <B>MappingKeyboard</B> or
+<B>MappingModifier</B>, then <B>first_keycode</B> indicates the first in
+a range of keycodes with altered mappings. Otherwise, it is not set.</DD>
+
+<DT>
+<B>count</B></DT>
+
+<DD>
+If the <B>request</B> member is <B>MappingKeyboard</B> or
+<B>MappingModifier</B>, then <B>count</B> indicates the number of keycodes
+with altered mappings. Otherwise, it is not set.</DD>
+</DL>
+
+<H3>
+Notes</H3>
+If the <B>request</B> member is <B>MappingKeyboard</B>, clients
+should call <B>XRefreshKeyboardMapping</B>.
+
+<P>The normal response to a <B>request</B> member of <B>MappingPointer</B>
+or <B>MappingModifier</B> is no action. This is because the clients should
+use the logical mapping of the buttons and modifiers to allow the user
+to customize the keyboard if desired. If the application requires a particular
+mapping regardless of the user's preferences, it should call <B>XGetModifierMapping</B>
+or <B>XGetPointerMapping</B> to find out about the new mapping.
+<BR>(generated event).
+<H3>
+When Generated</H3>
+A <B>MotionNotify</B> event reports that the user moved the
+pointer or that a program warped the pointer to a new position within a
+single window.
+<H3>
+Select With</H3>
+This event is selected with <B>ButtonMotionMask</B>, <B>Button1MotionMask</B>,
+<B>Button2MotionMask</B>, <B>Button3MotionMask</B>, <B>Button4MotionMask</B>,
+<B>Button5MotionMask</B>, <B>PointerMotionHintMask</B>, and <B>PointerMotionMask</B>.
+These masks determine the specific conditions under which the event is
+generated.
+
+<P>See 8.3.3.3 of <I>Volume One, Xlib Programming Manual</I>,
+for a description of selecting button events.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XMotionEvent xmotion;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;&nbsp;&nbsp; /* of event */
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window window;&nbsp;&nbsp; /* event window it is reported relative to */
+&nbsp;&nbsp; Window root;&nbsp;&nbsp; /* root window that the event occurred on */
+&nbsp;&nbsp; Window subwindow;&nbsp;&nbsp; /* child window */
+&nbsp;&nbsp; Time time;&nbsp;&nbsp; /* milliseconds */
+&nbsp;&nbsp; int x, y;&nbsp;&nbsp; /* pointer coordinates relative to receiving&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; window */
+&nbsp;&nbsp; int x_root, y_root;&nbsp;&nbsp; /* coordinates relative to root */
+&nbsp;&nbsp; unsigned int state;&nbsp;&nbsp; /* button and modifier key mask */
+&nbsp;&nbsp; char is_hint;&nbsp;&nbsp; /* is this a motion hint */
+&nbsp;&nbsp; Bool same_screen;&nbsp;&nbsp; /* same screen flag */
+} XMotionEvent;
+typedef XMotionEvent XPointerMovedEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>subwindow</B></DT>
+
+<DD>
+If the source window is the child of the receiving window,
+then the <B>subwindow</B> member is set to the ID of that child.</DD>
+
+<DT>
+<B>time</B></DT>
+
+<DD>
+The server time when the button event occurred, in milliseconds.
+<B>Time</B> is declared as <B>unsignedlong</B>, so it wraps around when
+it reaches the maximum value of a 32-bit number (every 49.7 days).</DD>
+
+<DT>
+<B>x</B>, <B>y</B></DT>
+
+<DD>
+If the receiving window is on the same screen as the root
+window specified by <B>root</B>, then <B>x</B> and <B>y</B> are the pointer
+coordinates relative to the receiving window's origin. Otherwise, <B>x</B>
+and <B>y</B> are zero. When active button grabs and pointer grabs are in
+effect (see 9.4), the coordinates relative to the receiving window may
+not be within the window (they may be negative or greater than window height
+or width).</DD>
+
+<DT>
+<B>x_root</B>, <B>y_root</B></DT>
+
+<DD>
+The pointer coordinates relative to the root window which
+is an ancestor of the event window. If the pointer was on a different screen,
+these are zero.</DD>
+
+<DT>
+<B>state</B></DT>
+
+<DD>
+The state of all the buttons and modifier keys just before
+the event, represented by a mask of the button and modifier key symbols:
+<B>Button1Mask</B>, <B>Button2Mask</B>, <B>Button3Mask</B>, <B>Button4Mask</B>,
+<B>Button5Mask</B>, <B>ControlMask</B>, <B>LockMask</B>, <B>Mod1Mask</B>,
+<B>Mod2Mask</B>, <B>Mod3Mask</B>, <B>Mod4Mask</B>, <B>Mod5Mask</B>, and
+<B>ShiftMask</B>.</DD>
+
+<DT>
+<B>is_hint</B></DT>
+
+<DD>
+Either the constant <B>NotifyNormal</B> or <B>NotifyHint</B>.
+<B>NotifyHint</B> indicates that the <B>PointerMotionHintMask</B> was selected.
+In this case, just one event is sent when the mouse moves, and the current
+position can be found by calling <B>XQueryPointer</B> or by examining the
+motion history buffer with <B>XGetMotionEvents</B>, if a motion history
+buffer is available on the server. <B>NotifyNormal</B> indicates that the
+event is real, but it may not be up to date, since there may be many more
+later motion events on the queue.</DD>
+
+<DT>
+<B>same_screen</B></DT>
+
+<DD>
+Indicates whether the pointer is currently on the same screen
+as this window. This is always <B>True</B> unless the pointer was actively
+grabbed before the automatic grab could take place.</DD>
+</DL>
+
+<H3>
+Notes</H3>
+If the processing you have to do for every motion event is
+fast, you can probably handle all of them without requiring motion hints.
+However, if you have extensive processing to do for each one, you might
+be better off using the hints and calling <B>XQueryPointer</B> or using
+the history buffer if it exists. <B>XQueryPointer</B> is a round-trip request,
+so it can be slow.
+
+<P><B>EnterNotify</B> and <B>LeaveNotify</B> events are generated
+instead of <B>MotionEvents</B> if the pointer starts and stops in different
+windows.
+<BR>(generated event).
+<H3>
+When Generated</H3>
+A <B>PropertyNotify</B> event indicates that a property of
+a window has changed or been deleted. This event can also be used to get
+the current server time (by appending zero-length data to a property).
+<B>PropertyNotify</B> events are generated by <B>XChangeProperty()</B>,
+<B>XDeleteProperty()</B>, <B>XGetWindowProperty()</B>, or <B>XRotateWindowProperties()</B>.
+<H3>
+Select With</H3>
+This event is selected with <B>PropertyChangeMask</B>.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XPropertyEvent xproperty;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; Atom atom;
+&nbsp;&nbsp; Time time;
+&nbsp;&nbsp; int state;&nbsp;&nbsp; /* PropertyNewValue, PropertyDeleted */
+} XPropertyEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>window</B></DT>
+
+<DD>
+The window whose property was changed, not the window that
+selected the event.</DD>
+
+<DT>
+<B>atom</B></DT>
+
+<DD>
+The property that was changed.</DD>
+
+<DT>
+<B>state</B></DT>
+
+<DD>
+Either <B>PropertyNewValue</B> or <B>PropertyDeleted</B>.
+Whether the property was changed to a new value or deleted.</DD>
+
+<DT>
+<B>time</B></DT>
+
+<DD>
+The <B>time</B> member specifies the server time when the
+property was changed.</DD>
+</DL>
+(generated event).
+<H3>
+When Generated</H3>
+A <B>ReparentNotify</B> event reports when a client successfully
+reparents a window.
+<H3>
+Select With</H3>
+This event is selected with <B>SubstructureNotifyMask</B>
+by specifying the window ID of the old or the new parent window or with
+<B>StructureNotifyMask</B> by specifying the window ID.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XReparentEvent xreparent;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window event;
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; Window parent;
+&nbsp;&nbsp; int x, y;
+&nbsp;&nbsp; Bool override_redirect;
+} XReparentEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>window</B></DT>
+
+<DD>
+The window whose parent window was changed.</DD>
+
+<DT>
+<B>parent</B></DT>
+
+<DD>
+The new parent of the window.</DD>
+
+<DT>
+<B>x</B>, <B>y</B></DT>
+
+<DD>
+The coordinates of the upper-left pixel of the window's border
+relative to the new parent window's origin.</DD>
+
+<DT>
+<B>override_redirect</B></DT>
+
+<DD>
+The <B>override_redirect</B> attribute of the reparented
+window. If <B>True</B>, it indicates that the client wants this window
+to be immune to meddling by the window manager. Window managers normally
+should not have reparented this window to begin with.</DD>
+</DL>
+(generated event).
+<H3>
+When Generated</H3>
+A <B>ResizeRequest</B> event reports another client's attempt
+to change the size of a window. The X server generates this event type
+when another client calls <B>XConfigureWindow()</B>, <B>XMoveResizeWindow()</B>,
+or <B>XResizeWindow()</B>. If this event type is selected, the window is
+not resized. This gives the client that selects this event (usually the
+window manager) the opportunity to revise the new size of the window before
+executing the resize request or to deny the request itself.
+<H3>
+Select With</H3>
+To receive this event type, specify a window ID and pass
+<B>ResizeRedirectMask</B> as part of the <B>event_mask</B> argument to
+<B>XSelectInput</B>. Only one client can select this event on a particular
+window. When selected, this event is triggered instead of resizing the
+window.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XResizeRequestEvent xresizerequest;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; int width, height;
+} XResizeRequestEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>window</B></DT>
+
+<DD>
+The window whose size another client attempted to change.</DD>
+
+<DT>
+<B>width</B>, <B>height</B></DT>
+
+<DD>
+The requested size of the window, not including its border.</DD>
+</DL>
+(generated event).
+<H3>
+When Generated</H3>
+A <B>SelectionClear</B> event reports to the current owner
+of a selection that a new owner is being defined.
+<H3>
+Select With</H3>
+This event is not selected. It is sent to the previous selection
+owner when another client calls <B>XSetSelectionOwner</B> for the same
+selection.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XSelectionClearEvent xselectionclear;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; Atom selection;
+&nbsp;&nbsp; Time time;
+} XSelectionClearEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>window</B></DT>
+
+<DD>
+The window that is receiving the event and losing the selection.</DD>
+
+<DT>
+<B>selection</B></DT>
+
+<DD>
+The selection atom specifying the selection that is changing
+ownership.</DD>
+
+<DT>
+<B>time</B></DT>
+
+<DD>
+The last-change time recorded for the selection.</DD>
+</DL>
+(generated event).
+<H3>
+When Generated</H3>
+A <B>SelectionNotify</B> event is sent only by clients, not
+by the server, by calling <B>XSendEvent()</B>. The owner of a selection
+sends this event to a requestor (a client that calls <B>XConvertSelection()</B>
+for a given property) when a selection has been converted and stored as
+a property or when a selection conversion could not be performed (indicated
+with property <B>None</B>).
+<H3>
+Select With</H3>
+There is no event mask for <B>SelectionNotify</B> events,
+and they are not selected with <B>XSelectInput</B>. Instead <B>XSendEvent</B>
+directs the event to a specific window, which is given as a window ID:
+<B>PointerWindow</B>, which identifies the window the pointer is in, or
+<B>InputFocus</B>, which identifies the focus window.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XSelectionEvent xselection;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window requestor;
+&nbsp;&nbsp; Atom selection;
+&nbsp;&nbsp; Atom target;
+&nbsp;&nbsp; Atom property;&nbsp;&nbsp; /* Atom or None */
+&nbsp;&nbsp; Time time;
+} XSelectionEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+The members of this structure have the values specified in
+the <B>XConvertSelection</B> call that triggers the selection owner to
+send this event, except that the <B>property</B> member either will return
+the atom specifying a property on the requestor window with the data type
+specified in <B>target</B> or will return <B>None</B>, which indicates
+that the data could not be converted into the <B>target</B> type.
+<BR>(generated event).
+<H3>
+When Generated</H3>
+A <B>SelectionRequest</B> event is sent to the owner of a
+selection when another client requests the selection by calling <B>XConvertSelection()</B>.
+<H3>
+Select With</H3>
+There is no event mask for <B>SelectionRequest</B> events,
+and they are not selected with <B>XSelectInput</B>.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XSelectionRequestEvent xselectionrequest;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window owner;
+&nbsp;&nbsp; Window requestor;
+&nbsp;&nbsp; Atom selection;
+&nbsp;&nbsp; Atom target;
+&nbsp;&nbsp; Atom property;
+&nbsp;&nbsp; Time time;
+} XSelectionRequestEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+The members of this structure have the values specified in
+the <B>XConvertSelection</B> call that triggers this event.
+
+<P>The owner should convert the selection based on the specified
+<B>target</B> type, if possible. If a property is specified, the owner
+should store the result as that property on the requestor window and then
+send a <B>SelectionNotify</B> event to the requestor by calling <B>XSendEvent</B>.
+If the selection cannot be converted as requested, the owner should send
+a <B>SelectionNotify</B> event with <B>property</B> set to the constant
+<B>None</B>.
+<BR>(generated event).
+<H3>
+When Generated</H3>
+A <B>VisibilityNotify</B> event reports any change in the
+visibility of the specified window. This event type is never generated
+on windows whose class is <B>InputOnly</B>. All of the window's subwindows
+are ignored when calculating the visibility of the window.
+<H3>
+Select With</H3>
+This event is selected with <B>VisibilityChangeMask</B>.
+<H3>
+XEvent Structure Name</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef union _XEvent {
+&nbsp;&nbsp; ...
+&nbsp;&nbsp; XVisibilityEvent xvisibility;
+&nbsp;&nbsp; ...
+} XEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int type;
+&nbsp;&nbsp; unsigned long serial;&nbsp;&nbsp; /* # of last request processed by server */
+&nbsp;&nbsp; Bool send_event;&nbsp;&nbsp; /* True if this came from SendEvent request */
+&nbsp;&nbsp; Display *display;&nbsp;&nbsp; /* Display the event was read from */
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; int state;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* VisibilityFullyObscured,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; VisibilityPartiallyObscured,&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; VisibilityUnobscured */
+} XVisibilityEvent;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Event Structure Members</H3>
+
+<DL>
+<DT>
+<B>state</B></DT>
+
+<DD>
+A symbol indicating the final visibility status of the window:
+<B>VisibilityFullyObscured</B>, <B>VisibilityPartiallyObscured</B>, or
+<B>VisibilityUnobscured</B>.</DD>
+</DL>
+
+<H3>
+Notes</H3>
+Table E-5 lists the transitions that generate <B>VisibilityNotify</B>
+events and the corresponding <B>state</B> member of the <B>XVisibilityEvent</B>
+structure.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table E-5 : </B>State Element of the XVisibilityEvent
+Structure</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Visibility Status Before</TH>
+
+<TH>Visibility Status After</TH>
+
+<TH>State Member</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Partially obscured, fully obscured, or not viewable</TD>
+
+<TD>Viewable and completely unobscured</TD>
+
+<TD><B>VisibilityUnobscured</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Viewable and completely unobscured,viewable and fully
+obscured,or not viewable</TD>
+
+<TD>Viewable and partially obscured</TD>
+
+<TD><B>VisibilityPartially- Obscured</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Viewable and completely unobscured, viewable and partially
+obscured,or not viewable</TD>
+
+<TD>Viewable and partially obscured</TD>
+
+<TD><B>VisibilityPartially- Obscured</B></TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

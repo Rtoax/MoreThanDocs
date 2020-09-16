@@ -1,0 +1,388 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_21_app_E.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_23_app_G.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H2>
+The Xmu Library</H2>
+The Xmu library provides a number of functions that combine
+Xlib functions in useful ways. This appendix summarizes the available functions.
+See Appendix J of Volume Two, <I>Xlib Reference Manual</I>, for detailed
+reference pages for each function. (After mid-1992, these reference pages
+may be moved to a new volume, <I>Extensions and Utilities</I>.)
+
+<P>The Xmu Library is a collection of miscellaneous (some
+might say random) utility functions that have been useful in building various
+applications and Xt Toolkit widgets. Though not defined by any X Consortium
+standard, this library is written and supported by MIT in the core distribution
+and therefore should be available on most machines.
+
+<P>The functions in Xmu are briefly described here in several
+categories: atom manipulation, error handlers, system utilities, window
+utilities, cursor utilities, color utilities, pixmap utilities, graphics
+functions, selection functions, character set functions, compound text
+functions, close display functions, event queue functions, and standard
+colormap functions. For detailed calling sequences for these functions,
+see Appendix J, <I>The Xmu Library</I>, of <I>Volume Two, Xlib Reference
+Manual</I>.
+
+<P>At each release, the number and variety of functions in
+this library have increased dramatically. Even if you are familiar with
+the contents of Xmu in an earlier release, it is worthwhile skimming this
+appendix.
+
+<P>Each of the groups of functions listed below has its own
+header file. The Xmu header files are located (by default on UNIX-based
+systems) in <I>/usr/include/X11/Xmu</I>.
+<BR>
+<HR>
+<H2>
+Atom Functions</H2>
+These functions allow an application to use various properties
+that do not have predefined atoms, without having to maintain a global
+variable to store the atom. Instead Xmu handles calling <B>XInternAtom()</B>
+on the first reference and caches the value for all further references.
+For example, after initializing Xmu's atom-caching facility (with the arcane
+invocation <B>XmuInternAtom(display, XmuMakeAtom("NULL"))</B>), you can
+get the atom for any property that Xmu knows about, such as CLIPBOARD,
+simply by using the phrase <B>XA_CLIPBOARD(</B><I>display</I>).
+<BR>
+<HR>
+<H2>
+Error Handler Functions</H2>
+<B>XmuPrintErrorMessage()</B> prints an error message equivalent
+to Xlib's default error message for protocol errors. It returns a nonzero
+value if the caller should consider exiting; otherwise, it returns 0. This
+function can be used when you need to write your own error handler but
+need to print out an error from within that handler.
+
+<P><B>XmuSimpleErrorHandler()</B> is an error handler function
+you can use in place of the default protocol error handler. It ignores
+<B>BadWindow</B> errors for <B>XQueryTree()</B> and <B>XGetWindowAttributes()</B>
+and ignores <B>BadDrawable</B> errors for <B>XGetGeometry()</B>; it returns
+0 in those cases. Otherwise, it prints the default error message and returns
+a nonzero value if the caller should consider exiting and 0 if the caller
+should not exit.
+<BR>
+<HR>
+<H2>
+System Utility Functions</H2>
+<B>XmuGetHostname()</B> provides an operating-system-independent
+interface for getting the hostname of the system on which the client is
+running. This is useful for setting the WM_CLIENT_MACHINE property for
+the window manager.
+<BR>
+<HR>
+<H2>
+Window Utility Functions</H2>
+<B>XmuScreenOfWindow()</B> returns a pointer to the <B>Screen</B>
+structure that describes the screen on which the window was created.
+
+<P><B>XmuClientWindow()</B> finds a window at or below the
+specified window which has a WM_STATE property. If such a window is found,
+it is returned; otherwise, the argument window is returned. This is used
+by window managers.
+
+<P><B>XmuUpdateMapHints()</B> is a convenience routine for
+setting (by applications) and reading (by the window manager) the <B>XA_WM_NORMAL_HINTS</B>
+property. It clears the <B>PPosition</B> and <B>PSize</B> flags and sets
+the <B>USPosition</B> and <B>USSize</B> flags in the hints structure and
+then stores the hints for the window using <B>XSetWMNormalHints()</B> and
+returns <B>True</B>. If <B>NULL</B> is passed for the hints structure,
+then the current hints are read back from the window using <B>XGetWMNormalHints()</B>
+and are used instead and <B>True</B> is returned; otherwise, <B>False</B>
+is returned.
+<BR>
+<HR>
+<H2>
+Cursor Utility Functions</H2>
+<B>XmuCursorNameToIndex</B> takes the name of a standard
+cursor and returns its index in the standard cursor font. The cursor names
+are formed by removing the <B>XC_</B> prefix from the symbolic constants
+for cursors listed in Appendix I, <I>The Cursor Font</I>, of <I>Volume
+Two, Xlib Reference Manual</I>.
+<BR>
+<HR>
+<H2>
+Color Utilities</H2>
+<B>XmuDistinguishableColors</B> compares two or more sets
+of RGB values and determines whether the colors are distinguishable.
+
+<P><B>XmuDistinguishablePixels</B> compares two or more pixel
+values and determines whether the colors in the corresponding colormap
+cells are distinguishable.
+<BR>
+<HR>
+<H2>
+Pixmap Utilities</H2>
+<B>XmuLocatePixmapFile</B> creates a pixmap from a file located
+in a relative or absolute directory, possibly specified in an environment
+variable.
+<BR>
+<HR>
+<H2>
+Graphics Functions</H2>
+<B>XmuDrawRoundedRectangle</B> draws a rounded rectangle,
+given x, y, width, height dimensions of the overall rectangle, and ew and
+eh sizes of a bounding box that the corners are drawn inside of. This function
+simply calls Xlib's drawing routines.
+
+<P><B>XmuFillRoundedRectangle</B> simply fills a shape similar
+to that drawn by <B>XmuDrawRoundedRectangle</B>, in the same way that <B>XFillRectangle()</B>
+fills.
+
+<P><B>XmuDrawLogo</B> draws the "official" X Window System
+logo. The bounding box of the logo is given by x, y, width, and height.
+
+<P><B>XmuCreateStippledPixmap</B> creates a two- by two-pixel
+pixmap of specified depth on the specified screen, with the top-left and
+bottom-right pixels drawn in the foreground pixel value and the other two
+drawn in the background. The pixmap is cached so that multiple requests
+share the same pixmap. The pixmap should be freed with <B>XmuReleaseStippledPixmap</B>
+to maintain correct reference counts.
+
+<P><B>XmuReadBitmapData</B> reads a standard bitmap file
+description from the specified stream and returns the parsed data in a
+format suitable for passing to <B>XCreateBitmapFromData()</B>
+
+<P><B>XmuReadBitmapDataFromFile</B> reads a standard bitmap
+file description from the specified file and returns the parsed data in
+a format suitable for passing to <B>XCreateBitmapFromData()</B>.
+
+<P><B>XmuLocateBitmapFile</B> reads a file in standard bitmap
+file format, using <B>XReadBitmapFile()</B>, and returns the created bitmap.
+The filename may be absolute or relative to the global resource named <B>bitmapFilePath</B>
+with class <B>BitmapFilePath</B>. If the resource is not defined, the default
+value is the build symbol <B>BITMAPDIR</B>, which is typically <I>/usr/include/X11/bitmaps</I>.
+
+<P><B>XmuCreatePixmapFromBitmap</B> creates a pixmap of the
+specified width, height, and depth on the same screen as the specified
+drawable and then performs an <B>XCopyPlane()</B> from the specified bitmap
+to the pixmap, using the specified foreground and background pixel values.
+<BR>
+<HR>
+<H2>
+Selection Functions</H2>
+<B>XmuConvertStandardSelection</B> converts the following
+standard selections: CLASS, CLIENT_WINDOW, DECNET_ADDRESS, HOSTNAME, IP_ADDRESS,
+NAME, OWNER_OS, TARGETS, TIMESTAMP, and USER. It returns <B>True</B> if
+the conversion was successful, else it returns <B>False</B>.
+<BR>
+<HR>
+<H2>
+Character Set Functions</H2>
+<B>XmuCopyISOLatin1Lowered</B> copies a null-terminated string
+(including the null), changing all Latin-1 uppercase letters to lowercase.
+<B>XmuCopyISOLatin1Uppered</B> copies a null-terminated string (including
+the null), changing all Latin-1 lowercase letters to uppercase. <B>XmuCompareISOLatin1</B>
+compares two null-terminated Latin-1 strings, ignoring case differences,
+and returns an integer greater than, equal to, or less than 0, according
+to whether first is lexicographically greater than, equal to, or less than
+second. In all three of these routines, the string is assumed to be encoded
+using ISO 8859-1.
+
+<P>The following functions have the same arguments and function
+as <B>XLookupString()</B>, except that they convert to keysyms in different
+sets.
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table F-1 : </B>Character Set Functions</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Function</TH>
+
+<TH>Converts To</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XmuLookupAPL</B></TD>
+
+<TD>APL string</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XmuLookupArabic</B></TD>
+
+<TD>Latin/Arabic (ISO 8859-6) or ASCII control</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XmuLookupCyrillic</B></TD>
+
+<TD>Latin/Cyrillic (ISO 8859-5) or ASCII control</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XmuLookupGreek</B></TD>
+
+<TD>Latin/Greek (ISO 8859-7) or ASCII control</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XmuLookupHebrew</B></TD>
+
+<TD>Latin/Hebrew (ISO 8859-8) or ASCII control string</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XmuLookupJISX0201</B></TD>
+
+<TD>JIS X0201-1976 encoding, including ASCII control</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XmuLookupKana</B></TD>
+
+<TD>Latin-1 (ISO 8859-1) and ASCII control in the Graphics
+Left half (values 0 to 127) and Katakana in the Graphics Right half (values
+128 to 255), using the values from JIS X201-1976.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XmuLookupLatin1</B></TD>
+
+<TD>Latin-1 (ISO 8859-1) or ASCII control (synonym for XLookupString)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XmuLookupLatin2</B></TD>
+
+<TD>Latin-2 (ISO 8859-2) or ASCII control</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XmuLookupLatin3</B></TD>
+
+<TD>Latin-3 (ISO 8859-3) or ASCII control</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>XmuLookupLatin4</B></TD>
+
+<TD>Latin-4 (ISO 8859-4) or ASCII control&nbsp;</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>
+<HR>
+<H2>
+Compound Text Functions</H2>
+These functions are for parsing Compound Text strings, decomposing
+them into individual segments. Four functions are provided for this purpose:
+<B>XctCreate</B>, <B>XctFree</B>, <B>XctNextItem</B>, <B>XctReset</B>.
+For more information on these functions, see Appendix J, <I>The Xmu Library</I>,
+of <I>Volume Two, Xlib Reference Manual</I>.
+<BR>
+<HR>
+<H2>
+CloseDisplay Hook Functions</H2>
+<B>XmuAddCloseDisplayHook</B> adds a function that will be
+called with the given arguments when <B>XCloseDisplay()</B> is called.
+<B>XmuRemoveCloseDisplayHook</B> deletes the function that has been added
+with <B>XmuAddCloseDisplayHook</B>. More than one such function can be
+added.
+
+<P><B>XmuLookupCloseDisplayHook</B> determines if a function
+is installed.
+
+<P>These functions use the Display Queue Functions internally,
+which are described next.
+<BR>
+<HR>
+<H2>
+Display Queue Functions</H2>
+<B>XmuDQCreate</B> creates and returns an empty <B>XmuDisplayQueue</B>
+(which is really just a linked list of displays; it is called a queue for
+historical reasons). The queue is initially empty, but displays can be
+added using <B>XmuDQAddDisplay</B>. Functions can be added for each display,
+to be called when the display connection is closed. These are called close
+callbacks. Functions can also be added to be called when the last display
+connection is closed. These are called free callbacks. The application
+is responsible for actually freeing the queue, by calling <B>XmuDQDestroy</B>.
+
+<P><B>XmuDQAddDisplay</B> does not attempt to prevent duplicate
+entries in the queue; the caller should use <B>XmuDQLookupDisplay</B> to
+determine if a display has already been added to a queue. The <B>XmuDQNDisplays</B>
+macro returns the number of displays in the specified queue. <B>XmuDQRemoveDisplay</B>
+removes the specified display from the specified queue, without calling
+its close callbacks. <B>XmuDQDestroy</B> releases all memory associated
+with the specified queue and optionally calls the close callbacks for each
+display.
+<BR>
+<HR>
+<H2>
+Standard Colormap Functions</H2>
+<B>XmuAllStandardColormaps</B> creates all of the appropriate
+standard colormaps for every visual of every screen on a given display.
+If the property of any standard colormap is already defined, this function
+will redefine it. This function is intended to be used by window managers
+or a special client at the start of a session.
+
+<P><B>XmuVisualStandardColormaps</B> creates all of the appropriate
+standard colormaps for a given visual on a given screen.
+
+<P><B>XmuLookupStandardColormap</B> creates a standard colormap
+if one does not currently exist or replaces the currently existing standard
+colormap. Given a screen, a visual, and a property, this function will
+determine the best allocation for the property under the specified visual
+and whether to create a new colormap or use the default colormap of the
+screen.
+
+<P><B>XmuGetColormapAllocation</B> determines the best allocation
+of reds, greens, and blues in a standard colormap. It is assumed that the
+visual is appropriate for the colormap property.
+
+<P><B>XmuStandardColormap</B> creates any one standard colormap,
+given a visual, a standard colormap atom, and other input, and returns
+an <B>XStandardColormap</B> structure. <B>XmuCreateColormap</B> creates
+any one colormap, given an <B>XStandardColormap</B> structure.
+
+<P>All colormaps are created with read-only allocations,
+with the exception of read-only allocations of colors, which fail to return
+the expected pixel value, and these are individually defined as read/write
+allocations. This is done so that all the cells defined in the colormap
+are contiguous, for use in image processing. This typically happens with
+White and Black in the default map.
+
+<P>Colormaps of static visuals are considered to be successfully
+created if the map of the static visual matches the definition given in
+the standard colormap structure.
+
+<P><B>XmuDeleteStandardColormap</B> removes any standard
+colormap property, also releasing any resources used by the colormap(s)
+specified in the property, if possible.
+<BR>
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

@@ -1,0 +1,2345 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_10.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_12.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H1>
+Internationalized Text Input</H1>
+Converting user keystrokes into text in the encoding of the
+locale is perhaps the most difficult task in internationalization. This
+chapter is a continuation of the last, and assumes knowledge of the basics
+of internationalization covered in that chapter. The first two sections
+provide an overview of the internationalized text input model used by R5,
+and are valuable to any programmer writing internationalized applications.
+The remaining sections describe the new Xlib functions and datatypes for
+internationalized text input, and are quite detailed. Programmers who will
+be writing output-only applications or who will be using toolkits or widgets
+with internationalized text input capabilities built in can skip these
+sections.
+
+<P>In an internationalized program, you can't assume any
+particular mapping between keystrokes and input characters. An internationalized
+program must run in any locale on a single workstation, using a single
+keyboard. The mapping between keystrokes and Japanese characters is very
+different (and more complex) than the mapping between keystrokes and Latin
+characters, for example. When there are more characters in the codeset
+of a locale than there are keys on a keyboard, some sort of <I>input method</I>
+is required for mapping between multiple keystrokes and input characters.
+R5 supports the internationalization of keyboard input with the new abstractions
+<I>X Input Method</I> (<B>XIM</B>) and <I>X Input Context</I> (<B>XIC</B>)
+and the new functions, <B>XmbLookupString()</B> and <B>XwcLookupString()</B>,
+which return a string in the encoding of the locale. Because internationalized
+text input is a complex topic, we begin with a discussion of the important
+issues of internationalized text input in Section 11.1, "Issues of Internationalized
+Text Input" and an overview of the X input method architecture in Section
+11.2, "Overview of the X Input Method Architecture." The remaining sections
+explain the individual topics required in order to implement internationalized
+text input.
+
+<P>Before beginning with internationalized text input, bear
+in mind that input methods are a technology that has previously been used
+only in <I>ad hoc</I> ways for specific languages. Driven by industry demand,
+it has very quickly advanced from research topic to X Consortium standard,
+and now must operate correctly in any locale. It is a difficult problem
+and R5 does not provide a complete solution. One frustration is the ambiguity,
+in places, of the XIM specification, which defines how an input method
+interacts with an Xlib application. This book attempts to resolve those
+ambiguities in reasonable ways, but in practice, much remains "implementation
+defined," and internationalized programs may have to be tailored to operate
+correctly with a few particular target input methods. None of the input
+methods that are shipped with R5 are part of the core distribution, and
+none are fully robust or well documented (not in English, at least). The
+XIM designers envision that their internationalized text input mechanism
+will be incorporated within toolkits and Xt widgets, and thus will be hidden
+from most programmers. Until these widgets are available, however, performing
+truly internationalized text input may be a difficult task.
+
+<P>R5 as shipped from MIT contains two separate implementations
+of the input method internationalization facilities. The "Xsi" implementation
+is the default on all but Sony machines, which use the "Ximp" implementation.
+Each implementation defines its own protocol for communication between
+Xlib and input methods (which are implemented as Separate processes). Ximp
+and Xsi each come with contributed input methods which are not compatible
+with each other. Steps are now going on within the X Consortium to standardize
+on one of these implementations, so you should enquire about the status
+of that effort before putting significant effort into a product using one
+of these implementations.
+<BR>
+<HR>
+<H2>
+Issues of Internationalized Text Input</H2>
+Think for a moment about how we use a keyboard to enter text
+into a computer. There are not enough keys on a standard keyboard for all
+the lowercase and uppercase letters used in English as well as the number
+and punctuation characters, so we use a shift key to effectively double
+the number of characters we can enter.
+
+<P>But for many European languages, this technique is not
+sufficient. The most common accented characters may appear directly on
+a keyboard (the &eacute;, &egrave;, and &ccedil; in French, for example)
+but this still leaves a variety of other characters that cannot be entered
+with any single shifted or unshifted keystroke. French typewriters have
+a key that will produce an umlaut or a caret, without advancing the carriage,
+so to produce a &ucirc;, for example, you would strike the caret key followed
+by the "u" key. In computer systems, a variety of methods have been developed
+for entering these accented characters. Often they involve a Compose key
+(found on many DEC keyboards) or any "dead key" which, does not send a
+code when struck but places the keyboard into a special compose mode (sometimes
+indicated by a light on the keyboard) in which one or more of the following
+keystrokes are combined into a single character. If this sort of input
+method is implemented in the keyboard hardware or in the operating system
+software, then it behaves transparently to the programmer who can simply
+read characters, assured that the user will have some way of entering any
+text desired.
+
+<P>As with internationalized text output, it is with the
+Asian ideographic languages that things become complicated. Japanese and
+Korean both have phonetic alphabets that are small enough to physically
+map onto a keyboard. It is sometimes adequate to leave text in this phonetic
+alphabet, but usually the user will want the final text to be in the full
+ideographic language. Input methods for these languages commonly have the
+user type the phonetic symbols for a particular word or words and signal
+somehow when this composition or pre-editing is finished. The input method
+then looks up that string of phonetic characters in a dictionary and converts
+it to the equivalent character or characters in the ideographic system.
+Sometimes there will be more than one character with a given phonetic representation,
+in which case the user will have to select between them.
+
+<P>These methods are obviously more complex than European
+compose methods. They are modal, and must display a lot of state information.
+It is not enough to have a keyboard light that tells users that they are
+composing an ideographic character; the computer must display the phonetic
+characters as the user types them, allow the user to edit them, and then
+when the user is done, compose them into an ideographic character or characters.
+The conversion from phonetic to ideographic characters requires a large
+dictionary, and finally, as noted above, the input method may have to display
+a menu or popup dialog box so the user can choose among ideograms with
+the same phonetic representation.
+
+<P>Because input methods can be so large and complex, and
+because they vary so much from locale to locale, it does not make sense
+to link every application with a generic input method which is somehow
+localized at application startup. Instead, an <I>input manager</I> is usually
+run as a separate process that communicates with the X server and with
+the application. At application startup, the setting of the locale or the
+"im" locale modifier determines to which input manager the application
+establishes a connection. R5 provides new routines and datatypes in Xlib
+which support this sort of internationalized text input. The next section
+provides an overview of the Xlib architecture for internationalized text
+input.
+<BR>
+<HR>
+<H2>
+Overview of the X Input Method Architecture</H2>
+The sections below present an overview of the concepts, datatypes,
+and functions used in R5 to support input methods. An understanding of
+material presented here will make the implementation details presented
+in later sections easier to follow.
+<H3>
+Input Methods and Input Servers</H3>
+An internationalized X application gets user text input by
+communicating with an input method. At application startup, the application
+is localized by opening the particular input method appropriate for the
+locale. Often, opening an input method causes Xlib to establish a connection
+to another process known as the "input manager" or "input server." The
+input manager can provide input method service to multiple X clients that
+use the same locale. Sometimes an input manager will connect to a third
+process, the translation server, which performs dictionary lookup and translation
+from pre-edit text (often phonetic) to composed text (often ideographic).
+The details of input method architecture are of course implementation dependent.
+Simple input methods, for example, can be implemented directly in Xlib,
+without need of other processes. The default Xsi implementation shipped
+with the MIT distribution does just this for European compose methods that
+do not require any dictionary lookup or graphical feedback. Figure 11-1
+diagrams several possible connections between a client and its input method.
+
+<P><B>Possible input method architectures</B>
+
+<P><IMG SRC="imgs/fig.11.01.gif" ALT="fig.11.01.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;The XIM architecture was designed to support two
+models of input method, known as front-end and back-end methods. A <I>front-end
+input method</I> intercepts events from the X server before they reach
+the application. A <I>back-end method</I> filters events from the application,
+before the application has processed them. Because internationalized programs
+must support either model of input method, the distinction is of little
+importance to the programmer. It is discussed in the XIM specification,
+however, and you may run across it in other discussions of input methods.
+
+<P>Recall the distinction between internationalized and multilingual
+applications. There is nothing to prevent an application from opening multiple
+input methods for multiple locales, but internationalized applications
+will generally operate only in a single locale and will therefore only
+need a single input method.
+<H3>
+User Interaction with an Input Method</H3>
+In order for a complex input method to provide feedback or
+otherwise interact with the user, it must have regions of the screen that
+it can draw text or bitmaps into. The X Input Method specification defines
+three of these areas:
+<UL>
+<LI>
+The <I>Status</I> area is an output-only window in which
+the input method can display information about its internal state. It can
+be thought of as a logical extension of the keyboard mode indicators, such
+as the Caps Lock indicator. The client generally provides this area to
+the input method, but the input method is solely responsible for its contents.</LI>
+
+<LI>
+The <I>Preedit</I> area is the region for the display of
+the intermediate text typed while composing a character. The client generally
+provides this area to the input method, which is responsible for its contents.</LI>
+
+<LI>
+The <I>Auxiliary</I> area is a transient window used for
+any popup menus or dialog boxes that are needed by the input method. This
+area is managed entirely by the input method.</LI>
+</UL>
+The location and use of the Preedit and Status areas depend
+on the interaction style used between the application and the input method.
+Four interaction styles are defined by the X Input Method specification.
+<UL>
+<LI>
+In the <I>root-window</I> pre-editing style, the input method
+displays data outside of the application in a window that is a child of
+the root window.</LI>
+
+<LI>
+In the <I>off-the-spot</I> pre-editing style, the input method
+displays pre-edit data in a fixed location of the application window, often
+in a "message line" near the bottom.</LI>
+
+<LI>
+In the <I>over-the-spot</I> pre-editing style, the input
+method displays pre-edit data a window of its own which is placed over
+the current insertion point.</LI>
+
+<LI>
+In the <I>on-the-spot</I> pre-editing style, the input method
+directs the application to display the pre-edit data. When using this style,
+the application can display the pre-edit text in a way that matches the
+display of the already composed text.</LI>
+</UL>
+The client must choose an interaction style from a list of
+styles supported by the input method, and must provide the Preedit and
+Status areas as required by that style. Additionally, in the case of on-the-spot
+pre-editing, the client must supply callbacks that the input method can
+call to control the pre-edit process.
+<H3>
+The X Input Method</H3>
+An application that wishes to use an input method must first
+call <B>XOpenIM()</B>. This function establishes a connection to the input
+method appropriate for the current locale, and returns an opaque handle
+of type <B>XIM</B>. Opening an input method is conceptually similar to
+opening a display, and the <B>XIM</B> returned is analogous to the <B>Display
+*</B> returned by <B>XOpenDisplay()</B>. An input method is bound to the
+particular locale that was in effect when it was created, even if this
+locale is subsequently changed. <B>XOpenIM()</B> and related functions
+are documented in Section 11.4.1, "Opening and Closing an Input Method."
+<H3>
+The X Input Context</H3>
+Just as the X server can display multiple windows for a single
+client, an input method can maintain multiple <I>input contexts</I> for
+an application. The function <B>XCreateIC()</B> creates a new input context
+in an input method. The function returns an opaque handle of type <B>XIC</B>.
+Like the <B>Window</B> or <B>GC</B> types, <B>XIC</B> has a number of attributes
+which can be set. These attributes control the interaction style for input
+done under that context, the regions to be used for the Preedit and Status
+areas, the <B>XFontSet</B> with which the text should be drawn, and so
+on. <B>XCreateIC()</B> and related routines to set and get the values of
+input context attributes are documented in Section 11.5.2, "Creating and
+Destroying Input Contexts."
+
+<P>A text editor that supported multiple editing windows
+within a single top-level window could choose to create one IC for each
+editing window, or to share only one IC among all such windows. In the
+first case, each window would have different Preedit and Status areas,
+and each could be in a different intermediate state of pre-editing. In
+the second case, there would be a single Preedit and a single Status area
+shared by all editing windows, and the application would probably reset
+the state of the IC each time the input focus moved from one window to
+another.
+<H3>
+Input Context Focus Management</H3>
+Because there is only one keyboard associated with an X display,
+X allows only one window to have the input focus at a time. For the same
+reason, only one input context (per application) can have the focus at
+a time. The function <B>XSetICFocus()</B> causes key events to be directed
+to a particular IC. It should be called at least once by every application
+that uses input contexts. In addition, the application should set the <B>FocusWindow</B>
+attribute of the IC to the window in which the key events will occur.
+
+<P>If an application has multiple text entry windows using
+multiple input contexts, that application will have to call <B>XSetICFocus()</B>
+every time the input focus changes. An application that shares a single
+IC among multiple text entry windows will have to set the <B>FocusWindow</B>
+attribute of that IC each time the focus changes. Note that focus changes
+can be changes of the focus window known to the X server, or they can be
+application-internal focus changes, controlled by event redirection as
+is done in Xt and other toolkits.
+<H3>
+Preedit and Status Area Geometry Management</H3>
+Depending on interaction style, an input method may require
+screen space to display pre-edit and status information. The application
+is responsible for providing these areas, but except for the on-the-spot
+interaction style, the input method will handle all output to them. When
+an input method requires screen space, the application should query its
+desired size and attempt to honor it. Note however that the input method
+must make do with whatever area it is given. This geometry management and
+geometry negotiation is handled through attributes of each input context
+and with a "geometry callback" function. These are described in Sections
+11.7 and 11.8.1.
+<H3>
+Preedit and Status Callbacks</H3>
+When using the on-the-spot interaction style, the IM will
+request the application to display pre-edit and status information for
+it. This is more complicated for the application, but because the application
+has finer control over the positioning of the information, it allows the
+appearance of a seamless interface with the IM. The IM makes requests of
+the application through a series of callback functions specified as attributes
+of the IC. The prototypes and responsibilities of these functions will
+be described in Section 11.8, "Geometry, Preedit, and Status Callbacks."
+<H3>
+Getting Composed Input</H3>
+When the application gets a <B>KeyPress</B> event, it should
+use that event in a call to <B>XmbLookupString()</B> or <B>XwcLookupString()</B>.
+These functions are analogs of <B>XLookupString()</B>, but return multi-byte
+or wide-character strings in the codeset of the locale, where <B>XLookupString()</B>
+can only return Latin-1 strings. Because it may take multiple keystrokes
+to enter a single character of text, these functions may return a status
+code that indicates that no composed input is ready.
+
+<P>Some input methods intercept keyboard events before the
+application has a chance to see them. If this is the case, they will send
+a synthetic <B>KeyPress</B> event with a keycode of 0 when there is composed
+input that should be looked up by the application.
+<H3>
+Filtering Events</H3>
+In order for an input method to perform pre-editing of input,
+it must have access to all <B>KeyPress</B> events. These events are passed
+to it through one of the internationalized <B>LookupString</B> functions.
+All but the most simple input methods, however, need access to other events
+as well. An IM that displays graphical feedback to the user will have to
+receive expose events, and an IM that displays a menu of homonyms, for
+example, will need to receive mouse motion and button events. <B>XFilterEvent()</B>
+provides the hook that makes this possible. This function must be called
+from within an application's event loop before each new event is processed.
+If the IM has registered a (Xlib-internal) filter for that event, <B>XFilterEvent()</B>
+invokes the filter and the IM has a chance to examine the event. If the
+IM is interested in the event, <B>XFilterEvent()</B> will return <B>True</B>,
+and the application should not dispatch the event any further. Notice that
+an IM can use <B>XFilterEvent()</B> to filter KeyPress events before the
+application can call one of the <B>LookupString</B> functions, but this
+is not the primary purpose of the function.
+
+<P>It is not safe to assume that the IM will only need events
+that the application currently receives, so the IM places an event mask
+for events in which it is interested in an attribute of each IC. The application
+is responsible for requesting to receive those events in the window of
+the IC.
+<H3>
+The Big Picture</H3>
+With the above explanations in mind, we can now consider
+the saga of a keystroke as it is processed through an internationalized
+application. Figure 11-2 diagrams the path a character follows between
+being typed on the keyboard and being displayed on the screen in an internationalized
+application.
+
+<P><B>How a keystroke becomes a displayed character in an
+internationalized application</B>
+
+<P><IMG SRC="imgs/fig.11.02.gif" ALT="fig.11.02.gif" BORDER=0  ALIGN=ABSCENTER>
+<OL>
+<LI>
+When the user strikes a key on the keyboard, the keyboard
+sends a hardware-specific keycode to the X server.</LI>
+
+<LI>
+The X server sends an event to the client or clients that
+have expressed interest in keystroke events for the window that had focus
+when the keystroke occurred.</LI>
+
+<LI>
+The keystroke event will be received in the client's event
+loop by a call to <B>XNextEvent()</B>.</LI>
+
+<LI>
+The event is immediately passed to <B>XFilterEvent()</B>
+to give the input method the opportunity to use it. Generally, the input
+method will not filter a <B>KeyPress</B> event.</LI>
+
+<LI>
+Back in the application, if <B>XFilterEvent()</B> returns
+<B>True</B>, then the application will discard the event and wait for the
+next one.</LI>
+
+<LI>
+Otherwise, the application will go ahead and process the
+event. For every <B>KeyPress</B> event, the application will call <B>XmbLookupString()</B>
+or <B>XwcLookupString()</B>.</LI>
+
+<LI>
+The input method now processes the keystroke: it adds a new
+character to its pre-edit text and updates the display in the Preedit and
+Status areas of the application. If the keystroke is a control character
+such as Delete, the input method may modify the pre-edit text.</LI>
+
+<LI>
+If the keystroke indicates that the user is done pre-editing
+and wishes to compose the pre-edited text, the input method does any necessary
+translation and the result becomes the return value of <B>Xmb/XwcLookupString()</B>.
+In most applications, this returned string will be immediately echoed in
+the window with a call to one of the internationalized text drawing functions.
+If the keystroke merely adds to the pre-edit text, then the status value
+returned by <B>Xmb/wcLookupString()</B> indicates that there is no composed
+text ready.</LI>
+</OL>
+The above sections have presented an overview of the XIM
+architecture. The sections below describe how to write programs with input
+methods and input contexts. They explain how to implement each of the steps
+in the "big picture" above.
+<BR>
+<HR>
+<H2>
+XIM Programming Interface</H2>
+The input method programming interface departs in some ways
+from the style established by the rest of Xlib. Functions that set, modify,
+or query the attributes of an <B>XIM</B> or <B>XIC</B> have a variable-length
+argument list interface, similar to the interface of the X Toolkit <B>XtVaSetValues</B>
+function, for example. Attributes are specified by a null-terminated list
+of name/value pairs. Names are null-terminated character strings (of type
+<B>char *</B>), and values are of type <B>XPointer</B>, which is a new
+Xlib generic pointer type, like <B>XtPointer</B>, which replaces the non-standard
+<B>caddr_t</B>. There are predefined symbols for all of the <B>XIM</B>
+and <B>XIC</B> attribute names. These are named similarly to X Toolkit
+resource names: they are prefixed with <B>XN</B> (not <B>XtN</B>) and words
+in the name are separated by capitalization rather than underscores. They
+differ from the Xt convention in that the first letter after the <B>XN</B>
+prefix <I>is</I> capitalized. Example 11-1 shows this naming convention
+and the varargs interface used in C code. There is only a single defined
+<B>XIM</B> attribute, which is explained in Section 11.4.2, "Querying Input
+Method Values." There are a number of <B>XIC</B> attributes, which are
+explained in Section 11.6, "Input Context Attributes."
+
+<P><B>The XIM varargs interface and attribute naming conventions</B>
+<BLOCKQUOTE>
+<PRE><TT>status = XSetICValues(ic, XNFocusWindow, w,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNGeometryCallback, HandleIMGeometry,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; NULL);</TT></PRE>
+</BLOCKQUOTE>
+The <B>XNPreeditAttributes</B> and <B>XNStatusAttributes</B>
+attributes of an input context have a number of sub-attributes. In order
+to set or query these values, the programmer must specify a nested argument
+list of type <B>XVaNestedList*</B>. A value of this type is created with
+a call to the function <B>XVaCreateNestedList()</B>. This function takes
+a dummy integer argument (as required by ANSI-C) followed by a null-terminated
+variable length list of name/value pairs. <B>XVaCreateNestedList()</B>
+can be conveniently called from within an argument list to another function,
+as is shown in Example 11-2.
+
+<P><B>A nested call to XVaCreateNestedList()</B>
+<BLOCKQUOTE>
+<PRE><TT>XVaNestedList nlist;
+ic = XCreateIC(im, XNInputStyle, XIMPreeditPosition | XIMStatusNothing,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNPreeditAttributes, nlist = XCreateVaNestedList(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0,&nbsp; /* dummy argument */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNSpotLocation, cursor_location,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNFontSet, font_set,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; NULL),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNFocusWindow, focus_window,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; NULL);
+XFree(nlist);</TT></PRE>
+</BLOCKQUOTE>
+Nested argument lists can also be used to specify top-level
+attributes. To do this, use the special name <B>XNVaNestedList</B> which
+will cause the contents of the following nested list to be logically inserted
+into the argument list at the current position.
+
+<P>Note that <B>XVaCreateNestedList()</B> allocates memory
+for the list it returns, which must be freed with a call to <B>XFree()</B>.
+Also note that if any of the values in the list are pointer types, the
+data pointed to must remain valid for the lifetime of the list.
+
+<P>The designers of the XIM specification chose this varargs-and-named-attributes
+interface over the more familiar structure-and-flags interface used by
+<B>XChangeWindowAttributes()</B> and <B>XChangeGC()</B>, for example, because
+they felt it provided "more flexibility." The perceived flexibility to
+the programmer is probably a matter of personal taste, but the varargs
+interface certainly provides more flexibility for future extensions--new
+attributes and vendor- or IM-specific attributes can easily be added without
+destroying binary compatibility.
+<BR>
+<HR>
+<H2>
+XIM Functions</H2>
+An <B>XIM</B> is an opaque structure that serves as a handle
+to the input method. Because input methods are generally implemented as
+separate processes, we generally talk about "opening," not "creating,"
+an input method. In this respect, an <B>XIM</B> can be thought of as analogous
+to a <B>Display *</B>. The sections below explain how to open and close
+a connection to an input method, and how to query the values of input method
+attributes.
+<H3>
+Opening and Closing an Input Method</H3>
+A connection to an input method is opened with a call to
+<B>XOpenIM()</B>. This function takes as arguments the Display, an <B>XrmDatabase()</B>,
+and a resource name and resource class of type <B>char *</B>. The database
+is used by the input method to look up resources private to it. The resource
+name and class are used as resource name and class prefixes by the input
+method when looking up resources for input contexts. In an Xt program,
+the database created when the display is initialized can be used. In Xlib
+programs, the programmer will have to explicitly build the database, or
+simply pass an empty one.
+
+<P><B>XOpenIM()</B> also uses the current locale and locale
+modifiers as implicit arguments. The locale determines the default input
+method that <B>XOpenIM()</B> will connect to, as well as the encoding of
+the strings which will be returned by <B>Xmb/XwcLookupString()</B>. The
+locale is bound to an input method when it is open--the locale that was
+in effect when the input method was opened will be used by all input contexts
+of that input method regardless of the current locale when they are created.
+
+<P>The locale determines a default input method to be opened
+by <B>XOpenIM()</B>, but it cannot be assumed that only one input method
+will be available in each locale. Therefore X defines a locale modifier
+named "im" which can be used to override the default input method of the
+locale. The programmer should call <B>XSetLocaleModifiers()</B> to set
+all X locale modifiers ("im" is currently the only one). The user can specify
+a desired input method by setting the (UNIX) environment variable <B>XMODIFIERS</B>
+to a string of the form "@im=<I>input method name</I>."
+
+<P>When an input method will no longer be used, it may be
+closed with a call to <B>XCloseIM()</B>.
+
+<P>Example 11-3shows how to establish the locale and open
+a connection to the input method for that locale.
+
+<P><B>Establishing the locale and opening an XIM</B>
+<BLOCKQUOTE>
+<PRE><TT>#include &lt;stdio.h>
+#include &lt;X11/Xlib.h>
+/*
+&nbsp;* include &lt;locale.h> or the non-standard X substitutes
+&nbsp;* depending on the X_LOCALE compilation flag
+&nbsp;*/
+#include &lt;X11/Xlocale.h>
+main(argc, argv)
+int argc;
+char *argv[];
+{
+&nbsp;&nbsp;&nbsp; Display *dpy;
+&nbsp;&nbsp;&nbsp; XIM im;
+&nbsp;&nbsp;&nbsp; char *program_name = argv[0];
+&nbsp;&nbsp;&nbsp; /*
+&nbsp;&nbsp;&nbsp;&nbsp; * The error messages in this program are all in English.
+&nbsp;&nbsp;&nbsp;&nbsp; * In a truly internationalized program, they would not
+&nbsp;&nbsp;&nbsp;&nbsp; * be hardcoded; they would be looked up in a database of
+&nbsp;&nbsp;&nbsp;&nbsp; * some sort.
+&nbsp;&nbsp;&nbsp;&nbsp; */
+&nbsp;&nbsp;&nbsp; if (setlocale(LC_ALL, "") == NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "%s: cannot set locale.,program_name);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if ((dpy = XOpenDisplay(NULL)) == NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "%s: cannot open Display., program_name);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if (!XSupportsLocale()) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "%s: X does not support locale %s.,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; program_name, setlocale(LC_ALL, NULL));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if (XSetLocaleModifiers("") == NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "%s: Warning: cannot set locale modifiers.,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; program_name);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; /*
+&nbsp;&nbsp;&nbsp;&nbsp; * Connect to an input method.
+&nbsp;&nbsp;&nbsp;&nbsp; * In this example, we don't pass a resource database
+&nbsp;&nbsp;&nbsp;&nbsp; */
+&nbsp;&nbsp;&nbsp; if ((im = XOpenIM(dpy, NULL, NULL, NULL)) == NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void)fprintf(stderr, "%s: Couldn't open input method,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; program_name);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Querying Input Method Values</H3>
+The function <B>XGetIMValues()</B> is used to query attributes
+of the input method. At this point, there is only one defined attribute,
+named <B>XNQueryInputStyle</B>. This is a read-only attribute that specifies
+the interaction styles supported by the input method. When an input context
+is created, one of the interaction styles from this list must be specified.
+Because the one attribute currently defined for input methods is read-only,
+there is no <B>XSetIMValues</B> procedure.
+
+<P>To get the list of supported interaction styles, call
+<B>XGetIMValues()</B> passing the IM, the name <B>XNQueryInputStyle</B>,
+and the address of a variable of type <B>XIMStyles *</B>. The <B>XIMStyles</B>
+structure is shown in Example 11-4.
+
+<P><B>The XIMStyles structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef unsigned long XIMStyle;
+typedef struct {
+&nbsp;&nbsp;&nbsp; unsigned short count_styles;
+&nbsp;&nbsp;&nbsp; XIMStyle *supported_styles;
+} XIMStyles;</TT></PRE>
+</BLOCKQUOTE>
+The call to <B>XGetIMValues()</B> will return a pointer to
+a <B>XIMStyles</B> structure which contains a list of supported styles
+and the number of styles in the list. The client is responsible for freeing
+the <B>XIMStyles</B> structure when done with it.
+
+<P>Each <B>XIMStyle</B> in the list of supported styles is
+an <B>unsigned long</B> in which various bit flags describing the style
+are set. The valid flags and their meanings are described below:
+<DL>
+<DT>
+<B>XIMPreeditCallbacks</B></DT>
+
+<DD>
+The client must provide pre-edit callback procedures so that
+the input method can cooperate with the application to perform on-the-spot
+pre-editing.</DD>
+
+<DT>
+<B>XIMPreeditPosition</B></DT>
+
+<DD>
+The client must provide the location of the insertion cursor
+so that the input method can do over-the-spot pre-editing.</DD>
+
+<DT>
+<B>XIMPreeditArea</B></DT>
+
+<DD>
+The client must provide geometry management of an area in
+which the input method can do off-the-spot pre-editing.</DD>
+
+<DT>
+<B>XIMPreeditNothing</B></DT>
+
+<DD>
+The input method can perform root window pre-editing with
+no geometry management provided by the client.</DD>
+
+<DT>
+<B>XIMPreeditNone</B></DT>
+
+<DD>
+The input method does not do any pre-editing, or does not
+display any pre-edit data.</DD>
+
+<DT>
+<B>XIMStatusCallbacks</B></DT>
+
+<DD>
+The client must provide status callback procedures so that
+the input method can request the application to display status data when
+needed.</DD>
+
+<DT>
+<B>XIMStatusArea</B></DT>
+
+<DD>
+The client must provide geometry management of an area in
+which the input method can display status values.</DD>
+
+<DT>
+<B>XIMStatusNothing</B></DT>
+
+<DD>
+The input method can display status information in the root
+window with no geometry management provided by the client.</DD>
+
+<DT>
+<B>XIMStatusNone</B></DT>
+
+<DD>
+The input method does not display any status information.</DD>
+</DL>
+When examining the <B>supported_styles</B> list, you may
+assume that each <B>XIMStyle</B> will have only one <B>XIMPreedit</B> flag
+and one <B>XIMStatus</B> flag set. Example 11-5 in Section 11.5.2, "Creating
+and Destroying Input Contexts" shows how to query the supported styles
+of an input method.
+<BR>
+<HR>
+<H2>
+XIC Functions</H2>
+An input context is to an input method almost as a Window
+is to a Display. Each independent internationalized text input stream requires
+an IC, and the attributes of an IC define the behavior and appearance of
+the IM for that input stream. The sections below describe how to choose
+an input style for an IC, how to create and destroy an IC, how to set and
+get the attribute values of an IC, how to reset an IC, and how to set focus
+to an IC. The attributes of an IC are documented in Section 11.6, "Input
+Context Attributes."
+<H3>
+Choosing an Interaction Style</H3>
+The input or interaction style to be used by an input context
+must be specified when the input context is created. The style chosen must
+be one of those supported by the input method, and must also be supported
+by the client. The simplest of applications may choose to provide only
+minimal interaction with the input method, and may support only the <B>XIMPreeditNothing</B>
+and <B>XIMStatusNothing</B> interaction styles, forcing the input method
+to display its information in the root window. More complicated applications
+will probably support at least <B>XIMPreeditArea</B> and <B>XIMStatusArea</B>
+styles, as well as the "do nothing" styles. Generally, the right choice
+of interaction style is the most complicated (and therefore most user-friendly)
+style supported both by the application and the input method. An application
+may also choose to provide a resource so that the user can specify a desired
+style. Note that the choice of Preedit interaction style must be made independently
+of the Status style.
+
+<P>Section 11.4.2, "Querying Input Method Values" lists the
+possible interaction styles, and explains how to query an input method
+for supported styles. Example 11-5 shows how to select Preedit and Status
+interactions styles and create an IC to use those styles.
+<H3>
+Creating and Destroying Input Contexts</H3>
+An <B>XIC</B> is created with a call to <B>XCreateIC()</B>
+and destroyed with a call to <B>XDestroyIC()</B>. <B>XCreateIC()</B> takes
+an <B>XIM</B> as its first argument followed by a <B>NULL</B>-terminated
+variable-length argument list of attribute name/attribute value pairs.
+The IC is created in the locale of the IM, regardless of the current locale.
+The names of the IC attributes and their meanings are described in Section
+11.6, "Input Context Attributes." Note that the <B>XNInputStyle</B> and
+<B>XNFontSet</B> attributes must be specified when an input context is
+created, and depending on the input style, <B>XNSpotLocation</B> and all
+of the callback attributes may also have to be specified at creation time.
+The <B>XNClientWindow</B> attribute need not be specified when the IC is
+created, but must be specified before any input is done with the IC. Example
+11-5 shows how to choose an interaction style and create an IC.
+
+<P><B>Choosing an interaction style and creating an IC</B>
+<BLOCKQUOTE>
+<PRE><TT>#include &lt;stdio.h>
+#include &lt;X11/Xlib.h>
+#include &lt;X11/Xlocale.h>
+main(argc, argv)
+int argc;
+char *argv[];
+{
+&nbsp;&nbsp;&nbsp; Display *dpy;
+&nbsp;&nbsp;&nbsp; Window win;
+&nbsp;&nbsp;&nbsp; XFontSet fontset;
+&nbsp;&nbsp;&nbsp; XIM im;
+&nbsp;&nbsp;&nbsp; XIC ic;
+&nbsp;&nbsp;&nbsp; XIMStyles *im_supported_styles;
+&nbsp;&nbsp;&nbsp; XIMStyle app_supported_styles;
+&nbsp;&nbsp;&nbsp; XIMStyle style;
+&nbsp;&nbsp;&nbsp; XIMStyle best_style;
+&nbsp;&nbsp;&nbsp; XVaNestedList list;
+&nbsp;&nbsp;&nbsp; char *program_name = argv[0];
+&nbsp;&nbsp;&nbsp; int i;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp; /* figure out which styles the IM can support */
+&nbsp;&nbsp;&nbsp; XGetIMValues(im, XNQueryInputStyle, &amp;im_supported_styles, NULL);
+&nbsp;&nbsp;&nbsp; /* set flags for the styles our application can support */
+&nbsp;&nbsp;&nbsp; app_supported_styles = XIMPreeditNone | XIMPreeditNothing | XIMPreeditArea;
+&nbsp;&nbsp;&nbsp; app_supported_styles |= XIMStatusNone | XIMStatusNothing | XIMStatusArea;
+&nbsp;&nbsp;&nbsp; /*
+&nbsp;&nbsp;&nbsp;&nbsp; * now look at each of the IM supported styles, and
+&nbsp;&nbsp;&nbsp;&nbsp; * chose the "best" one that we can support.
+&nbsp;&nbsp;&nbsp;&nbsp; */
+&nbsp;&nbsp;&nbsp; best_style = 0;
+&nbsp;&nbsp;&nbsp; for(i=0; i &lt; im_supported_styles->count_styles; i++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; style = im_supported_styles->supported_styles[i];
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((style &amp; app_supported_styles) == style) /* if we can handle it */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; best_style = ChooseBetterStyle(style, best_style);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; /* if we couldn't support any of them, print an error and exit */
+&nbsp;&nbsp;&nbsp; if (best_style == 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void)fprintf(stderr, "%s: application and program do not share a,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; program_name);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void)fprintf(stderr, "%s: commonly supported interaction style.,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; program_name);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; XFree(im_supported_styles);
+&nbsp;&nbsp;&nbsp; /*
+&nbsp;&nbsp;&nbsp;&nbsp; * Now go create an IC using the style we chose.
+&nbsp;&nbsp;&nbsp;&nbsp; * Also set the window and fontset attributes now.
+&nbsp;&nbsp;&nbsp;&nbsp; */
+&nbsp;&nbsp;&nbsp; list = XVaCreateNestedList(0, XNFontSet, fontset, NULL);
+&nbsp;&nbsp;&nbsp; ic = XCreateIC(im, XNInputStyle, best_style,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNClientWindow, win,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNPreeditAttributes, list,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNStatusAttributes, list,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; NULL);
+&nbsp;&nbsp;&nbsp; XFree(list);
+&nbsp;&nbsp;&nbsp; if (ic == NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "Couldn't create input context);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+}
+/*
+&nbsp;* This function chooses the "more desirable" of two input styles.&nbsp; The
+&nbsp;* style with the more complicated Preedit style is returned, and if the
+&nbsp;* styles have the same Preedit styles, then the style with the more
+&nbsp;* complicated Status style is returned.&nbsp; There is no "official" way to
+&nbsp;* order interaction styles; this one seems reasonable, though.
+&nbsp;* This is a long procedure for a simple heuristic.
+&nbsp;*/
+XIMStyle ChooseBetterStyle(style1,style2)
+XIMStyle style1, style2;
+{
+&nbsp;&nbsp;&nbsp; XIMStyle s,t;
+&nbsp;&nbsp;&nbsp; XIMStyle preedit = XIMPreeditArea | XIMPreeditCallbacks |
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XIMPreeditPosition | XIMPreeditNothing | XIMPreeditNone;
+&nbsp;&nbsp;&nbsp; XIMStyle status = XIMStatusArea | XIMStatusCallbacks |
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XIMStatusNothing | XIMStatusNone;
+&nbsp;&nbsp;&nbsp; if (style1 == 0) return style2;
+&nbsp;&nbsp;&nbsp; if (style2 == 0) return style1;
+&nbsp;&nbsp;&nbsp; if ((style1 &amp; (preedit | status)) == (style2 &amp; (preedit | status)))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return style1;
+&nbsp;&nbsp;&nbsp; s = style1 &amp; preedit;
+&nbsp;&nbsp;&nbsp; t = style2 &amp; preedit;
+&nbsp;&nbsp;&nbsp; if (s != t) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (s | t | XIMPreeditCallbacks)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return (s == XIMPreeditCallbacks)?style1:style2;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if (s | t | XIMPreeditPosition)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return (s == XIMPreeditPosition)?style1:style2;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if (s | t | XIMPreeditArea)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return (s == XIMPreeditArea)?style1:style2;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if (s | t | XIMPreeditNothing)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return (s == XIMPreeditNothing)?style1:style2;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; else { /* if preedit flags are the same, compare status flags */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; s = style1 &amp; status;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; t = style2 &amp; status;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (s | t | XIMStatusCallbacks)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return (s == XIMStatusCallbacks)?style1:style2;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if (s | t | XIMStatusArea)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return (s == XIMStatusArea)?style1:style2;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if (s | t | XIMStatusNothing)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return (s == XIMStatusNothing)?style1:style2;
+&nbsp;&nbsp;&nbsp; }
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Querying and Modifying an XIC</H3>
+Attributes of an <B>XIC</B> can be set with a call to <B>XSetICValues()</B>
+and can be queried with a call to <B>XGetICValues()</B>. Both functions
+take an <B>XIC</B> as their first argument, followed by a <B>NULL</B>-terminated
+variable-length argument list of attribute name/attribute value pairs.
+The names, types, and usage of the attributes are explained in Section
+11.6, "Input Context Attributes." Note that some of the attributes are
+read-only, some must be specified when the IC is created, and others must
+be specified once and may not be changed once specified.
+
+<P>The value arguments passed to <B>XGetICValues()</B> must
+be valid pointers to locations in which to store the requested attribute
+values. <B>XGetICValues()</B> will allocate memory for the storage of some
+of these attributes, and this memory must be freed by the client with a
+call to <B>XFree()</B>.
+
+<P>To query the values of Preedit and Status sub-attributes,
+create a nested list of name/value pairs, where the values are pointers
+to storage and pass this nested list as the value of the <B>XNPreeditAttributes</B>
+or <B>XNStatusAttributes</B> attributes. You cannot query the value of
+all sub-attributes by passing a <B>XVaNestedList*</B> as the value of <B>XNPreeditAttributes</B>
+or <B>XNStatusAttributes</B>--<B>XGetICValues()</B> does not build and
+return a nested list of sub-attributes
+
+<P>Both <B>XSetICValues()</B> and <B>XGetICValues()</B> return
+a <B>char *</B> which is <B>NULL</B> if no errors occurred, or points to
+the name of the first attribute that could not be set or queried.
+<H3>
+Resetting an Input Context</H3>
+If text input is interrupted while pre-editing is in progress,
+the input context may be left in a non-initial internal state. To reset
+the state of an <B>XIC</B>, call <B>XmbResetIC()</B> or <B>XwcResetIC</B>.
+Both reset the IC to its initial state and discard any pending input. Both
+functions may return the current pre-edit string, but it is implementation
+dependent how and whether they do this. The only difference between these
+functions is in the type of string they return. The returned string, if
+any, should be freed by the client with <B>XFree()</B>.
+<H3>
+Setting Input Context Focus</H3>
+When the focus window of an input context receives the application
+input focus, the application should call <B>XSetICFocus()</B> on that IC.
+Use <B>XUnsetICFocus()</B> when the focus window of an IC loses focus,
+or simply call <B>XSetICFocus()</B> on the IC of the new focus window.
+This will allow the input method to perform internal housekeeping and display
+special graphics (such as a highlighted border) in the Pre-Edit and Status
+windows of the IC that has the focus.
+
+<P>If you are using a single IC to handle input across several
+windows, and the input focus shifts from one of these windows to another,
+then the IC's <B>XNFocusWindow</B> attribute should be changed, you needn't
+call <B>XSetICFocus()</B>. Depending upon your user interface, you may
+also want to reset the IC when focus changes like this.
+<H3>
+Input Context Utility Functions</H3>
+The following utility functions are sometimes useful when
+using input methods and input contexts:
+<DL>
+<DT>
+<B>XIMOfIC()</B></DT>
+
+<DD>
+Returns the IM associated with a given IC.</DD>
+
+<DT>
+<B>XDisplayOfIM()</B></DT>
+
+<DD>
+Returns the Display associated with a given IM.</DD>
+
+<DT>
+<B>XLocaleOfIM()</B></DT>
+
+<DD>
+Returns the locale associated with a given IM. The returned
+string is owned by Xlib and should not be freed by the client. It will
+be freed by Xlib when the IM is closed.</DD>
+</DL>
+
+<HR>
+<H2>
+Input Context Attributes</H2>
+The behavior of an input method for a particular stream of
+input is controlled by the attributes of the input context of that stream.
+There is an attribute, for example, that specifies the interaction style
+(which must be one of the styles supported by the IM), there are attributes
+that specify the pre-edit callbacks to be called by the input method when
+over-the-spot interaction is being used, and there are attributes that
+specify the foreground and background pixels and colormap for the IM to
+use when drawing in its Preedit area.
+
+<P>Some attributes are used for communication in the other
+direction. One is used by the input method to tell the client which types
+of X events it requires, and another is used by the input method to request
+a new size for its Preedit and Status areas. Most attributes may be freely
+modified, but note that some must be set when the IC is created, others
+must be set exactly once, and others still are read-only and must never
+be set.
+
+<P>The attributes are listed below. Most attributes provide
+default values, but recall that some must be specified, either when the
+IC is created or at some later time before it is used.
+<H3>
+XNInputStyle</H3>
+The <B>XNInputStyle</B> attribute specifies the interaction
+style to be used by the input method for this input context. It is of type
+<B>XIMStyle</B>. It must be one of the supported styles queried from the
+input method with <B>XGetIMValues()</B>. This attribute must be specified
+when the IC is created. It may be queried but not changed.
+<H3>
+XNClientWindow</H3>
+The <B>XNClientWindow</B> attribute specifies the window
+in which the input method will display its Preedit and Status areas. It
+is of type <B>Window</B>. All geometry values for those areas are specified
+relative to this window. This attribute must be specified (with <B>XCreateIC()</B>
+or <B>XSetICValues()</B>) before any input is done, and once set may not
+be changed.
+<H3>
+XNFocusWindow</H3>
+If a single IC is used to handle multiple input streams within
+a single client window (as in a multi-buffer text editor that displays
+several paned editing windows and provides pre-editing in a message line
+at the bottom of the client window), the <B>XNFocusWindow</B> attribute
+(of type <B>Window</B>) is used to specify which sub-window currently has
+the focus. The input method may select events on this window, send synthetic
+events to it, set or change properties on it, or grab the keyboard within
+it. If not specified, this attribute will default to the value of <B>XNClientWindow</B>.
+If this attribute is specified, it should generally be a child of the client
+window. The value of <B>XNFocusWindow</B> may be changed freely.
+<H3>
+XNResourceName and XNResourceClass</H3>
+The <B>XNResourceName</B> and <B>XNResourceClass</B> attributes
+are null-terminated strings which completely specify the resource name
+and class used to obtain resources for the client window. If the input
+method allows per-IC customization using X resources, those resources will
+be looked up using the name and class hierarchies specified by <B>XNResourceName</B>
+and <B>XNResourceClass</B>. If your application is named "iedit" with class
+name "Iedit," and the client window is a widget named "itext" of class
+"IText" and it is within a top-level manager widget named "main" of class
+"Form," then the <B>XNResourceName</B> attribute should be set to "iedit.main.itext,"
+and the <B>XNResourceClass</B> attribute should be set to "IEdit.Form.IText."
+If these attributes are not set, the input method will not be able to look
+up resource values for the IC in its resource database. Both attributes
+may be set at any time, but because resource lookup is generally done only
+when an IC is created, they will only be useful if specified to <B>XCreateIC()</B>.
+The specification does not say whether or not the values of these strings
+are copied. To be safe, the strings passed as values of <B>XNResourceName</B>
+and <B>XNResourceClass</B> should not be freed or modified until the IC
+is destroyed or new values are provided for those attributes.
+<H3>
+XNGeometryCallback</H3>
+The <B>XNGeometryCallback</B> attribute, of type <B>XIMCallback*</B>,
+specifies a procedure which an input method may call to request a different
+size for it's Preedit or Status areas. Because the client is never obliged
+to meet IM geometry requests, specifying this attribute is optional.
+<H3>
+XNFilterEvents</H3>
+The <B>XNFilterEvents</B> attribute is used by the input
+method to notify the client of the X events it needs to receive. It is
+an event mask, a long integer of the format passed to <B>XSelectInput()</B>.
+The client must query this resource before any input is done and augment
+the event mask for the <B>XNClientWindow</B> with it. This attribute is
+read-only and should never be set.
+<H3>
+XNPreeditAttributes and XNStatusAttributes</H3>
+Each of these attributes specifies a list of sub-attributes
+that control the position, behavior, and appearance of the Preedit and
+Status areas of the IC. They have type <B>XVaNestedList</B> and should
+be created with a call to <B>XVaCreateNestedList()</B>. Most of these attributes
+are used by the input method for both the Preedit and the Status areas.
+They are ignored, of course, for <B>XIMPreeditNone</B> and <B>XIMStatusNone</B>
+interaction styles. All of these attributes except the callbacks are ignored
+for interaction styles <B>XIMPreeditCallbacks</B> and <B>XIMStatusCallbacks</B>.
+They are described individually below.
+<H4>
+XNArea</H4>
+The <B>XNArea</B> attribute is a pointer to an <B>XRectangle</B>.
+If the interaction style is <B>XIMPreeditArea</B> or <B>XIMStatusArea</B>,
+then the rectangle defines the region of the client window in which pre-editing
+and status display is to take place. An input method may create sub-windows
+of the client window that conform to this geometry. If the pre-edit interaction
+style is <B>XIMPreeditPosition</B> instead of <B>XIMPreeditArea</B>, then
+this attribute specifies a clipping region in the focus window of the IC
+to be used in conjunction with the <B>XNSpotLocation</B> attribute to implement
+over-the-spot pre-editing. This attribute must be specified if any of the
+above interaction styles are in use. For all other pre-edit and status
+interaction styles, this attribute is ignored.
+<H4>
+XNAreaNeeded</H4>
+The <B>XNAreaNeeded</B> attribute is also a pointer to an
+<B>XRectangle</B>. It is used for geometry negotiation between client and
+input method for the <B>XIMPreeditArea</B> and <B>XIMStatusArea</B> interaction
+styles, and is ignored for all other styles. The client may provide a hint
+to the input method about the area it is likely to get by setting a non-zero
+width or height in this attribute (the x and y values are ignored). The
+client may query the input method's preferred size for those areas by reading
+the value of this attribute. A well-behaved input method will not request
+a size larger than any hints it has received. Note that neither step is
+required--the client can always set any size it desires with the <B>XNArea</B>
+attribute. See Section 11.7, "Negotiating Preedit and Status Area Geometries"
+for more details on geometry negotiation.
+<H4>
+XNSpotLocation</H4>
+The <B>XNSpotLocation</B> attribute is a pointer to <B>XPoint</B>.
+It is used when the Preedit interaction style is <B>XIMPreeditPosition</B>
+and is ignored for all Status interaction styles and all other Preedit
+interaction styles. The value of this attribute should be set to the position
+(in the focus window) at which the next character would be drawn. The input
+method will use this point and the clipping region specified in <B>XNAreaNeeded</B>
+to implement over-the-spot pre-editing in a sub-window of the focus window.
+Each time a newly-composed character is drawn or the text modified in any
+way, the value of this attribute should be changed to reflect the new value
+of the "spot." When the interaction style is <B>XIMPreeditPosition</B>,
+this attribute must be specified when the IC is created.
+<H4>
+XNColormap</H4>
+The <B>XNColormap</B> attribute specifies the colormap which
+the input method should use for any windows it creates itself. It is of
+type <B>Colormap</B>. If the colormap is unspecified, the input method
+will provide a default.
+<H4>
+XNStdColormap</H4>
+The <B>XNStdColormap</B> attribute provides an alternate
+method of specifying the colormap to be used by the input method. It is
+of type <B>Atom</B>, and should be set to a value appropriate for a call
+to <B>XGetStandardColormap()</B>. If both this attribute and the <B>XNColormap</B>
+attribute are passed in a call to <B>XSetICValues()</B>, it is implementation-dependent
+which will take precedence.
+<H4>
+XNForeground</H4>
+The <B>XNForeground</B> attribute specifies the foreground
+pixel value to be used by the input method. It is of type <B>unsigned long</B>.
+<H4>
+XNBackground</H4>
+The <B>XNBackground</B> attribute specifies the background
+pixel value to be used by the input method. It is of type <B>unsigned long</B>.
+<H4>
+XNBackgroundPixmap</H4>
+The <B>XNBackgroundPixmap</B> attribute specifies a pixmap
+to be used as the background of the Preedit or Status window created by
+the input method. It is of type <B>Pixmap</B>.
+<H4>
+XNFontSet</H4>
+The <B>XNFontSet</B> attribute specifies a fontset to be
+used by the input method for text drawing in the Preedit or Status window.
+It is of type <B>XFontSet</B>. The locale of the specified fontset must
+match the locale of the input method. This attribute must be specified
+when the IC is created.
+<H4>
+XNLineSpacing</H4>
+The <B>XNLineSpacing</B> attribute specifies the line spacing
+to be used by the input method when displaying multi-line text. It is of
+type <B>int</B>.
+<H4>
+XNCursor</H4>
+The <B>XNCursor</B> attribute specifies the mouse cursor
+to be used in the Preedit or Status windows. It is of type <B>Cursor</B>.
+<H4>
+Preedit and Status Callbacks</H4>
+There are seven callback attributes, four of which must be
+specified for <B>XIMPreeditCallbacks</B> interaction style, and three of
+which must be specified for <B>XIMStatusCallbacks</B> interaction style.
+Each callback attribute is of type <B>XIMCallback *</B>. This type, the
+callback prototypes, and requirements will be explained in Section 11.8,
+"Geometry, Preedit, and Status Callbacks." If the <B>XIMPreeditCallbacks</B>
+or <B>XIMStatusCallbacks</B> interaction styles are in use, the appropriate
+callbacks must be specified when the IC is created. The callback attributes
+are the following:
+<UL>
+<LI>
+<B>XNPreeditStartCallback</B>, called when pre-editing starts.
+It gives the client the opportunity to provide feedback to the user, to
+rearrange characters in the window to make room for pre-editing, etc.</LI>
+
+<LI>
+<B>XNPreeditDoneCallback</B>, called when a character is
+composed and pre-editing stops. It gives the client the opportunity to
+provide feedback to the user, close up any space opened for pre-editing,
+etc.</LI>
+
+<LI>
+<B>XNPreeditDrawCallback</B>, called when the input method
+wants the client to draw characters in the window.</LI>
+
+<LI>
+<B>XNPreeditCaretCallback</B>, called when the input method
+wants the client to move the text-insertion cursor (which for some applications
+may have the shape of a caret).</LI>
+
+<LI>
+<B>XNStatusStartCallback</B>, called when the input context
+gets the focus. It gives the client the chance to provide user feedback.</LI>
+
+<LI>
+<B>XNStatusDoneCallback</B>, called when the input context
+loses focus (or is destroyed). It gives the client the chance to provide
+user feedback.</LI>
+
+<LI>
+<B>XNStatusDrawCallback</B>, called when the input method
+wants the client to draw text or a bitmap into the status area.</LI>
+</UL>
+
+<HR>
+<H2>
+Negotiating Preedit and Status Area Geometries</H2>
+For the <B>XIMPreeditArea</B> and <B>XIMStatusArea</B> interaction
+styles, the input method needs an area of the application window in which
+it can create a sub-window and perform its necessary pre-editing and display
+status information. The application is responsible for providing these
+areas to the input method (with the <B>XNArea</B> sub-attribute) and the
+input method must accept whatever area it is given.
+
+<P>The simplest applications may simply force the input method
+to use some pre-defined area, but slightly more flexible applications will
+want to query the input method for its desired size. To allow this, a protocol
+for geometry negotiation between application and input method has been
+defined. The protocol uses the <B>XNAreaNeeded</B> sub-attribute of an
+input context in two distinct ways: when the application sets this attribute
+with a non-zero width and/or height, the input method interprets these
+as hints about the size that will eventually be assigned to it by the client.
+When the application queries the value of the <B>XNAreaNeeded</B> attribute,
+it is returned the input method's preferred size which it may choose to
+honor when setting the size in the <B>XNArea</B> attribute.
+
+<P>An example best demonstrates the use of this protocol:
+Suppose an internationalized client wants to place the pre-edit area across
+the bottom of its application window. This means that the width of the
+area is constrained to be the width of the window, but the height of the
+area is not constrained. So the application specifies the width of the
+<B>XNAreaNeeded</B> attribute to be the width of the window and leaves
+the height of the attribute set to 0. Now the input method may use this
+information to re-compute its desired size. If it would have liked a one
+line pre-edit area 500 pixels wide, for example, and has just received
+a hint that it will not get an area wider than 350 pixels, it might choose
+to request a pre-edit area that is two lines high. Now when the application
+queries the <B>XNAreaNeeded</B> attribute it will get the input method's
+new desired size. If an application has no constraints for the input method,
+it can omit the first step and simply read from <B>XNAreaNeeded</B>.
+
+<P>This negotiation protocol is not reserved for application
+startup; it may take place at any time. Note that if the application changes
+the <B>XNFocusWindow</B> attribute of an IC or the <B>XNFontSet</B> or
+<B>XNLineSpacing</B> sub-attributes of the pre-edit or status areas, the
+input method will probably have a new desired size for those areas, and
+the application should redo the geometry negotiation process. When the
+application's window is resized, the application will probably want to
+place the pre-edit and status areas at a new location, and may also have
+new constraints on their size. The application should set its size constraints
+in <B>XNAreaNeeded</B> even if those constraints have not changed since
+the last time geometry was negotiated.&nbsp; 11-6 shows a procedure that
+handles the geometry negotiation process. It was designed to be called
+from an application's event loop when the main window is resized.
+
+<P><B>Negotiating Preedit and Status area geometries</B>
+<BLOCKQUOTE>
+<PRE><TT>#include &lt;X11/Xlib.h>
+/*
+&nbsp;* This procedure sets the application's size constraints and returns
+&nbsp;* the IM's preferred size for either the Preedit or Status areas,
+&nbsp;* depending on the value of the name argument.&nbsp; The area argument is
+&nbsp;* used to pass the constraints and to return the preferred size.
+&nbsp;*/
+void GetPreferredGeometry(ic, name, area)
+XIC ic;
+char *name;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* XNPreeditAttributes or XNStatusAttributes */
+XRectangle *area;&nbsp;&nbsp;&nbsp;&nbsp; /* in: constraints;&nbsp; out: IM preferred size */
+{
+&nbsp;&nbsp;&nbsp; XVaNestedList list;
+&nbsp;&nbsp;&nbsp; list = XVaCreateNestedList(0, XNAreaNeeded, area, NULL);
+&nbsp;&nbsp;&nbsp; /* set the constraints */
+&nbsp;&nbsp;&nbsp; XSetICValues(ic, name, list, NULL);
+&nbsp;&nbsp;&nbsp; /* query the preferred size */
+&nbsp;&nbsp;&nbsp; XGetICValues(ic, name, list, NULL);
+&nbsp;&nbsp;&nbsp; XFree(list);
+}
+/*
+&nbsp;* This procedure sets the geometry of either the Preedit or Status
+&nbsp;* Areas, depending on the value of the name argument.
+&nbsp;*/
+void SetGeometry(ic, name, area)
+XIC ic;
+char *name;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* XNPreeditAttributes or XNStatusAttributes */
+XRectangle *area;&nbsp;&nbsp;&nbsp;&nbsp; /* the actual area to set */
+{
+&nbsp;&nbsp;&nbsp; XVaNestedList list;
+&nbsp;&nbsp;&nbsp; list = XVaCreateNestedList(0, XNArea, area, NULL);
+&nbsp;&nbsp;&nbsp; XSetICValues(ic, name, list, NULL);
+&nbsp;&nbsp;&nbsp; XFree(list);
+}
+/*
+&nbsp;* Called when the window is resized.&nbsp; If the interaction style
+&nbsp;* uses the Preedit or Status areas, then their size needs to
+&nbsp;* be re-negotiated.&nbsp; This procedure places both the Preedit and
+&nbsp;* Status areas at the bottom of the window, and constrains the
+&nbsp;* Preedit area to occupy no more than 4/5ths of the window width
+&nbsp;* on the right hand side of the window, and constrains the Status
+&nbsp;* area to occupy no more than 1/5th of the window on the left.
+&nbsp;* It does not constrain the height of these areas at all.
+&nbsp;*/
+void NegotiateICGeometry(ic, event, style, preedit_area, status_area)
+XIC ic;
+XEvent *event;
+XIMStyle style;
+XRectangle *preedit_area, *status_area;
+{
+&nbsp;&nbsp;&nbsp; if ((preedit_area != NULL) &amp;&amp; (style &amp; XIMPreeditArea)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; preedit_area->width = event->xconfigure.width*4/5;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; preedit_area->height = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GetPreferredGeometry(ic, XNPreeditAttributes, preedit_area);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; preedit_area->x = event->xconfigure.width - preedit_area->width;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; preedit_area->y = event->xconfigure.height - preedit_area->height;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SetGeometry(ic, XNPreeditAttributes, preedit_area);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if ((status_area != NULL) &amp;&amp; (style &amp; XIMStatusArea)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; status_area->width = event->xconfigure.width/5;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; status_area->height = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GetPreferredGeometry(ic, XNStatusAttributes, status_area);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; status_area->x = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; status_area->y = event->xconfigure.height - status_area->height;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SetGeometry(ic, XNStatusAttributes, status_area);
+&nbsp;&nbsp;&nbsp; }
+}</TT></PRE>
+</BLOCKQUOTE>
+Finally, an application may choose to provide a callback
+procedure that will be called by the input method to request a new size
+for its pre-edit or status areas. This callback may be triggered by changes
+to attributes such as <B>XNFontSet</B> as described above, or may be triggered
+directly by the user's interactions with the input method (an input method
+could provide "resize handles" on its pre-edit area, for example). If an
+application provides a geometry callback, it should attempt to honor any
+resize requests made by the input method. (An input method might choose
+whether or not to display "resize handles" on its pre-edit area depending
+on the presence or absence of such a callback.) The prototype geometry
+callback is described in Section 11.8.1, "The Geometry Callback."
+<BR>
+<HR>
+<H2>
+Geometry, Preedit, and Status Callbacks</H2>
+An application interacting with an input method using the
+<B>XIMPreeditArea</B> and/or <B>XIMStatusArea</B> styles may optionally
+provide a callback to be called when the input method would like to renegotiate
+the size of its pre-edit or status areas. An application using the <B>XIMPreeditCallbacks</B>
+style must provide a suite of pre-edit callback routines that allow the
+input method and application to cooperate and provide pre-editing that
+appears to be an integral part of the application itself. Similarly, an
+application using the <B>XIMStatusCallbacks</B> must provide a suite of
+callbacks for the display of status information.
+
+<P>Each callback attribute is of type <B>XIMCallback</B>,
+which is shown in Example 11-7.
+
+<P><B>The XIMCallback structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef void (*XIMProc)();
+typedef struct {
+&nbsp;&nbsp;&nbsp; XPointer client_data;
+&nbsp;&nbsp;&nbsp; XIMProc callback;
+} XIMCallback;</TT></PRE>
+</BLOCKQUOTE>
+If you have used X Toolkit callbacks, you will be familiar
+with the use of the <B>client_data</B> field. This is untyped data registered
+with the callback and passed to the callback every time it is invoked.
+When a single callback procedure is registered on several different callback
+attributes, the <B>client_data</B> can serve in a <B>switch</B> statment
+to determine how the callback should behave. It is also often used to pass
+data to the callback (such as a window ID or a widget pointer), which the
+callback would otherwise not have access to. The type of client_data is
+<B>XPointer</B>, which is a new Xlib generic pointer type, like <B>XtPointer</B>.
+
+<P>Most of the callback procedures have the prototype shown
+in Example 11-8.
+
+<P><B>A prototype XIM callback procedure</B>
+<BLOCKQUOTE>
+<PRE><TT>void CallbackPrototype(ic, client_data, call_data)
+&nbsp;&nbsp;&nbsp; XIC ic;
+&nbsp;&nbsp;&nbsp; XPointer client_data;
+&nbsp;&nbsp;&nbsp; XPointer call_data;</TT></PRE>
+</BLOCKQUOTE>
+The <B>XIC</B> passed to the callback procedure will be the
+input context that caused the callback to be invoked. The client_data argument
+will be the untyped data registered with the callback as described above.
+It is up to the callback to know the actual type of this data and cast
+it as appropriate before use. The call_data argument is data passed by
+the input method to the callback; it is the data required by the callback
+to perform whatever action the input method needs done. Each callback passes
+a different type in this argument. Note that the Xlib header files do not
+actually define <B>CallbackPrototype</B>, only the type <B>XIMProc</B>
+shown in the previous example. Since the definition of the <B>XIMProc</B>
+type does not have a prototype, callback procedures may be written with
+any desired types for client_data and call_data.
+<H3>
+The Geometry Callback</H3>
+The geometry callback (<B>XNGeometryCallback</B>) is triggered
+when the input method would like to renegotiate the geometry of its pre-edit
+or status areas. It is not passed any data in its call_data argument. Note
+that this callback does not indicate whether the input method wants renegotiation
+of the pre-edit area or the status area or both. If the application and
+the input method are interacting through both <B>XIMPreeditArea</B> and
+<B>XIMStatusArea</B> styles, then the application should renegotiate the
+geometry of both areas. The geometry negotiation process is described in
+Section 11.7, "Negotiating Preedit and Status Area Geometries."
+<H3>
+The PreeditStartCallback and the PreeditEndCallback</H3>
+The <B>XNPreeditStartCallback</B> and <B>XNPreeditEndCallback</B>
+are called when the input method begins and ends pre-editing. They give
+the application the opportunity to do any necessary internal setup or cleanup
+and provide graphical feedback to the user that the application is entering
+or leaving pre-edit mode. Both callbacks are passed <B>NULL</B> as their
+call_data values. <B>XNPreeditStartCallback</B> will not be called twice
+for the same IC without an intervening call to <B>XNPreeditEndCallback</B>.
+
+<P>The <B>XNPreeditStartCallback</B> has one additional requirement.
+It must return an <B>int</B> (and therefore does not satisfy the general
+callback prototype given above) to the input method which indicates the
+maximum number of bytes the application is able to handle in the pre-edit
+string. If this callback returns a positive value, the input method should
+not expect the application to be able to successfully display pre-edit
+strings any longer than that value. If the callback returns the value -1,
+it indicates that the application can handle pre-edit strings of any length.
+<H3>
+The PreeditDrawCallback</H3>
+This callback is called when the input method wants the application
+to insert, delete, or replace text in the pre-edit string. It is also used
+by the input method to request that some characters or substrings be highlighted
+(to indicate a selected region of the pre-edit string, for example). The
+callback is expected to display the pre-edit text to the user and will
+have to maintain an internal pre-edit string. The pre-edit text will likely
+appear within the running text of the application, but cursor and character
+positions referred to in this callback are all relative to the beginning
+of the pre-edit string. The <B>XNPreeditDrawCallback</B> is passed call_data
+of type <B>XIMPreeditDrawCallbackStruct</B>, which is shown in Example
+11-9.
+
+<P><B>The XIMPreeditDrawCallbackStruct</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef unsigned long XIMFeedback;
+#define XIMReverse&nbsp;&nbsp;&nbsp;&nbsp; 1L
+#define XIMUnderline&nbsp;&nbsp; (1L&lt;&lt;1)
+#define XIMHighlight&nbsp;&nbsp; (1L&lt;&lt;2)
+#define XIMPrimary&nbsp;&nbsp;&nbsp;&nbsp; (lL&lt;&lt;3)
+#define XIMSecondary&nbsp;&nbsp; (1L&lt;&lt;4)
+#define XIMTertiary&nbsp;&nbsp;&nbsp; (1L&lt;&lt;5)
+typedef struct _XIMText {
+&nbsp;&nbsp;&nbsp; unsigned short length;
+&nbsp;&nbsp;&nbsp; XIMFeedback *feedback;
+&nbsp;&nbsp;&nbsp; Bool encoding_is_wchar;
+&nbsp;&nbsp;&nbsp; union {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; char * multi_byte;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; wchar_t * wide_char;
+&nbsp;&nbsp;&nbsp; } string;
+} XIMText;
+typedef struct _XIMPreeditDrawCallbackStruct {
+&nbsp;&nbsp;&nbsp; int caret;
+&nbsp;&nbsp;&nbsp; int chg_first;
+&nbsp;&nbsp;&nbsp; int chg_length;
+&nbsp;&nbsp;&nbsp; XIMText text;
+} XIMPreeditDrawCallbackStruct ;</TT></PRE>
+</BLOCKQUOTE>
+The <B>XNPreeditDrawCallback</B> must do the following:
+<UL>
+<LI>
+If <B>chg_length</B> is positive, then the application must
+delete the characters in the pre-edit string between <B>chg_first</B> and
+<B>chg_first + chg_length-1</B> inclusive.&nbsp; Note that manipulations
+of the pre-edit string are always done on the basis of character positions,
+so it will generally be most useful to store the pre-edit string in wide-character
+format.</LI>
+
+<LI>
+If the <B>text</B> field is non-NULL, and <B>text.string</B>
+is non-NULL, the application must insert that string at the position specified
+by <B>chg_first</B>. A position of 0 indicates that the string should be
+inserted before the first character of the pre-edit string, a position
+of 1 indicates that the string should be inserted before the second character
+of the pre-edit string, and so on. If <B>text.encoding_is_wchar</B> is
+<B>TRUE</B> then the string to be inserted is the wide-character string
+<B>text.string.wide_char</B> which is <B>text.length</B> characters long.
+If <B>FALSE</B>, then the string to be inserted is the multi-byte string
+<B>text.string.multi_byte</B>, which is also <B>text.length</B> characters
+(not bytes) long. Since there is no way to request that the IM use either
+wide-character or multi-byte strings, your application will have to be
+prepared to handle either case. When passed a multi-byte string, it will
+probably be easiest to convert it to a wide-character string and operate
+on it in that representation.</LI>
+
+<LI>
+If there is a string to be inserted, and <B>text.feedback</B>
+is not <B>NULL</B> then <B>text.feedback</B> is an array of <B>XIMFeedback</B>
+with <B>text.length</B> elements. Each character of the string to be inserted
+must be drawn with the "feedback style" indicated by the corresponding
+element of the <B>text.feedback</B> array. If the array element is 0 then
+no special highlighting of the character needs to be done. Otherwise the
+character must be highlighted in one of the following ways:</LI>
+
+<UL>
+<LI>
+<B>XIMReverse</B> means the character should be drawn with
+foreground and background colors reversed.</LI>
+
+<LI>
+<B>XIMUnderline</B> means that a line should be drawn along
+the character's baseline.</LI>
+
+<LI>
+<B>XIMHighlight</B> means that the character should be drawn
+highlighted in some style other than the styles used for <B>XIMReverse</B>
+and <B>XIMUnderline</B>.</LI>
+
+<LI>
+<B>XIMPrimary</B> means that the character should be drawn
+in some application defined highlighting style which is not the same as
+the style used for <B>XIMSecondary</B>.</LI>
+
+<LI>
+<B>XIMSecondary</B> means that the character should be drawn
+in some application defined highlighting style which is not the same as
+the style used for <B>XIMPrimary</B>.</LI>
+
+<LI>
+<B>XIMTertiary</B> means that the character should be drawn
+in some application defined highlighting style.</LI>
+</UL>
+
+<LI>
+If <B>text.feedback</B> is not <B>NULL</B>, but <B>text.string</B>
+is NULL, then no string needs to be inserted, but the characters between
+chg_first and chg_first + text.length-1 inclusive should be redrawn with
+the highlight style indicated by text.feedback.</LI>
+
+<LI>
+After any insertions and deletions have been performed, the
+text insertion cursor (called the "caret" in the XIM spec) should be moved
+to the position specified in the caret field. If the position is 0, the
+cursor should be positioned so that new text will be inserted before the
+first character of the pre-edit string. If it is 1, the cursor should be
+positioned so that new text will be inserted before the second character
+of the pre-edit string, and so on.</LI>
+</UL>
+
+<H3>
+The PreeditCaretCallback</H3>
+This callback is called by the input method when it wants
+the application to move the current position of the text insertion cursor
+or to change the way the cursor is displayed. It is called with call_data
+of type <B>XIMPreeditCaretCallbackStruct</B> which is shown in Example
+11-10.
+
+<P><B>The XIMPreeditCaretCallbackStruct</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef enum {
+&nbsp;&nbsp;&nbsp; XIMForwardChar, XIMBackwardChar,
+&nbsp;&nbsp;&nbsp; XIMForwardWord, XIMBackwardWord,
+&nbsp;&nbsp;&nbsp; XIMCaretUp, XIMCaretDown,
+&nbsp;&nbsp;&nbsp; XIMNextLine, XIMPreviousLine,
+&nbsp;&nbsp;&nbsp; XIMLineStart, XIMLineEnd,
+&nbsp;&nbsp;&nbsp; XIMAbsolutePosition,
+&nbsp;&nbsp;&nbsp; XIMDontChange,
+} XIMCaretDirection;
+typedef enum {
+&nbsp;&nbsp;&nbsp; XIMIsInvisible,
+&nbsp;&nbsp;&nbsp; XIMIsPrimary,
+&nbsp;&nbsp;&nbsp; XIMIsSecondary,
+} XIMCaretStyle;
+typedef struct _XIMPreeditCaretCallbackStruct {
+&nbsp;&nbsp;&nbsp; int position;
+&nbsp;&nbsp;&nbsp; XIMCaretDirection direction;
+&nbsp;&nbsp;&nbsp; XIMCaretStyle style;
+} XIMPreeditCaretCallbackStruct;</TT></PRE>
+</BLOCKQUOTE>
+The <B>XNPreeditCaretCallback</B> is required to move the
+cursor as specified in the <B>direction</B> field, display it in the style
+specified in the <B>style</B> field, and return the new character position
+of the cursor by setting the value of the <B>position</B> field. The position
+field must be set by the callback because in some cases the input method
+will not be able to compute it itself. This is the case when the cursor
+is moved down a line, for example--the new character position of the cursor
+will depend on the number of characters in each line, which is a figure
+known to the application but not to the input method. Note that to correctly
+implement this callback, the application will have to remember the position
+of the insertion cursor at all times, and this position will have to be
+updated by both the <B>XNPreeditDrawCallback</B> and the <B>XNPreeditCaretCallback</B>.
+
+<P>The possible values of the <B>direction</B> field and
+their meanings are listed below. Note that in no case should the insertion
+cursor be moved to a position before the beginning or after the end of
+the pre-edit string.
+<UL>
+<LI>
+<B>XIMForwardChar</B> means move the cursor forward one character.</LI>
+
+<LI>
+<B>XIMBackwardChar</B> means move the cursor backwards one
+character.</LI>
+
+<LI>
+<B>XIMForwardWord</B> means move the cursor forward one word.
+It is up to the application to decide what constitutes a "word" in a pre-edit
+string. In many locales, a word will be delimited by characters for which
+<B>isspace</B> returns <B>True</B>.</LI>
+
+<LI>
+<B>XIMBackwardWord</B> means move the cursor backwards one
+word.</LI>
+
+<LI>
+<B>XIMCaretUp</B> means move the cursor up one line, keeping
+its position in the line constant if possible.</LI>
+
+<LI>
+<B>XIMCaretDown</B> means move the cursor down one line,
+keeping its position in the line constant if possible.</LI>
+
+<LI>
+<B>XIMPreviousLine</B> means move the cursor to the beginning
+of the previous line of pre-edit text.</LI>
+
+<LI>
+<B>XIMNextLine</B> means move the cursor to the beginning
+of the next line of pre-edit text.</LI>
+
+<LI>
+<B>XIMLineStart</B> means move the cursor to the beginning
+of the line it is currently on.</LI>
+
+<LI>
+<B>XIMLineEnd</B> means move the cursor to the end of the
+line it is currently on.</LI>
+
+<LI>
+<B>XIMAbsolutePosition</B> means move the cursor to the absolute
+character position specified in the <B>position</B> field of the <B>XIMPreeditCallbacksStruct</B>.
+If the position is 0, the cursor should be positioned so that new text
+will be inserted before the first character of the pre-edit string. If
+it is 1, the cursor should be positioned so that new text will be inserted
+before the second character of the pre-edit string, and so on.</LI>
+
+<LI>
+<B>XIMDontChange</B> means that the cursor position should
+not be changed. The current position of the cursor must still be returned
+in the <B>position</B> field, however.</LI>
+</UL>
+The <B>XNPreeditCaretCallback</B> can also be called to request
+that the insertion cursor become hidden or be drawn in a different style.
+Different cursor appearances may be used by the input method to indicate
+different pre-editing modes, insert versus overwrite mode, for example.
+The possible values of the <B>style</B> field and their meanings are as
+follows:
+<UL>
+<LI>
+<B>XIMIsInvisible</B> means that the insertion cursor should
+not be displayed.</LI>
+
+<LI>
+<B>XIMIsPrimary</B> means that the insertion cursor should
+be displayed in its primary or normal style. The particular style used
+is up to the application.</LI>
+
+<LI>
+<B>XIMIsSecondary</B> means that the insertion cursor should
+be displayed in its secondary or special style. The particular style used
+is up to the application.</LI>
+</UL>
+Note that there is no provision for the handling of mouse
+clicks (for example, to move the position of the insertion cursor in the
+pre-edit text) in this interaction style. Since the input method does not
+know how the pre-edit text is displayed, it cannot interpret mouse clicks
+over the text, and there is no specified way for the IM to request the
+application to convert pixel locations to character positions. Furthermore,
+the application cannot handle mouse clicks on the pre-edit text because
+it has no way of changing the internal insertion position of the IM. Note
+that some input methods will allow mouse clicks and drags while pre-editing
+in the <B>XIMPreeditPosition</B> and <B>XIMPreeditArea</B> interaction
+styles; in this case these styles may actually provide a more consistent
+user interface than the <B>XIMPreeditCallbacks</B> style.
+<H3>
+The StatusStartCallback and the StatusDoneCallback</H3>
+These callbacks are called when an IC gains focus or loses
+focus (possibly by being destroyed). They give the application the chance
+to set up or clean up any internal structures for handling status display,
+and allow the application to provide graphical feedback of the new IC focus
+state to the user. Both are passed <B>NULL</B>call_data and neither has
+any required actions.
+<H3>
+The StatusDrawCallback</H3>
+The input method invokes the <B>XNStatusDrawCallback</B>
+when it wants the application to display a string or a bitmap in the status
+area. The callback procedure is passed call_data of type <B>XIMStatusDrawCallbackStruct</B>,
+which is shown in Example 11-11.
+
+<P><B>The XIMStatusDrawCallbackStruct</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef enum {XIMTextType, XIMBitmapType} XIMStatusDataType;
+typedef struct _XIMStatusDrawCallbackStruct {
+&nbsp;&nbsp;&nbsp; XIMStatusDataType type;
+&nbsp;&nbsp;&nbsp; union {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XIMText text;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Pixmap&nbsp; bitmap;
+&nbsp;&nbsp;&nbsp; } data;
+} XIMStatusDrawCallbackStruct ;</TT></PRE>
+</BLOCKQUOTE>
+If the <B>type</B> field is <B>XIMTextType</B>, then the
+callback must display the text described by <B>data.text</B> in the status
+area of the IC. The <B>XIMText</B> type is also used by the <B>XNPreeditDrawCallback</B>,
+and is shown and explained in Section 11.8.3, "The PreeditDrawCallback."
+The text may be in multi-byte or wide-character form, so the application
+must be able to handle either case. Recall that the <B>length</B> field
+of the <B>XIMText</B> structure gives the number of characters of text,
+even when the text is in multi-byte form. The length in bytes of a multi-byte
+string is required for a call to <B>XmbDrawImageString()</B>, so when text
+is passed in multi-byte form, the application will have to use <B>strlen</B>
+to determine its length before displaying it.
+
+<P>If the <B>type</B> field is <B>XIMBitmapType</B>, then
+the callback must display the 1-bit deep <B>Pixmapdata.bitmap</B>.&nbsp;
+Notice that the callback does not return the width or height of the pixmap,
+so these must be obtained with a call to <B>XGetGeometry()</B> before the
+pixmap is displayed.
+
+<P>The <B>XIMStatusCallbacks</B> interaction style does not
+allow for any communication between the application and the input method
+about the maximum size of the status area. Since it can always be passed
+data to display that is larger than the area it has allocated, the <B>XNStatusDrawCallback</B>
+must be prepared either to clip or provide scrolling for the strings and
+pixmaps it is passed, or to attempt to enlarge the status area. Resizing
+the status area requires the main application window to be made larger
+or other windows to be rearranged or resized. The <B>XIMStatusCallbacks</B>
+interaction style can be useful for an application designed to be used
+with a single input method which calls the <B>XNStatusDrawCallback</B>
+with well specified values. In general, however, when you don't know what
+sort of data your application will be asked to display (or the meaning
+of that data), you won't be able to do anything beyond displaying the data
+in some rectangular region of your application, which amounts to the same
+thing as the <B>XIMStatusArea</B> interaction style. So in these cases
+it may make more sense to use <B>XIMStatusArea</B> if the input method
+supports it.
+<BR>
+<HR>
+<H2>
+Filtering Events</H2>
+An input method needs to receive X events other than keystrokes.
+It must receive expose events when its Preedit or Status areas need refreshing,
+it needs mouse button events if it is to support full-featured editing
+of pre-edit text, and it needs mouse motion events if it implements popup
+menus. The input method needs to get first crack at these events, but will
+not always be able to intercept them directly from the server, so the application
+is responsible for passing all events to the input method before processing
+them itself. This is done with the function <B>XFilterEvent()</B>. It should
+be called from the event loop of all internationalized applications, generally
+right after <B>XNextEvent()</B>. <B>XFilterEvent()</B> takes two arguments,
+the event to filter, and the window to which the event is directed. If
+the application (or a toolkit used by the application) performs event redirection,
+this window may not be the same as the window in which the event occurred.
+If the window argument is <B>None</B>, the window of the event will be
+used. An application cannot know in advance which events the IM will need
+to filter; it must pass all events to <B>XFilterEvent()</B>. If <B>XFilterEvent()</B>
+returns <B>True</B>, it filtered the event the application should dispatch
+the event no further.
+
+<P>Remember that an input method may be interested in different
+types of events than the application is. If the application is to pass
+events to the input method through <B>XFilterEvent()</B>, the application
+must have registered interest in receiving those events with <B>XSelectInput()</B>.
+The <B>XNFilterEvents</B> input context attribute contains a mask of events
+that the input method is interested in receiving, and all clients should
+read this attribute and use it when selecting events. Example 11-12 shows
+code that does this and an event loop that uses <B>XFilterEvent()</B>.
+
+<P><B>Selecting events for an IM and using XFilterEvent()
+in an event loop</B>
+<BLOCKQUOTE>
+<PRE><TT>long im_event_mask;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+XGetICValues(ic, XNFilterEvents, &amp;im_event_mask, NULL);
+XSelectInput(dpy, win, ExposureMask | KeyPressMask
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | StructureNotifyMask | im_event_mask);
+for(;;) {
+&nbsp;&nbsp;&nbsp; XEvent e;
+&nbsp;&nbsp;&nbsp; XNextEvent(dpy, &amp;e);
+&nbsp;&nbsp;&nbsp; if (XFilterEvent(&amp;e, None)) continue;
+&nbsp;&nbsp;&nbsp; switch (e.type) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .&nbsp;&nbsp; /* dispatch the event here */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .
+&nbsp;&nbsp;&nbsp; }
+}</TT></PRE>
+</BLOCKQUOTE>
+The R5 X Toolkit Intrinsics have been modified to make appropriate
+use of <B>XFilterEvent()</B> in the function <B>XtDispatchEvent()</B> called
+from <B>XtAppMainLoop()</B>.
+<BR>
+<HR>
+<H2>
+Getting Composed Text</H2>
+Prior to R5, <B>XLookupString()</B> was used to convert the
+keycode returned in a KeyPress event into a KeySym and further into a character
+string that could be passed to the X text drawing functions. Unfortunately,
+this function only works for the Latin-1 charset. To support internationalization
+in a limited way, there were alternate <B>LookupString</B> functions in
+the Xmu library: <B>XmuLookupLatin2()</B>, <B>XmuLookupJISX0201()</B>,
+<B>XmuLookupGreek()</B>, etc. In R5, these have been superseded by <B>XmbLookupString()</B>
+and <B>XwcLookupString()</B>. These functions are identical except in the
+type of string they return: the <B>Xmb</B> version returns a multi-byte
+string of <B>char</B>, and <B>Xwc</B> version returns a wide-character
+string of <B>wchar_t</B>. In both cases the string will be encoded as appropriate
+for the locale of the IC.
+
+<P>Whenever a <B>KeyPress</B> event is delivered to an application
+that is performing internationalized text input, the application should
+use that event in a call to <B>XmbLookupString()</B> or <B>XwcLookupString()</B>.
+(Note that <B>KeyRelease</B> events should not be passed to these functions--they
+will result in undefined behavior.) The application should not expect that
+each call to <B>Xmb/XwcLookupString()</B> will return a string. Depending
+on the complexity of the input method in use, a user may type many keystrokes
+before any composed input is ready for the application. Neither should
+the application expect that <B>Xmb/XwcLookupString()</B> will return a
+single character at a time--in some input methods a user may type a phrase,
+a sentence, or more before hitting the key that triggers the conversion
+from pre-edit to composed text.
+
+<P><B>XmbLookupString()</B> and <B>XwcLookupString()</B>
+take as arguments the IC for which input is to be looked up (which is usually
+the IC with the focus), the X event that triggered the call, a buffer to
+return the multi-byte or wide-character string in, a pointer to a location
+to return a keysym, and a pointer to a location to return a status value.
+The value returned by both functions is an integer which specifies the
+number of bytes in the returned multi-byte string or the number of <B>wchar_t</B>
+in the returned wide-character string. There are five status values that
+these functions return, each of which may require separate processing:
+<UL>
+<LI>
+<B>XLookupNone</B> means that the input method does not have
+any composed input ready to pass to the application, and the application
+need not do any further processing on the current key event. When this
+status value is returned, the return value of the function will be 0.</LI>
+
+<LI>
+<B>XLookupKeySym</B> means that a keysym, but no string,
+has been returned. This likely means that the user has struck a special
+key of some sort (a function key, an arrow key, Delete, etc.). The application
+should handle the keysym as appropriate. Because no string is returned,
+the return value of the function is 0. Be careful to capitalize the constant
+<B>XLookupKeySym</B> correctly; Xlib also defines the function <B>XLookupKeysym()</B>.</LI>
+
+<LI>
+<B>XLookupChars</B> means that a string, but no keysym, has
+been returned. The multi-byte or wide-character string is encoded in the
+codeset of the locale of the IC and is placed in the buffer passed to the
+function. The return value of the function is the length of the multi-byte
+string in bytes or the length of the wide-character string in wide characters.</LI>
+
+<LI>
+<B>XLookupBoth</B> means that both a string and a keysym
+are returned. This may indicate that a single keystroke has passed through
+the input method without any pre-editing, as is common in European input
+methods, for example. The return value of the function is the length of
+the string, as described for <B>XLookupChars</B> above.</LI>
+
+<LI>
+<B>XBufferOverflow</B> means that the string to be returned
+will not fit in the provided buffer. The return value of the function is
+the required size of the buffer (in bytes or wide characters), and nothing
+is returned in the string buffers. The input string remains in the IC,
+waiting to be looked up. The application should allocate a buffer of the
+required size and look up the string, or should display an error message
+and flush the pending input with a call to <B>XmbResetIC()</B> or <B>XwcResetIC</B>.
+If this return status is ignored, the large input string will remain pending
+and block any further input on that IC.</LI>
+</UL>
+Some input method architectures allow the input method to
+intercept events from the X server before the application ever sees them.
+If these input methods remove all <B>KeyPress</B> events from the input
+stream, then the application will never be triggered to call <B>Xmb/wcLookupString()</B>.
+If this is the case, the input method will send a synthetic <B>KeyPress</B>
+event to the application when it has composed input ready for lookup. By
+convention, the keycode in this synthetic event should be 0. Note, though,
+that these are architectural details and do not affect the structure of
+an internationalized applications.
+
+<P>Example 11-13 shows code that uses <B>XwcLookupString()</B>
+and handles each of the possible return status values.
+
+<P><B>Looking up internationalized input</B>
+<BLOCKQUOTE>
+<PRE><TT>XEvent event;
+int len;
+int buf_len = 10;
+wchar_t *buffer = (wchar_t *)malloc(buf_len * sizeof(wchar_t));
+KeySym keysym;
+Status status;
+while(1) {
+&nbsp;&nbsp;&nbsp; XNextEvent(dpy, &amp;event);
+&nbsp;&nbsp;&nbsp; if (XFilterEvent(&amp;event, None))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; continue;
+&nbsp;&nbsp;&nbsp; switch (event.type) {
+&nbsp;&nbsp;&nbsp; case Expose:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Redraw();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; case KeyPress:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; len = XwcLookupString(ic, &amp;event, buffer, buf_len,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;keysym, &amp;status);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (status == XBufferOverflow) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; buf_len = len;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; buffer = (wchar_t *)realloc(buffer, buf_len*sizeof(wchar_t));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; len = XwcLookupString(ic, &amp;event, buffer, buf_len,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;keysym, &amp;status);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch (status) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case XLookupNone:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case XLookupKeySym:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case XLookupBoth:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Handle backspacing */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((keysym == XK_Delete) || (keysym == XK_BackSpace)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Backspace();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (status == XLookupKeySym) break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case XLookupChars:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Insert(buffer, len);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp; }
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<HR>
+<H2>
+XIM Programming Checklist</H2>
+The following list provides useful guidelines when writing
+an Xlib or Xt application or Xt widget that uses the R5 internationalized
+input mechanisms. It is followed by an example Xlib program that performs
+simple internationalized text input and implements most of the steps in
+the list.
+<UL>
+<LI>
+Set the locale with <B>setlocale</B>. Use a locale name from
+a resource, or specify the empty string (<B>""</B>). In an Xt application
+do this from the special callback procedure registered with <B>XtSetLanguageProc()</B>.</LI>
+
+<LI>
+Verify that X supports the locale with <B>XSupportsLocale()</B>.</LI>
+
+<LI>
+Set the locale modifiers (i.e., the name of the input method
+to use) from a resource or with the empty string.</LI>
+
+<LI>
+If you want your input method to be customizable with resources,
+create a database or get a handle to an already created one. In an Xt application,
+use <B>XtDatabase()</B>.</LI>
+
+<LI>
+Open a connection to the IM of the locale with <B>XOpenIM()</B>.
+Pass a resource database and the name and class the IM should use for looking
+up its resources in that database. Verify that the IM is successfully opened.
+If you are writing a widget, you can assume that a valid <B>XIM</B> will
+be passed as a resource, and skip this step.</LI>
+
+<LI>
+Query the IM for its supported interaction styles. Choose
+one that your application can support based on the value of user-specified
+resources, or upon some criteria for which will provide the best user interface
+for your application. In a widget, this should be in the <B>initialize</B>
+method.</LI>
+
+<LI>
+Create an <B>XFontSet</B> for use by the IC. The base font
+name list for the <B>XFontSet</B> should be obtained from a resource. In
+an Xt application, you should use the constant <B>XtDefaultFontSet</B>
+as the default value for this resource. If you are writing a widget, you
+can assume that a valid <B>XFontSet</B> will be passed as a resource.</LI>
+
+<LI>
+Create a <B>Window</B> for use by the IC. If you are programming
+with Xt, create a widget. If you are writing your own widget, the window
+will be created for you by the <B>realize</B> method.</LI>
+
+<LI>
+Create an IC with <B>XCreateIC()</B>, specifying the interaction
+style you choose, the <B>XNEditWindow</B>, and the <B>XNFontSet</B> sub-attribute
+for both the Preedit and Status Areas. If you are using the <B>XIMPreeditPosition</B>
+style, you must also specify the <B>XNAreaNeeded</B> attribute, and if
+you are using <B>XIMPreeditCallbacks</B> or <B>XIMStatusCallbacks</B> styles,
+you must specify values for all the applicable callback attributes. You
+may also specify any other attributes at this point. If you are writing
+a widget, create the IC in the <B>initialize</B> method, but specify the
+window in the <B>realize</B> method. In a widget, you should provide widget
+resources which control the setting of IC attributes like <B>XNLineSpacing</B>
+and <B>XNCursor</B>.</LI>
+
+<LI>
+Query the value of the <B>XNFilterEvents</B> attribute of
+the IC and augment the event mask for your window with those events. If
+you are writing an Xt program, call <B>XtAddEventHandler</B> for the event
+mask with a no-op procedure. If you are writing a widget, call <B>XtAddEventHandler()</B>
+in the same way from the <B>realize</B> method.</LI>
+
+<LI>
+If you have selected the <B>XIMPreeditArea</B> or the <B>XIMStatusArea</B>
+interaction styles, negotiate a geometry for either or both of those areas
+using the <B>XNAreaNeeded</B> attribute of the IC. Set the geometry you
+decide on in the <B>XNArea</B> attribute. If you are writing a widget,
+begin the negotiation in the <B>initialize</B> method, and set the <B>XNArea</B>
+attribute when the window is created in the <B>realize</B> method. Renegotiate
+geometry whenever your application window changes size.</LI>
+
+<LI>
+If you have selected the <B>XIMPreeditPosition</B> interaction
+style, set the initial location of your insertion cursor in the <B>XNSpotLocation</B>
+attribute, and a region within which pre-editing is allowed in the <B>XNArea</B>
+resource. If you are writing a widget, do this in the <B>resize</B> method.
+In a widget, you may want to implement the Preedit and Status areas as
+sub-widgets.</LI>
+
+<LI>
+For a simple application that does no focus management, set
+the focus to your IC with <B>XSetICFocus()</B>. For more complicated applications,
+you should set and unset IC focus when you receive <B>FocusIn</B> and <B>FocusOut</B>
+events, or whenever your application-internal or toolkit focus changes.
+In an Xt program or widget, you can use an event handler or a translation
+and action to track focus changes.</LI>
+
+<LI>
+Use <B>XFilterEvent()</B> in your event loop before dispatching
+an event. If it returns <B>True</B>, discard the event and wait for another.
+In Xt programs, this is handled for you by <B>XtDispatchEvent()</B> in
+<B>XtAppMainLoop()</B>.</LI>
+
+<LI>
+When <B>XFilterEvent()</B> returns an unfiltered <B>KeyPress</B>
+event, use <B>Xmb/wcLookupString()</B> to convert it to a KeySym or a string
+in the encoding of the locale. In Xt programs or widgets, use an event
+handler or a translation and action to get these events.</LI>
+
+<LI>
+Echo the newly input characters with <B>Xmb/wcDrawString()</B>
+or one of the other R5 text drawing functions.</LI>
+
+<LI>
+If you are using the <B>XIMPreeditPosition</B> interaction
+style, update the values of the <B>XNSpotLocation</B> and <B>XNArea</B>
+attributes of the IC each time you move the insertion cursor.</LI>
+
+<LI>
+If your application supports the <B>XIMPreeditArea</B> or
+<B>XIMStatusArea</B> interaction styles, optionally write a <B>GeometryCallback</B>
+procedure to handle requests from the IM to change the size of those areas.
+If you are writing a composite widget, the <B>GeometryCallback</B> and
+the <B>geometry_manager</B> method may be able to share code.</LI>
+
+<LI>
+If your application supports the <B>XIMPreeditCallbacks</B>
+or <B>XIMStatusCallbacks</B> interaction styles, write the required callback
+procedures to support those styles.</LI>
+</UL>
+Example 11-14 is the complete code of a program that performs
+simple internationalized text input. Many of the examples in this chapter
+and the last are fragments of this program.
+
+<P><B>Performing internationalized text input: a complete
+program</B>
+<BLOCKQUOTE>
+<PRE><TT>/*
+&nbsp;* This program demonstrates some of the R5 internationalized text
+&nbsp;* input functions.&nbsp; It creates a very simple window, connects to an
+&nbsp;* input method, and displays composed text obtained by calling
+&nbsp;* XwcLookupString.&nbsp; It backspaces when it receives the Backspace or
+&nbsp;* Delete keysyms.
+&nbsp;*
+&nbsp;* Note that this program contains a work-around for a bug
+&nbsp;* in the Xsi implementation of XwcLookupString.&nbsp; If you are using
+&nbsp;* the Ximp implementation, or if the bug has been fixed in your Xlib,
+&nbsp;* you will need to undo the workaround.&nbsp; See the comment below, near
+&nbsp;* the call to XwcLookupString.
+&nbsp;*
+&nbsp;* This program has not been tested with the Ximp implementation.
+&nbsp;*/
+#include &lt;stdio.h>
+#include &lt;malloc.h>
+#include &lt;X11/Xlib.h>
+#include &lt;X11/keysym.h>
+/*
+&nbsp;* include &lt;locale.h> or the non-standard X substitutes
+&nbsp;* depending on the X_LOCALE compilation flag
+&nbsp;*/
+#include &lt;X11/Xlocale.h>
+/*
+&nbsp;* This function chooses the "more desirable" of two input styles.&nbsp; The
+&nbsp;* style with the more complicated Preedit style is returned, and if the
+&nbsp;* styles have the same Preedit styles, then the style with the more
+&nbsp;* complicated Status style is returned.&nbsp; There is no "official" way to
+&nbsp;* order interaction styles.&nbsp; This one makes the most sense to me.
+&nbsp;* This is a long procedure for a simple heuristic.
+&nbsp;*/
+XIMStyle ChooseBetterStyle(style1,style2)
+XIMStyle style1, style2;
+{
+&nbsp;&nbsp;&nbsp; XIMStyle s,t;
+&nbsp;&nbsp;&nbsp; XIMStyle preedit = XIMPreeditArea | XIMPreeditCallbacks |
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XIMPreeditPosition | XIMPreeditNothing | XIMPreeditNone;
+&nbsp;&nbsp;&nbsp; XIMStyle status = XIMStatusArea | XIMStatusCallbacks |
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XIMStatusNothing | XIMStatusNone;
+&nbsp;&nbsp;&nbsp; if (style1 == 0) return style2;
+&nbsp;&nbsp;&nbsp; if (style2 == 0) return style1;
+&nbsp;&nbsp;&nbsp; if ((style1 &amp; (preedit | status)) == (style2 &amp; (preedit | status)))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return style1;
+&nbsp;&nbsp;&nbsp; s = style1 &amp; preedit;
+&nbsp;&nbsp;&nbsp; t = style2 &amp; preedit;
+&nbsp;&nbsp;&nbsp; if (s != t) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (s | t | XIMPreeditCallbacks)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return (s == XIMPreeditCallbacks)?style1:style2;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if (s | t | XIMPreeditPosition)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return (s == XIMPreeditPosition)?style1:style2;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if (s | t | XIMPreeditArea)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return (s == XIMPreeditArea)?style1:style2;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if (s | t | XIMPreeditNothing)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return (s == XIMPreeditNothing)?style1:style2;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; else { /* if preedit flags are the same, compare status flags */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; s = style1 &amp; status;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; t = style2 &amp; status;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (s | t | XIMStatusCallbacks)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return (s == XIMStatusCallbacks)?style1:style2;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if (s | t | XIMStatusArea)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return (s == XIMStatusArea)?style1:style2;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if (s | t | XIMStatusNothing)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return (s == XIMStatusNothing)?style1:style2;
+&nbsp;&nbsp;&nbsp; }
+}
+void GetPreferredGeometry(ic, name, area)
+XIC ic;
+char *name;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* XNPreEditAttributes or XNStatusAttributes */
+XRectangle *area;&nbsp;&nbsp;&nbsp;&nbsp; /* the constraints on the area */
+{
+&nbsp;&nbsp;&nbsp; XVaNestedList list;
+&nbsp;&nbsp;&nbsp; list = XVaCreateNestedList(0, XNAreaNeeded, area, NULL);
+&nbsp;&nbsp;&nbsp; /* set the constraints */
+&nbsp;&nbsp;&nbsp; XSetICValues(ic, name, list, NULL);
+&nbsp;&nbsp;&nbsp; /* Now query the preferred size */
+&nbsp;&nbsp;&nbsp; /* The Xsi input method, Xwnmo, seems to ignore the constraints, */
+&nbsp;&nbsp;&nbsp; /* but we're not going to try to enforce them here. */
+&nbsp;&nbsp;&nbsp; XGetICValues(ic, name, list, NULL);
+&nbsp;&nbsp;&nbsp; XFree(list);
+}
+void SetGeometry(ic, name, area)
+XIC ic;
+char *name;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* XNPreEditAttributes or XNStatusAttributes */
+XRectangle *area;&nbsp;&nbsp;&nbsp;&nbsp; /* the actual area to set */
+{
+&nbsp;&nbsp;&nbsp; XVaNestedList list;
+&nbsp;&nbsp;&nbsp; list = XVaCreateNestedList(0, XNArea, area, NULL);
+&nbsp;&nbsp;&nbsp; XSetICValues(ic, name, list, NULL);
+&nbsp;&nbsp;&nbsp; XFree(list);
+}
+main(argc, argv)
+int argc;
+char *argv[];
+{
+&nbsp;&nbsp;&nbsp; Display *dpy;
+&nbsp;&nbsp;&nbsp; int screen;
+&nbsp;&nbsp;&nbsp; Window win;
+&nbsp;&nbsp;&nbsp; GC gc;
+&nbsp;&nbsp;&nbsp; XGCValues gcv;
+&nbsp;&nbsp;&nbsp; XEvent event;
+&nbsp;&nbsp;&nbsp; XFontSet fontset;
+&nbsp;&nbsp;&nbsp; XIM im;
+&nbsp;&nbsp;&nbsp; XIC ic;
+&nbsp;&nbsp;&nbsp; XIMStyles *im_supported_styles;
+&nbsp;&nbsp;&nbsp; XIMStyle app_supported_styles;
+&nbsp;&nbsp;&nbsp; XIMStyle style;
+&nbsp;&nbsp;&nbsp; XIMStyle best_style;
+&nbsp;&nbsp;&nbsp; XVaNestedList list;
+&nbsp;&nbsp;&nbsp; long im_event_mask;
+&nbsp;&nbsp;&nbsp; XRectangle preedit_area;
+&nbsp;&nbsp;&nbsp; XRectangle status_area;
+&nbsp;&nbsp;&nbsp; char *program_name = argv[0];
+&nbsp;&nbsp;&nbsp; char **missing_charsets;
+&nbsp;&nbsp;&nbsp; int num_missing_charsets = 0;
+&nbsp;&nbsp;&nbsp; char *default_string;
+&nbsp;&nbsp;&nbsp; wchar_t string[200];
+&nbsp;&nbsp;&nbsp; int str_len = 0;
+&nbsp;&nbsp;&nbsp; int i;
+&nbsp;&nbsp;&nbsp; /*
+&nbsp;&nbsp;&nbsp;&nbsp; * The error messages in this program are all in English.
+&nbsp;&nbsp;&nbsp;&nbsp; * In a truly internationalized program, they would not
+&nbsp;&nbsp;&nbsp;&nbsp; * be hardcoded; they would be looked up in a database of
+&nbsp;&nbsp;&nbsp;&nbsp; * some sort.
+&nbsp;&nbsp;&nbsp;&nbsp; */
+&nbsp;&nbsp;&nbsp; if (setlocale(LC_ALL, "") == NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "%s: cannot set locale.,program_name);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if ((dpy = XOpenDisplay(NULL)) == NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "%s: cannot open Display., program_name);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if (!XSupportsLocale()) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "%s: X does not support locale %s.,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; program_name, setlocale(LC_ALL, NULL));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if (XSetLocaleModifiers("") == NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "%s: Warning: cannot set locale modifiers.,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; argv[0]);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; /*
+&nbsp;&nbsp;&nbsp;&nbsp; * Create the fontset.
+&nbsp;&nbsp;&nbsp;&nbsp; */
+&nbsp;&nbsp;&nbsp; fontset = XCreateFontSet(dpy,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "-adobe-helvetica-*-r-*-*-*-120-*-*-*-*-*-*,\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -misc-fixed-*-r-*-*-*-130-*-*-*-*-*-*",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;missing_charsets, &amp;num_missing_charsets,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;default_string);
+&nbsp;&nbsp;&nbsp; /*
+&nbsp;&nbsp;&nbsp;&nbsp; * if there are charsets for which no fonts can
+&nbsp;&nbsp;&nbsp;&nbsp; * be found, print a warning message.
+&nbsp;&nbsp;&nbsp;&nbsp; */
+&nbsp;&nbsp;&nbsp; if (num_missing_charsets > 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void)fprintf(stderr, "%s: The following charsets are missing:,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; program_name);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for(i=0; i &lt; num_missing_charsets; i++)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void)fprintf(stderr, "%s: %s, program_name,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; missing_charsets[i]);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XFreeStringList(missing_charsets);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void)fprintf(stderr, "%s: The string %s will be used in place,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; program_name, default_string);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void)fprintf(stderr, "%s: of any characters from those sets.,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; program_name);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; screen = DefaultScreen(dpy);
+&nbsp;&nbsp;&nbsp; win = XCreateSimpleWindow(dpy, RootWindow(dpy, screen), 0, 0, 400, 100,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2, WhitePixel(dpy,screen),BlackPixel(dpy,screen));
+&nbsp;&nbsp;&nbsp; gc = XCreateGC(dpy,win,0,&amp;gcv);
+&nbsp;&nbsp;&nbsp; XSetForeground(dpy,gc,WhitePixel(dpy,screen));
+&nbsp;&nbsp;&nbsp; XSetBackground(dpy,gc,BlackPixel(dpy,screen));
+&nbsp;&nbsp;&nbsp; /* Connect to an input method.&nbsp; */
+&nbsp;&nbsp;&nbsp; /* In this example, we don't pass a resource database */
+&nbsp;&nbsp;&nbsp; if ((im = XOpenIM(dpy, NULL, NULL, NULL)) == NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void)fprintf(stderr, "Couldn't open input method);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; /* set flags for the styles our application can support */
+&nbsp;&nbsp;&nbsp; app_supported_styles = XIMPreeditNone | XIMPreeditNothing | XIMPreeditArea;
+&nbsp;&nbsp;&nbsp; app_supported_styles |= XIMStatusNone | XIMStatusNothing | XIMStatusArea;
+&nbsp;&nbsp;&nbsp; /* figure out which styles the IM can support */
+&nbsp;&nbsp;&nbsp; XGetIMValues(im, XNQueryInputStyle, &amp;im_supported_styles, NULL);
+&nbsp;&nbsp;&nbsp; /*
+&nbsp;&nbsp;&nbsp;&nbsp; * now look at each of the IM supported styles, and
+&nbsp;&nbsp;&nbsp;&nbsp; * chose the "best" one that we can support.
+&nbsp;&nbsp;&nbsp;&nbsp; */
+&nbsp;&nbsp;&nbsp; best_style = 0;
+&nbsp;&nbsp;&nbsp; for(i=0; i &lt; im_supported_styles->count_styles; i++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; style = im_supported_styles->supported_styles[i];
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((style &amp; app_supported_styles) == style) /* if we can handle it */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; best_style = ChooseBetterStyle(style, best_style);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; /* if we couldn't support any of them, print an error and exit */
+&nbsp;&nbsp;&nbsp; if (best_style == 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void)fprintf(stderr, "%s: application and program do not share a,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; argv[0]);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void)fprintf(stderr, "%s: commonly supported interaction style.,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; argv[0]);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; XFree(im_supported_styles);
+&nbsp;&nbsp;&nbsp; /*
+&nbsp;&nbsp;&nbsp;&nbsp; * Now go create an IC using the style we chose.
+&nbsp;&nbsp;&nbsp;&nbsp; * Also set the window and fontset attributes now.
+&nbsp;&nbsp;&nbsp;&nbsp; */
+&nbsp;&nbsp;&nbsp; list = XVaCreateNestedList(0,XNFontSet,fontset,NULL);
+&nbsp;&nbsp;&nbsp; ic = XCreateIC(im,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNInputStyle, best_style,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNClientWindow, win,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNPreeditAttributes, list,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNStatusAttributes, list,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; NULL);
+&nbsp;&nbsp;&nbsp; XFree(list);
+&nbsp;&nbsp;&nbsp; if (ic == NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr, "Couldn't create input context);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; XGetICValues(ic, XNFilterEvents, &amp;im_event_mask, NULL);
+&nbsp;&nbsp;&nbsp; XSelectInput(dpy,win, ExposureMask | KeyPressMask
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | StructureNotifyMask | im_event_mask);
+&nbsp;&nbsp;&nbsp; XSetICFocus(ic);
+&nbsp;&nbsp;&nbsp; XMapWindow(dpy,win);
+&nbsp;&nbsp;&nbsp; while(1) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int buf_len = 10;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; wchar_t *buffer = (wchar_t *)malloc(buf_len * sizeof(wchar_t));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int len;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; KeySym keysym;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Status status;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Bool redraw = False;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNextEvent(dpy, &amp;event);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (XFilterEvent(&amp;event, None))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; continue;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch (event.type) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case Expose:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* draw the string at a hard-coded location */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (event.xexpose.count == 0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XwcDrawString(dpy, win, fontset, gc, 10, 50, string, str_len);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case KeyPress:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; len = XwcLookupString(ic, &amp;event, buffer, buf_len,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;keysym, &amp;status);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /*
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * Workaround:&nbsp; the Xsi implementation of XwcLookupString
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * returns a length that is 4 times too big.&nbsp; If this bug
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * does not exist in your version of Xlib, remove the
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * following line, and the similar line below.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; len = len / 4;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (status == XBufferOverflow) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; buf_len = len;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; buffer = (wchar_t *)realloc((char *)buffer,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; buf_len * sizeof(wchar_t));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; len = XwcLookupString(ic, &amp;event, buffer, buf_len,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;keysym, &amp;status);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Workaround */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; len = len / 4;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; redraw = False;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch (status) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case XLookupNone:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case XLookupKeySym:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case XLookupBoth:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Handle backspacing, and &lt;Return> to exit */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ((keysym == XK_Delete) || (keysym == XK_BackSpace)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (str_len > 0) str_len--;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; redraw = True;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (keysym == XK_Return) exit(0);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (status == XLookupKeySym) break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case XLookupChars:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for(i=0; i &lt; len; i++)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string[str_len++] = buffer[i];
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; redraw = True;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* do a very simple-minded redraw, if needed */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (redraw) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XClearWindow(dpy, win);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XwcDrawString(dpy, win, fontset, gc, 10, 50, string, str_len);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ConfigureNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /*
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * When the window is resized, we should re-negotiate the
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * geometry of the Preedit and Status area, if they are used
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * in the interaction style.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (best_style &amp; XIMPreeditArea) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; preedit_area.width = event.xconfigure.width*4/5;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; preedit_area.height = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GetPreferredGeometry(ic, XNPreeditAttributes, &amp;preedit_area);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; preedit_area.x = event.xconfigure.width - preedit_area.width;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; preedit_area.y = event.xconfigure.height - preedit_area.height;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SetGeometry(ic, XNPreeditAttributes, &amp;preedit_area);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (best_style &amp; XIMStatusArea) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; status_area.width = event.xconfigure.width/5;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; status_area.height = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GetPreferredGeometry(ic, XNStatusAttributes, &amp;status_area);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; status_area.x = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; status_area.y = event.xconfigure.height - status_area.height;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SetGeometry(ic, XNStatusAttributes, &amp;status_area);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; }
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

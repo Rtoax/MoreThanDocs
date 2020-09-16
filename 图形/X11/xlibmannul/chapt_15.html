@@ -1,0 +1,789 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_14.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_16.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H1>
+Other Programming Techniques</H1>
+As its title implies, this chapter discusses a few orphaned
+techniques that didn't quite fit in anywhere else. This chapter is important
+if you want to use one of these techniques, but most readers may just want
+to skim it.
+
+<P>This chapter covers a few obscure but occasionally necessary
+programming techniques. The routines and techniques described here will
+not be needed in most programs.
+
+<P>The end of the chapter contains information about porting
+and portability.
+<BR>
+<HR>
+<H2>
+Reading and Writing Properties</H2>
+Chapter 12, "Interclient Communication," described many of
+the usual properties used in communication with the window manager and
+other clients. Xlib provides convenience routines for reading and writing
+these properties. But if you establish any other private protocols between
+two of your applications or between your application and a proprietary
+window manager, you will need to write your own routines to read and write
+properties. Example 15-1 is the code for <B>XFetchName()</B> that shows
+how to read a property containing a string.
+
+<P><B>Reading a property</B>
+<BLOCKQUOTE>
+<PRE><TT>#include "Xatom.h"
+Status XFetchName (dpy, w, name)
+&nbsp;&nbsp;&nbsp; register Display *dpy;
+&nbsp;&nbsp;&nbsp; Window w;
+&nbsp;&nbsp;&nbsp; char **name;
+{
+&nbsp;&nbsp;&nbsp; Atom actual_type;
+&nbsp;&nbsp;&nbsp; int actual_format;
+&nbsp;&nbsp;&nbsp; unsigned long nitems;
+&nbsp;&nbsp;&nbsp; unsigned long leftover;
+&nbsp;&nbsp;&nbsp; unsigned char *data = NULL;
+&nbsp;&nbsp;&nbsp; if (XGetWindowProperty(dpy, w, XA_WM_NAME, 0L, (long)BUFSIZ,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; False, XA_STRING, &amp;actual_type, &amp;actual_format,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;nitems, &amp;leftover, &amp;data) != Success) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *name = NULL;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return (0);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if ( (actual_type == XA_STRING) &amp;&amp;&nbsp; (actual_format == 8) ) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* The data returned by XGetWindowProperty is guaranteed
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * to contain one extra byte that is null terminated to
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * make retrieving string properties easy */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *name = (char *)data;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return(1);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if (data) Xfree ((char *)data);
+&nbsp;&nbsp;&nbsp; *name = NULL;
+&nbsp;&nbsp;&nbsp; return(0);
+}</TT></PRE>
+</BLOCKQUOTE>
+Using <B>XChangeProperty()</B> is easier than reading a property
+with <B>XGetWindowProperty()</B>, since there are many fewer arguments.
+Example 15-2 shows the companion function to <B>XFetchName()</B>, <B>XStoreName()</B>.
+
+<P><B>Writing a property</B>
+<BLOCKQUOTE>
+<PRE><TT>XStoreName (dpy, w, name)
+&nbsp;&nbsp;&nbsp; register Display *dpy;
+&nbsp;&nbsp;&nbsp; Window w;
+&nbsp;&nbsp;&nbsp; char *name;
+{
+&nbsp;&nbsp;&nbsp; XChangeProperty(dpy, w, XA_WM_NAME, XA_STRING,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 8, PropModeReplace, (unsigned char *)name,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; name ? strlen(name) : 0);
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<HR>
+<H2>
+Screen Saver</H2>
+Screen saver routines are provided to control the blanking
+of the screen when it has been idle for a time. <B>XSetScreenSaver()</B>
+sets the operation of the screen saver, including:
+<UL>
+<LI>
+How long the display remains idle before it is blanked.</LI>
+
+<LI>
+The time between random pattern motions.</LI>
+
+<LI>
+Whether the application prefers screen blanking or not (regardless
+of whether the screen is capable of it).</LI>
+
+<LI>
+Whether exposures are generated when the screen is restored.</LI>
+</UL>
+<B>XActivateScreenSaver()</B> and <B>XResetScreenSaver()</B>
+turn the screen saver on and off, respectively, and <B>XForceScreenSaver()</B>
+can turn it on or off according to a flag. <B>XGetScreenSaver()</B> returns
+the current settings of the screen saver.
+
+<P>At this writing, the X Consortium is working on an X extension
+that will support more advanced screen saving abilities.
+<BR>
+<HR>
+<H2>
+Host Access and Security</H2>
+Once an application successfully connects to a server, X
+does not provide any protection from unauthorized access to individual
+windows, pixmaps, or other resources. If a program succeeds in connecting
+with a server and finds out a resource ID, it can manipulate or even destroy
+the resource.
+
+<P>There are several kinds of security that can prevent connections
+from being made by clients running on other machines. First, to provide
+a minimal level of protection, connections are only permitted from machines
+which are listed on a <I>host access list</I>. This is adequate on single-user
+workstations but obviously breaks down on machines running more than one
+server.
+
+<P>In X11R4, per-user control was added with the <B>MIT-MAGIC-COOKIE-1MIT-MAGIC-COOKIE-1</B>
+is not too secure, however, because it passes its secret key ("cookie")
+between client and server without encryption.
+
+<P>X11R5 defines, and the MIT release implements, two new
+mechanisms that can be used for secure access control. <B>XDM-AUTHORIZATION-1</B>
+is similar to <B>MIT-MAGIC-COOKIE-1</B>, but uses DES (Data Encryption
+Standard) encryption to encrypt the authorization data that is passed between
+client and server. To compile this authorization scheme, you need an implementation
+of DES in the file <I>mit/lib/Xdmcp/Wraphelp.c</I>. Due to U.S. export
+regulations, this file may not appear in your distribution. If you do not
+plan to export the file outside of the U.S., you may legally obtain it
+over the network from the X Consortium. Ftp to the host <I>export.lcs.mit.edu</I>
+and see the file <I>pub/R5/xdm-auth/README</I>. Outside the U.S. you may
+be able to obtain a compatible version of this file from the directory
+<I>/pub/X11R5</I> on the machine <I>ftp.psy.uq.oz.au</I> (130.102.32.1).
+If you have this file, but this security mechanism is not automatically
+built on your system, you can add the following line to the file <I>mit/config/site.def</I>
+before building X11R5:
+<BLOCKQUOTE>
+<PRE><TT>#define HasXdmAuth YES</TT></PRE>
+</BLOCKQUOTE>
+The other R5 authorization mechanism is named <B>SUN-DES-1</B>,
+and is based on the public key Sun Secure RPC system included with recent
+version of SunOS. If your system provides this secure RPC system, then
+the <I>.cf</I> file for your system in <I>mit/config</I> should define
+the variable <B>HasSecureRPC</B>, which will cause this security mechanism
+to be automatically built. The forthcoming (late 1992) <I>X Window System
+Administrator's Guide</I> from O'Reilly &amp; Associates explains the issues
+of X security and these X11R5 security mechanisms in detail.
+<H3>
+The Host Access List</H3>
+The initial access control list is read at startup and reset
+time. The initial set of hosts allowed to open connections consists of:
+<UL>
+<LI>
+The host the window system is running on.</LI>
+
+<LI>
+On UNIX-based systems, each host listed in the <I>/etc/X?.hosts</I>
+file, where <I>?</I> indicates the number of the server (the number between
+: and . in the display_name argument to <B>XOpenDisplay()</B> that would
+connect to the server). This file should consist of host names separated
+by newlines. DECnet nodes must terminate in "::" to distinguish them from
+Internet hosts.</LI>
+</UL>
+If a host is not in the access control list when the access
+control mechanism is enabled and the host attempts to establish a connection,
+the server refuses the connection.
+
+<P>You can add, get, or remove hosts with <B>XAddHost()</B>,
+<B>XAddHosts()</B>, <B>XListHosts()</B>, <B>XRemoveHost()</B>, and <B>XRemoveHosts()</B>.
+All the host access control functions use the <B>XHostAddress</B> structure.
+The members in this structure are:
+<DL>
+<DT>
+<B>family</B></DT>
+
+<DD>
+Specifies which address family to use (for example, TCP/IP
+or DECnet). The family symbols <B>FamilyInternet</B>, <B>FamilyDECnet</B>,
+and <B>FamilyChaos</B> are defined in &lt;<I>X11/X.h</I>>.</DD>
+
+<DT>
+<B>length</B></DT>
+
+<DD>
+Specifies the length of the address in bytes.</DD>
+
+<DT>
+<B>address</B></DT>
+
+<DD>
+Specifies a pointer to the address.</DD>
+
+
+<P><B>The XHostAddress structure</B>
+<BLOCKQUOTE>
+<PRE><TT>typedef struct {
+&nbsp;&nbsp; int family;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* For example FamilyInternet */
+&nbsp;&nbsp; int length;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Length of address, in bytes */
+&nbsp;&nbsp; char *address;&nbsp;&nbsp; /* Pointer to where to find the bytes */
+} XHostAddress;</TT></PRE>
+</BLOCKQUOTE>
+</DL>
+For these functions to execute successfully, the client application
+must run on the same host as the X server and must have permission in the
+initial authorization at connection setup before calling these functions.
+<H3>
+Enabling and Disabling Access Control</H3>
+Normally the access control list determines whether a client
+succeeds in connecting to the server. Sometimes it is more convenient (though
+less safe) to allow a client or <I>any</I> host to have access. In this
+case, a client running on the same host as the server can call <B>XDisableAccessControl()</B>.
+Thereafter, the host access list will no longer be used to filter connection
+requests. To reset the server to its default condition with access control,
+use <B>XEnableAccessControl()</B>. <B>XSetAccessControl()</B> performs
+either of these functions according to a flag.
+<BR>
+<HR>
+<H2>
+Getting the Window Hierarchy</H2>
+<B>XQueryTree()</B> lets you get the IDs of the windows in
+any portion of the window hierarchy with a single call. This is the only
+way to find out the IDs of windows created by other clients. <B>XQueryTree()</B>
+gets the root window ID, the parent window ID, and the list of child window
+IDs given a window. It also returns the number of children.
+
+<P>One possible use of <B>XQueryTree()</B> is to find out
+whether your application's top-level window has been reparented by the
+window manager, and it returns the ID of the new parent.
+<BR>
+<HR>
+<H2>
+Close Down Mode</H2>
+Normally all resources associated with a client will be destroyed
+when the connection between the client and the server closes. This can
+happen without prior warning to either the server or the client when, for
+example, the network cable is accidentally pulled out of one of the machines
+or the machine running the server crashes. Therefore, robust applications
+need a way of recovering from that occurrence. <B>XSetCloseDownMode()</B>
+helps implement one method of recovery.
+
+<P>Clients in the default <B>DestroyAll</B> close down mode
+will have all their resources killed when the connection to the server
+dies. <B>XSetCloseDownMode()</B> can set two other modes, <B>RetainPermanent</B>
+and <B>RetainTemporary</B>, which allow client resources to live on for
+a time. A client may want its resources to live on to assist in the process
+of recovering from a broken connection with the server, usually caused
+by a network failure. When next run after the problem has been corrected,
+the application could somehow determine which resources were its own and
+continue operating where it left off. The "somehow" is the crux of the
+problem. The only way we can think of to allow the client to find out the
+IDs of its resources after the client is resurrected is for the client
+to save all the resource IDs in a file (or perhaps in a property, but this
+would not survive a server crash) immediately after they are created. Then
+upon startup, it can read this information and see if the specified resources
+still exist. If they do, it can skip creating them.
+
+<P>A dying connection between the server and client raises
+other problems, too. Even if a client's resources are put on life support,
+there is no longer any "brain" behind them. The user's instructions will
+go unanswered, and there will be no visible warning on the screen that
+the client is no longer connected. The window manager or some other program,
+if running on the same machine as the server, could conceivably detect
+this situation and print a message. However, this kind of functionality
+in a window manager has not been demonstrated up to now. Otherwise, the
+user can only be warned that the connection could die and that this would
+cause the window to freeze (if the client's resources were preserved; the
+window would disappear if the close down mode had not been set). The user
+could then restart the client from an <I>xterm</I> window to reactivate
+the window.
+
+<P><B>XKillClient()</B> can kill resources that remain alive
+after the connection closes. It can kill resources associated with a single
+client by specifying any resource ID associated with that client, or it
+can kill all resources of all clients that terminated with mode <B>RetainTemporary</B>
+if given the argument <B>AllTemporary</B>. <B>XKillClient()</B> might be
+used by the window manager or conceivably by a separate client to save
+space in the server by cleaning up resources after clients die that have
+requested that their resources be kept alive. This should not be done unless
+the user agrees with it, because it could upset an application's attempt
+to recover from a broken connection with the server.
+<BR>
+<HR>
+<H2>
+Connection Close Operations</H2>
+When the connection between the X server and a client is
+closed, either by a call to <B>XCloseDisplay()</B> or by an exiting process,
+the X server performs these automatic operations:
+<UL>
+<LI>
+Disowns all selections made by the program.</LI>
+
+<LI>
+Releases all passive grabs made by the program.</LI>
+
+<LI>
+Performs an <B>XUngrabPointer()</B> and <B>XUngrabKeyboard()</B>
+if the client application had actively grabbed the pointer or the keyboard.</LI>
+
+<LI>
+Performs an <B>XUngrabServer()</B> if the client had grabbed
+the server.</LI>
+
+<LI>
+Marks all resources (including colormap entries) allocated
+by the client application as permanent or temporary, according to whether
+the close down mode is <B>RetainPermanent</B> or <B>RetainTemporary</B>
+(see Section 15.5, "Close Down Mode").</LI>
+</UL>
+The X server performs these operations when the close down
+mode is <B>DestroyAll</B>:
+<UL>
+<LI>
+The <I>save-set</I> is a list of other client's windows,
+referred to as save-set windows (see Section 16.4, "Window Save-set" for
+a complete description of save-sets). If any window in the client's save-set
+is an inferior of a window created by the client, the X server reparents
+the save-set window to the closest ancestor so that the save-set window
+is not an inferior of a window created by the client.</LI>
+
+<LI>
+Performs an <B>XMapWindow()</B> request on the save-set window
+if the save-set window is unmapped. The X server does this even if the
+save-set window was not an inferior of a window created by the client.</LI>
+
+<LI>
+Destroys all windows created by the client, after examining
+each window in the client's save-set.</LI>
+
+<LI>
+Performs the appropriate free request on all nonwindow resources
+(<B>Bitmap</B>, <B>Colormap</B>, <B>Cursor</B>, <B>Font</B>, <B>GC</B>,
+and <B>Pixmap</B>) created by the client.</LI>
+</UL>
+Additional processing occurs when the <I>last</I> connection
+to the X server closes with close down mode <B>DestroyAll</B>. The X server:
+<UL>
+<LI>
+Resets its state, as if it had just been started. The X server
+destroys all lingering resources from clients that have terminated in <B>RetainPermanent</B>
+or <B>RetainTemporary</B> mode.</LI>
+
+<LI>
+Deletes all but the predefined atom IDs.</LI>
+
+<LI>
+Deletes all properties on all root windows.</LI>
+
+<LI>
+Resets all device attributes (key click, bell volume, acceleration)
+and the access control list.</LI>
+
+<LI>
+Restores the standard root tiles, cursors, default pointing
+device, and default font path.</LI>
+
+<LI>
+Restores the keyboard focus to <B>PointerRoot</B>.</LI>
+</UL>
+
+<HR>
+<H2>
+Data Management</H2>
+Xlib provides two ways to help you manage data within an
+application: the context manager and association tables. The former saves
+you the trouble of creating arrays and dynamically allocating memory for
+data to be used only within your application. The latter is a different
+way of doing the same thing, maintained for backwards compatibility with
+X10. We will describe only the context manager. If you are interested in
+investigating association tables, see Appendix B, <I>X10 Compatibility</I>.
+<H3>
+The Context Manager</H3>
+Four routines are provided to let you associate data with
+a window locally in Xlib, rather than in the server as in properties. The
+context manager routines store and retrieve untyped data according to the
+display, a window ID, and an assigned context ID. The display argument
+to the context manager routine (returned from <B>XOpenDisplay()</B>) is
+used as an additional dimension to the array, not as a pointer to the display
+structure. No requests to the server are made.
+
+<P>First, you call <B>XUniqueContext()</B> to obtain an ID
+for a particular type of information you want to assign to windows. <B>XUniqueContext()</B>
+just provides a unique integer ID every time you call it (you can also
+make up your own if you wish). This ID indicates to the application what
+type of information is stored, but none of the calls require you to specify
+the data type. Then use <B>XSaveContext()</B> to store information into
+the context manager and <B>XFindContext()</B> to read it. If you plan to
+rewrite a particular piece of data corresponding to a window ID and context
+ID, it is better in terms of time and space to erase the current entry
+with <B>XDeleteContext()</B> before calling <B>XSaveContext()</B> again.
+<B>XDeleteContext()</B> does not make the context ID invalid.
+
+<P>If you have many different pieces of data of the same
+type, such as an array, that must be associated with each window, you have
+the option of packing it in a single chunk of data and storing it by context
+or creating a different context ID for each member of the array. The context
+ID indicates the <I>meaning</I> of the data (how you interpret it), not
+necessarily the C language type.
+<BR>
+<HR>
+<H2>
+The After Function</H2>
+Every Xlib function that generates a protocol request calls
+an <I>after function</I> just before it returns. This function is normally
+<B>NoOp</B>, but the program may specify the name of any function using
+<B>XSetAfterFunction()</B>.
+<BR>
+<HR>
+<H2>
+Coordinate Transformation</H2>
+<B>XTranslateCoordinates()</B> translates coordinates relative
+to one window into the coordinates relative to a second and determines
+whether the resulting position relative to the second window is in a subwindow
+of the second window.
+
+<P>Because the window-based coordinate system is so convenient,
+this function is rarely needed. Since <B>XTranslateCoordinates()</B> makes
+a round-trip request, it cannot be used heavily to port to X programs that
+use global coordinates.
+<BR>
+<HR>
+<H2>
+ANSI-C and POSIX Portability</H2>
+The MIT Release 5 X distribution is compliant with ANSI-C
+and POSIX standards, and portable across a wide variety of platforms. While
+the goal of the ANSI-C and POSIX standards is portability, many systems
+do not implement these standards, or do not implement them fully, so the
+MIT R5 distribution defines new header files that attempt to mask the differences
+between systems. The header files are <I>&lt;X11/Xfuncproto.h></I>, <I>&lt;X11/Xfuncs.h></I>,
+<I>&lt;X11/Xosdefs.h></I>, and <I>&lt;X11/Xos.h></I>. None of these files
+are part of the official R5 standard, so they may not be shipped with your
+system. But they can be very useful in writing portable applications, so
+we have included them with the code from this book, which you can get as
+described in the <I>Preface</I>.
+<H3>
+&lt;X11/Xosdefs.h></H3>
+The file <I>&lt;X11/Xosdefs.h></I> defines symbols that describe
+a system's support for ANSI-C and POSIX. Symbols that describe a system's
+support for other standards may be added in the future. It defines two
+new symbols, <B>X_NOT_STDC_ENV</B> and <B>X_NOT_POSIX</B>, for systems
+that do not have the ANSI-C and POSIX header files, respectively. When
+standard header files exist, your code should include them. On systems
+which do not have them, however, attempting to include them would cause
+a compilation error. The symbols in <I>&lt;X11/Xosdefs.h></I> allow you
+to write code that takes the right action in either situation. Note that
+<B>X_NOT_STDC_ENV</B> is different from <B>__STDC__</B>, which simply indicates
+whether or not the compiler supports ANSI-C.
+
+<P>An example of using <B>X_NOT_STDC_ENV</B> might be to
+know when the system declares <B>getenv</B>:
+<BLOCKQUOTE>
+<PRE><TT>#ifndef X_NOT_STDC_ENV
+#include &lt;stdlib.h>
+#else
+extern char *getenv();
+#endif</TT></PRE>
+</BLOCKQUOTE>
+It is convention in the R5 code from MIT is to put the standard
+case first using <B>#ifndef</B>.
+
+<P>Lack of the symbol <B>X_NOT_STDC_ENV</B> does <I>not</I>
+mean that the system has <B>&lt;stdarg.h></B>. This header file is part
+of ANSI-C, but the X Consortium found it more useful to check for it separately
+because many systems have all the ANSI-C files except this one. The symbol
+<B>__STDC__</B> is used to control inclusion of this file.
+
+<P><B>X_NOT_POSIX</B> means the system does not have POSIX.1
+header files. Lack of this symbol does <I>not</I> mean that the POSIX environment
+is the default. You may still have to define <B>_POSIX_SOURCE</B> before
+including the header file to get POSIX definitions.
+
+<P>An example of using <B>X_NOT_POSIX</B> might be to determine
+what return type would be declared for <B>getuid</B> in <I>&lt;pwd.h></I>:
+<BLOCKQUOTE>
+<PRE><TT>#include &lt;pwd.h>
+#ifndef X_NOT_POSIX
+&nbsp;&nbsp;&nbsp; uid_t uid;
+#else
+&nbsp;&nbsp;&nbsp; int uid;
+&nbsp;&nbsp;&nbsp; extern int getuid();
+#endif
+&nbsp;&nbsp;&nbsp; uid = getuid();</TT></PRE>
+</BLOCKQUOTE>
+Note that both <B>X_NOT_STDC_ENV</B> and <B>X_NOT_POSIX</B>,
+when declared, state a noncompliance. This was chosen so that porting to
+a new, standard platform would be easier. Only non-standard platforms need
+to add themselves to <I>&lt;X11/Xosdefs.h></I> to turn on the appropriate
+symbols.
+
+<P>Not all systems for which the X Consortium leaves these
+symbols undefined strictly adhere to the relevant standards. Thus you will
+sometimes see checks for a specific operating system near a check for one
+of the <I>Xosdefs.h</I> symbols. The X Consortium found it most useful
+to label systems as conforming even if they had some holes in their compliance.
+Presumably these holes will become fewer as time goes on.
+
+<P><I>&lt;X11/Xosdefs.h></I> is automatically included by
+the header <I>&lt;X11/Xos.h></I>.
+<H3>
+&lt;X11/Xos.h></H3>
+This header file portably defines some of the most commonly
+used operating system and C library functions, and masks some of the most
+common system incompatibilities. It should be used instead of <I>&lt;string.h></I>,
+<I>&lt;strings.h></I>, <I>&lt;sys/types.h></I>, <I>&lt;sys/file.h></I>,
+<I>&lt;fcntl.h></I>, <I>&lt;sys/time.h></I>, and <I>&lt;unistd.h></I>.
+Most of these are POSIX standard header files, but are not yet universal.
+<I>&lt;X11/Xos.h></I> defines any of the four functions <B>index</B>, <B>rindex</B>,
+<B>strchr</B>, and <B>strrchr</B>, which are not defined by the host operating
+system. It defines <B>gettimeofday</B> and <B>time</B> as well as all the
+standard string functions. It also defines the type <B>caddr_t</B>, and
+the constants used by the <B>open</B> system call (<B>O_RDONLY</B>, <B>O_RDWR</B>,
+etc.) and the constants used by the <B>fcntl</B> system call (<B>R_OK</B>,
+<B>W_OK</B>, etc.).
+
+<P>Unfortunately, there is not a header file for declaring
+<B>malloc</B> correctly, and it can be a bit tricky. The MIT R5 distribution
+uses lines like the following (from <I>mit/lib/Xt/Alloc.c</I>) to declare
+<B>malloc</B> and related functions:
+<BLOCKQUOTE>
+<PRE><TT>#ifndef X_NOT_STDC_ENV
+#include &lt;stdlib.h>
+#else
+&nbsp;&nbsp;&nbsp; char *malloc(), *realloc(), *calloc();
+#endif
+#if defined(macII) &amp;&amp; !defined(__STDC__)
+&nbsp;&nbsp;&nbsp; char *malloc(), *realloc(), *calloc();
+#endif /* macII */</TT></PRE>
+</BLOCKQUOTE>
+Note that because <B>index</B> may be a macro declared in
+this header, you should be sure to avoid this identifier in variable and
+structure field names.
+<H3>
+&lt;X11/Xfuncs.h></H3>
+This new header file provides definitions for the BSD functions
+<B>bcopy</B>, <B>bzero</B>, and <B>bcmp</B>. These are not standard functions,
+but are widely used in the X source code. Including this header file allows
+them to be used portably.
+<H3>
+&lt;X11/Xfuncproto.h></H3>
+This file contains definitions for writing function declarations
+in a way that is portable between ANSI-C compilers that support function
+prototypes and pre-ANSI-C compilers that do not support or only partially
+support function prototypes.
+
+<P>For external header files that might get used from C++,
+you should wrap all of your function declarations like this:
+<BLOCKQUOTE>
+<PRE><TT>_XFUNCPROTOBEGIN...
+<I>...function declarations...
+</I>_XFUNCPROTOEND...</TT></PRE>
+</BLOCKQUOTE>
+When in doubt, assume that the header file might get used
+from C++.
+
+<P>A typical function declaration uses <B>NeedFunctionPrototypes</B>,
+like this:
+<BLOCKQUOTE>
+<PRE><TT>extern Atom XInternAtom(
+#if NeedFunctionPrototypes
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* display */,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; _Xconst char*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* atom_name */,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Bool&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* only_if_exists */
+#endif
+);</TT></PRE>
+</BLOCKQUOTE>
+If there are <B>const</B> parameters,&nbsp; use the symbol
+<B>_Xconst</B> instead, as above. This symbol will be defined only if the
+compiler supports <B>const</B> parameters. If it is plausible to pass a
+string constant to a <B>char*</B> parameter, then it is a good idea to
+declare the parameter with <B>_Xconst</B>, so that literals can be passed
+in C++.
+
+<P>If there are nested function prototypes, use <B>NeedNestedPrototypes</B>:
+<BLOCKQUOTE>
+<PRE><TT>extern Bool XCheckIfEvent(
+#if NeedFunctionPrototypes
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* display */,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XEvent*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* event_return */,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Bool (*) (
+#if NeedNestedPrototypes
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* display */,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XEvent*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* event */,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XPointer&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* arg */
+#endif
+&nbsp;&nbsp; )&nbsp;&nbsp; /* predicate */,
+&nbsp;&nbsp; XPointer&nbsp;&nbsp; /* arg */
+#endif
+);</TT></PRE>
+</BLOCKQUOTE>
+If there is a variable argument list, use <B>NeedVarargsPrototypes</B>:
+<BLOCKQUOTE>
+<PRE><TT>extern char *XGetIMValues(
+#if NeedVarargsPrototypes
+&nbsp;&nbsp;&nbsp; XIM /* im */, ...
+#endif
+);</TT></PRE>
+</BLOCKQUOTE>
+If you have parameter types in library functions that will
+widen (be silently cast to a larger type) in traditional C, then you should
+use <B>NeedWidePrototypes</B> so that functions compiled with an ANSI-C
+compiler may be called from code compiled with a traditional C compiler,
+and vice versa.
+<BLOCKQUOTE>
+<PRE><TT>extern XModifierKeymap *XDeleteModifiermapEntry(
+#if NeedFunctionPrototypes
+&nbsp;&nbsp;&nbsp; XModifierKeymap*&nbsp;&nbsp;&nbsp; /* modmap */,
+#if NeedWidePrototypes
+&nbsp;&nbsp;&nbsp; unsigned int&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* keycode_entry */,
+#else
+&nbsp;&nbsp;&nbsp; KeyCode&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* keycode_entry */,
+#endif
+&nbsp;&nbsp;&nbsp; int&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* modifier */
+#endif
+);</TT></PRE>
+</BLOCKQUOTE>
+If you use <B>_Xconst</B>, <B>NeedNestedPrototypes</B>, <B>NeedVarargsPrototypes</B>,
+or <B>NeedWidePrototypes</B>, then your function implementation also has
+to have a function prototype. For example:
+<BLOCKQUOTE>
+<PRE><TT>#if NeedFunctionPrototypes
+Atom XInternAtom (
+&nbsp;&nbsp;&nbsp; Display *dpy,
+&nbsp;&nbsp;&nbsp; _Xconst char *name,
+&nbsp;&nbsp;&nbsp; Bool onlyIfExists)
+#else
+Atom XInternAtom (dpy, name, onlyIfExists)
+&nbsp;&nbsp;&nbsp; Display *dpy;
+&nbsp;&nbsp;&nbsp; char *name;
+&nbsp;&nbsp;&nbsp; Bool onlyIfExists;
+#endif
+{
+&nbsp;&nbsp;&nbsp; ...
+}</TT></PRE>
+</BLOCKQUOTE>
+Actually, whenever you use a function prototype in a header
+file, you should use a function prototype in the implementation, as required
+by ANSI-C.
+<H3>
+Other Symbols</H3>
+Do not use the names <B>class</B>, <B>new</B>, or <B>index</B>
+as variables or structure members. The names <B>class</B> and <B>new</B>
+are reserved words in C++, and you may find your header files used by a
+C++ program someday. Depending on the system, <B>index</B> can be defined
+as a macro in <I>&lt;X11/Xos.h></I>; this rules out any other use of that
+name.
+
+<P>The following system-specific symbols are commonly used
+in X sources where OS dependencies intrude:
+<BLOCKQUOTE>
+<PRE><TT>USG&nbsp;&nbsp;&nbsp;&nbsp; Based on System V Release 2.
+SYSV&nbsp;&nbsp;&nbsp; Based on System V Release 3.
+SVR4&nbsp;&nbsp;&nbsp; System V Release 4.</TT></PRE>
+</BLOCKQUOTE>
+For other system-specific symbols, look at the <B>StandardDefines</B>
+parameters in the <I>mit/config/*.cf</I> files.
+<BR>
+<HR>
+<H2>
+Porting Programs to X</H2>
+Any program that runs on an ASCII terminal can be run directly
+under the terminal emulator <I>xterm</I>. The only problem is how to deal
+with changing the size of the window while the application is running.
+The application may read the termcap definition to determine the original
+window size. Look at the X application <I>resize</I>, which makes changes
+to TERMCAP. The <I>resize</I> reference page (see <I>Volume Three, X Window
+System User's Guide</I>) suggests a couple of C shell aliases for commands
+to resize <I>xterm</I> windows.
+
+<P>If you have a Berkeley 4.3-compatible tty driver, <I>xterm</I>
+sets the tty driver's row and column attributes when its top-level window
+is resized. <I>vi</I> and <I>more</I> and several other programs also look
+at those attributes when figuring out the terminal size. Also, <I>xterm</I>
+will send a SIGWINCH signal to the controlling process, which, if it is
+<I>vi</I> or <I>more</I>, will understand this signal and change its own
+notion of screen size, repainting the window in the process. This is the
+best way to deal with window resizing under <I>xterm</I>.
+
+<P>Graphics programs face a more difficult porting path.
+They must be rewritten to use the X library. It is a good idea to use a
+toolkit rather than trying to write completely in Xlib.
+
+<P>Programs written for single-user systems such as PCs will
+be a little more difficult, since they must be converted to respond to
+events instead of asking for one type of input at a time. They must also
+be modified to work in a multitasking environment.
+
+<P>Byte order is another traditionally thorny issue in porting.
+Byte order refers to the order in which bytes of data are stored in memory.
+There are actually four ways for two-byte data to be ordered, since the
+direction of each byte has two variations and the position of the most
+significant byte is also variable.
+
+<P>For X pixmaps, byte order is defined by the server and
+clients with different native byte ordering must swap bytes as necessary.
+For all other parts of the protocol, the byte order is defined by the client
+and the server swaps bytes as necessary.
+<BR>
+<HR>
+<H2>
+Programming for Multiple X Releases</H2>
+In R5 and later, Xlib defines the symbol <B>XlibSpecificationRelease</B>
+with the release number as the value (i.e., 5). This can be used to allow
+an application to successfully compile with more than one release of Xlib
+(assuming of course it depends only on features present in the releases
+which it will be compiled). Example 15-4 shows a code segment into which
+R4, R5 and R6 code could be inserted:
+
+<P><B>Using the XlibSpecificationRelease symbol</B>
+<BLOCKQUOTE>
+<PRE><TT>#ifdef XlibSpecificationRelease
+&nbsp;&nbsp;&nbsp; if (XlibSpecificationRelease == 5)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;/* R5 */
+&nbsp;&nbsp;&nbsp; else if (XlibSpecificationRelease == 6)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;/* R6 */
+&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;/* R7 or error */
+#elseif
+&nbsp;&nbsp; /* R4 */
+#endif</TT></PRE>
+</BLOCKQUOTE>
+
+<HR>
+<H2>
+Using Extensions to X</H2>
+An extension is a set of routines and capabilities that a
+hardware vendor has provided for use on a particular machine, in addition
+to the standard X library.
+
+<P>Extensions to X are not second-class citizens, and there
+should be very little to distinguish the use of an extension from that
+of the core protocol. The only difference is that the application should
+check to make sure the extension exists and then query the extension to
+find out the major opcode, additional event types, and additional error
+types so that the extension can be integrated properly. If the extensions
+have been written properly so that they initialize themselves when first
+called, they should be usable just like other X library functions.
+
+<P><B>XListExtensions()</B> returns a list of all extensions
+supported by the server. Once the name of the desired extension is known,
+<B>XQueryExtension()</B> should be called to get specific information about
+the extension. <B>XFreeExtensionList()</B> should then be used to free
+the memory allocated by <B>XListExtensions()</B>.
+
+<P>The standard extensions as of this writing are the Shape
+extension, which supports non-rectangular windows, the X Input extension,
+which supports input devices other than the single mouse and keyboard normally
+connected to an X server, and PEX, a 3-D graphics extension. All extensions
+are optional, however. Only the Shape extension is available in virtually
+all X servers as of this writing.
+<BR>
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

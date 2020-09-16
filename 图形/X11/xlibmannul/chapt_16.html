@@ -1,0 +1,2311 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_15.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_17_app_A.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H1>
+Window Management</H1>
+X programs may be expected to cooperate with any one of a
+number of different window managers. This chapter discusses the design
+of a simple window manager, not so you will be able to write one but so
+you will know what to expect from one. As it turns out, some of the techniques
+used in this program (such as menus) could be adapted for other clients
+as well. Everyone should at least look through this chapter.
+
+<P>A window manager is a program implemented with Xlib to
+control the layout of windows on the screen, responding to user requests
+to move, resize, raise, lower, or iconify windows. The window manager may
+also enforce a policy for window layout (such as mandating a standard window
+or icon size and placement) and provide a menu for commonly used shell
+commands.
+
+<P>This chapter is not primarily for window manager writers,
+as these are a rare breed. There are several good customizable window managers
+available, and there is very little reason for users or application writers
+to want to write their own. Only a few people in the X community are going
+to be actively involved in writing window managers, and chances are good
+they will already know all of what is described here. This chapter is presented
+for two reasons: so that application writers will get a better understanding
+of how to cooperate with the window manager, and so we can describe and
+demonstrate the Xlib routines that are provided mainly for the purpose
+of window management. As it turns out, the examples in this chapter also
+have elements (such as menus) that could be useful in ordinary applications
+as well.
+
+<P>We'll begin by describing the features and routines in
+Xlib that are provided mainly to give window managers the authority they
+need to control window layout and the flexibility to provide a good user
+interface. These features include the following:
+<UL>
+<LI>
+Substructure redirection, which allows the window manager
+to intercept requests to change the screen layout. This enables a window
+manager to enforce a window layout policy.</LI>
+
+<LI>
+Reparenting, which lets the window manager build a frame
+or other "decoration" around each top-level window. The frame could possibly
+contain boxes which could be used to move or resize the window.</LI>
+
+<LI>
+The save-set, which ensures that the windows the window manager
+iconifies or reparents are returned to their original state if the window
+manager dies unexpectedly.</LI>
+</UL>
+Then we'll describe what the window manager can do with the
+properties set by clients, building on the description of interclient communication
+presented in Chapter 12, "Interclient Communication."
+
+<P>Finally, we'll describe a simple window manager program.
+You should find this program helpful not only in demonstrating window management
+techniques but also for showing Xlib programming in a more complex setting
+than <I>basicwin</I> in Chapter 3, "Basic Window Program," or <I>basecalc</I>
+in Chapter 14, "A Complete Application." You should understand both those
+programs before tackling this one.
+<BR>
+<HR>
+<H2>
+Layout Policy</H2>
+A window manager may have a policy on how top-level windows
+will be placed on the screen.
+
+<P>The standard window managers <I>uwm</I> and <I>twm</I>
+do not have a window layout policy, but some existing window managers do.
+For example, the Siemens RTL Tiled window manager mandates that only temporary
+pop-up windows can overlap. That policy makes exposure a rare occurrence
+but makes resizing much more common. A second simpler example is the window
+manager designed by Stellar Computer for its high performance workstations.
+The Stellar window manager aligns icons along the top edge of the screen,
+along with the Stellar logo. Since the window manager creates the icons
+or is passed their IDs through hints, it can distinguish them from other
+windows on the screen.
+
+<P>Within its window layout policy, the window manager should
+honor the window size and position hints returned by <B>XGetNormalHints()</B>
+and <B>XGetWMHints()</B> as closely as possible (each application sets
+these hints). Under <I>uwm</I> and <I>twm</I>, the user selects the size
+of a newly created window by moving a flashing outline of a window. The
+size hints provided by the application determine the minimum dimensions,
+maximum dimensions, and desired increment for the window size, and these
+are indicated in the motion of the outline. For example, in both <I>uwm</I>
+and <I>twm</I>, the minimum size hints take priority over the user's input,
+so that the user cannot resize the window smaller than the minimum size.
+
+<P>Applications are free to resize or move the children of
+their top-level windows as necessary. The window manager has no control
+over these windows.
+<BR>
+<HR>
+<H2>
+Substructure Redirection</H2>
+The window manager enforces its window layout policy using
+substructure redirection. When the window manager selects <B>SubstructureRedirectMask</B>
+on the root window, an attempt by any other client to change the configuration
+of any child of the root window will fail. Instead an event describing
+the layout change request will be sent to the window manager. The window
+manager then reads the event and determines whether to honor the request,
+modify it, or deny it completely. If it decides to honor the request, it
+calls the routine that the client called that triggered the event with
+the same arguments. If it decides to modify the request, it calls the same
+routine but with modified arguments.
+
+<P>The <I>structure</I>, as the term is used here, is the
+location, size, stacking order, border width, and mapping status of a window.
+The <I>substructure</I> is all these statistics about the children of a
+particular window. This is the complete set of information about screen
+layout that the window manager might need in order to implement its policy.
+<I>Redirection</I> means that an event is sent to the client selecting
+redirection (usually the window manager), and the original structure-changing
+request is not executed.
+
+<P>The events that are selected by <B>SubstructureRedirectMask</B>
+and the routines that are intercepted are as follows:
+<UL>
+<LI>
+<B>CirculateRequest</B> events report when an Xlib function,
+such as <B>XCirculateSubwindows()</B>, <B>XCirculateSubwindowsDown()</B>,
+<B>XCirculateSubwindowsUp()</B>, or <B>XRestackWindows()</B>, is called
+to change the stacking order of a group of children.</LI>
+
+<LI>
+<B>ConfigureRequest</B> events report when an Xlib function,
+such as <B>XConfigureWindow()</B>, <B>XLowerWindow()</B>, <B>XMoveResizeWindow()</B>,
+<B>XMoveWindow()</B>, <B>XRaiseWindow()</B>, <B>XResizeWindow()</B>, or
+<B>XSetWindowBorderWidth()</B>, is called to resize, move, restack, or
+change the border width of a window.</LI>
+
+<LI>
+<B>MapRequest</B> events report when <B>XMapWindow()</B>
+or <B>XMapSubwindows()</B> is called to map a window.</LI>
+</UL>
+When <B>SubstructureRedirectMask</B> is selected on the root
+window, the only time that a configuration request on a child of the root
+window is not intercepted is when the <B>override_redirect</B> attribute
+of that child window has been set to <B>True</B>. This is intended for
+temporary pop-up windows that should not be reparented or affected by the
+window manager's layout policy.
+
+<P>Only one window manager at a time can select <B>SubstructureRedirectMask</B>
+or <B>ResizeRedirectMask</B> on a particular window.
+
+<P><B>ResizeRedirectMask</B> also selects <B>ConfigureRequest</B>
+events when a client has called <B>XConfigureWindow()</B>, <B>XMoveResizeWindow()</B>,
+or <B>XResizeWindow()</B>. However, if any client has selected <B>SubstructureRedirectMask</B>
+on the parent of the window for which <B>ResizeRedirectMask</B> is selected,
+the <B>SubstructureRedirectMask</B> takes precedence.
+
+<P>Substructure redirect allows the window manager to separate
+the portion of itself that moves and resizes windows from the portion that
+enforces window policy. While the window reconfiguration section is driven
+by user events, the policy section can be completely driven from the <B>*Request</B>
+events that signal that the user has proposed a change to the window layout.
+And since applications will only attempt to resize or move their top-level
+windows in direct response to a user request, those requests are just as
+valid as the ones from the window reconfiguration section of the window
+manager.
+<BR>
+<HR>
+<H2>
+Reparenting</H2>
+A window manager can decorate windows on the screen with
+titlebars and place little boxes on the titlebar with which the window
+can be moved or resized. This is only one possibility, modeled on the user
+interface on the Macintosh&Ocirc;.
+
+<P>To do this, the window manager creates a child of the
+root somewhat larger than the top-level window of the application. Then
+it calls <B>XReparentWindow()</B>, specifying the top-level window of the
+application as win and the new parent as parent. win and all its descendants
+will then be descendants of parent.
+
+<P>In the area where the new parent is visible around the
+top-level window of the application, the window manager can put anything
+it wants. This could include text, graphics, and small windows which perform
+certain functions when a button is clicked in them.
+
+<P>The window manager can decorate all top-level windows,
+but it will normally ignore windows that are mapped with their <B>override_redirect</B>
+attribute set, since no <B>*Request</B> events will be generated for them.
+The window manager may also decorate differently windows that have set
+the <B>XA_WM_TRANSIENT_FOR</B> property and apply its window layout policy
+to them. The window manager calls <B>XGetTransientForHint()</B> for each
+window to get this property.
+
+<P>By the way, it is impossible (except by luck) for the
+window manager to match the colors of the decoration to the colors of the
+window it is decorating. A window manager cannot find out what colors a
+window uses for its border or background because these window attributes
+cannot be queried.
+<H3>
+Shadows</H3>
+Window shadows can be imperfectly implemented by reparenting
+top-level windows. The shadow would appear to be the same size as the corresponding
+window but slightly offset diagonally (see Figure 16-1).
+
+<P><B>Goal of background shadow</B>
+
+<P><IMG SRC="imgs/fig.16.01.gif" ALT="fig.16.01.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;What happens if we try to accomplish the following
+style of background with two windows: one <B>InputOutput</B> window slightly
+larger in both dimensions than the application's top-level window, and
+one <B>InputOutput</B> shadow window the same size as the application window,
+offset into the corner of the <B>InputOnly</B> window?&nbsp; The larger
+window would have its <B>background_pixmap</B> attribute set to <B>ParentRelative</B>
+so that it looked invisible, and the smaller window would have its background
+set to black or gray to make the shadow. Figure 16-2 shows how the layers
+are lined up.
+
+<P><B>Window layering for background shadow</B>
+
+<P><IMG SRC="imgs/fig.16.02.gif" ALT="fig.16.02.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;When the window with the shadow is moved around
+the screen when no other applications are on the screen, the shadow looks
+good. But when the window is moved over other applications, a strange thing
+happens. The background of the root window shows itself in the "invisible"
+corner of the shadow, as shown in Figure 16-3, later in this chapter.
+
+<P><B>Actual effect of shadow attempt</B>
+
+<P><IMG SRC="imgs/fig.16.03.gif" ALT="fig.16.03.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;It turns out that a perfect shadow is not possible
+without an extension, because the server clips regions of the screen in
+rectangles, not in the complex shape required by a shadow.&nbsp; However,
+if the shadow is only two pixels wide, this approach might look good enough.
+<BR>
+<HR>
+<H2>
+Window Save-set</H2>
+The save-set is a list of windows, usually maintained by
+the window manager, but including only windows created by other clients.
+If the window manager dies, all windows listed in the save-set will be
+reparented back to their closest living ancestor if they were reparented
+in the first place and mapped if the window manager has unmapped them so
+that it could map an icon.
+
+<P>The save-set is necessary because the window manager might
+not exit normally. The user might kill it with CTRL-C if it is running
+in the foreground, or more likely, the user might get the process number
+and kill it. Actually, the actions of the save-set are performed even if
+the window manager exits normally, so less code is needed since the save-set
+does the cleaning up.
+
+<P>Window managers almost always place in the save-set all
+the windows they reparent or iconify, using <B>XAddToSaveSet()</B>.
+
+<P>Windows are automatically removed from the save-set when
+they are destroyed. If this were not the case, the window manager would
+have to monitor <B>DestroyNotify</B> events and explicitly remove the windows
+from the save-set.
+
+<P>The routines <B>XRemoveFromSaveSet()</B> and <B>XChangeSaveSet()</B>
+are available, but they are not often needed even in window managers. <B>XChangeSaveSet()</B>
+adds or removes a window from the save-set.
+<BR>
+<HR>
+<H2>
+Window Manager - Client Communications</H2>
+There is no point in reiterating all that was said in Chapter
+12, "Interclient Communication," about the properties that applications
+set for the window manager. As described there, these properties are hints
+that the window manager may use or ignore as the programmer sees fit. There
+is a large amount of flexibility and variety in what window managers can
+do with the information provided in these hints. Its actions are to some
+extent constrained by the interclient communication conventions described
+in Appendix L, <I>Interclient Communcation Conventions</I>, of <I>Volume
+Zero, X Protocol Reference Manual</I> (as of the second printing), since
+these conventions are now a standard.
+
+<P>These hints allow the window manager to smooth the user
+interface so that all the applications running on the system appear integrated.
+Any good window manager will read most, if not all, of the properties described
+in this section and try to do with them what is most helpful to applications
+and users.
+<H3>
+Reading the Hints</H3>
+Hints help the window manager conform to the needs of the
+application while at the same time letting it control window layout and
+policy. The window manager gets the hints with the routines shown in Table
+16-1.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 16-1 : </B>Window Manager Hints</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Hint</TH>
+
+<TH>Set (by Application)</TH>
+
+<TH>Get (by Window Manager)</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Window Name</TD>
+
+<TD><B>XSetWMName()</B></TD>
+
+<TD><B>XGetWMName()</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Icon Name</TD>
+
+<TD><B>XSetWMIconName()</B></TD>
+
+<TD><B>XGetWMIconName()</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Shell Command and Arguments</TD>
+
+<TD><B>XSetCommand()</B></TD>
+
+<TD><B>XGetCommand()</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Icon Pixmap</TD>
+
+<TD><B>XSetWMProperties()</B> or <B>XSetWMNormalHints()</B></TD>
+
+<TD><B>XGetWMNormalHints()</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Normal Size Hints</TD>
+
+<TD><B>XSetWMNormalHints()</B></TD>
+
+<TD><B>XGetWMNormalHints()</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>WM Hints</TD>
+
+<TD><B>XSetWMHints()</B></TD>
+
+<TD><B>XGetWMHints()</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Transient Window</TD>
+
+<TD><B>XSetTransientForHint()</B></TD>
+
+<TD><B>XGetTransientForHint()</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Class Hint</TD>
+
+<TD><B>XSetClassHint()</B></TD>
+
+<TD><B>XGetClassHint()</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Client Machine</TD>
+
+<TD><B>XSetWMClientMachine()</B></TD>
+
+<TD><B>XGetWMClientMachine()</B></TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>WM Protocols</TD>
+
+<TD><B>XSetWMProtocols()</B></TD>
+
+<TD><B>XGetWMProtocols()</B></TD>
+</TR>
+</TABLE>
+&nbsp;
+<H3>
+Setting Icon Sizes</H3>
+The icon size property is the only hint that the window manager
+should set for applications to read. The window manager may prefer particular
+sizes of icons to yield a consistent appearance for all icons on the screen.
+The window manager calls <B>XSetIconSizes()</B> (which sets the <B>XA_WM_ICON_SIZE</B>
+property on the root window), indicating the preferred sizes. The icon
+size hints include maximum and minimum dimensions and size increments.
+Once standard window managers evolve that set this property (<I>twm</I>
+does not), applications may have one icon pixmap prepared for each standard
+window manager.
+<H3>
+Window Manager Protocols</H3>
+As described in Section 12.3.3.2, "Window Manager Protocols
+- WM_PROTOCOLS," the client can express interest in certain window manager
+actions by calling <B>XSetWMProtocols()</B>, which sets a property. The
+window manager calls <B>XSetWMProtocols()</B> to get the property. Thereafter,
+the window manager can send the client <B>ClientMessage</B> events to notify
+the client of imminent window manager actions. At this writing, the protocols
+notify the client of a change in the keyboard focus, an application about
+to be killed, or a top-level window about to be destroyed. See Section
+12.3.3.2, "Window Manager Protocols - WM_PROTOCOLS" for the current list
+of window manager protocols, their meanings, and the values to set into
+the <B>ClientMessage</B> event.
+<BR>
+<HR>
+<H2>
+Window Management Functions</H2>
+The functions described in this section are used primarily
+by the window manager on top-level windows. Applications can also use them
+on their top-level windows; conventions for doing so are described in Appendix
+L, <I>Interclient Communcation Conventions</I>, of <I>Volume Zero, X Protocol
+Reference Manual</I> (as of the second printing). Applications can use
+these routines freely on their subwindows.
+
+<P><B>XConfigureWindow()</B> is the most general routine
+for changing the configuration of a window, namely its size, position,
+border width, and stacking position.
+
+<P>The routines to move and resize windows are <B>XMoveWindow()</B>,
+<B>XMoveResizeWindow()</B>, and <B>XResizeWindow()</B>. The routine to
+change the border width of a window is <B>XSetWindowBorderWidth()</B>.
+
+<P>Quite a variety of routines are provided to change the
+stacking order of windows. These operations affect only a single group
+of siblings. Furthermore, they affect only overlapping siblings. If any
+of the siblings specified do not overlap, their stacking order is not changed.
+<DL>
+<DT>
+<B>XCirculateSubwindowsDown()</B></DT>
+
+<DD>
+Moves the lowest mapped sibling to the top of the stacking
+order.</DD>
+
+<DT>
+<B>XCirculateSubwindowsUp()</B></DT>
+
+<DD>
+Moves the highest mapped sibling to the bottom of the stacking
+order.</DD>
+
+<DT>
+<B>XCirculateSubwindows()</B></DT>
+
+<DD>
+Performs either <B>XCirculateSubwindowsDown()</B> or <B>XCirculateSubwindowsUp()</B>
+according to a flag.</DD>
+
+<DT>
+<B>XRestackWindows()</B></DT>
+
+<DD>
+Specifies a list of siblings in the desired stacking order.</DD>
+
+<DT>
+<B>XRaiseWindow()</B></DT>
+
+<DD>
+Moves a window to the top of the stacking order among its
+siblings.</DD>
+
+<DT>
+<B>XMapRaised()</B></DT>
+
+<DD>
+Maps a window, placing it on top of the stacking order of
+its siblings. For a window mapped for the first time, this is equivalent
+to <B>XMapWindow()</B>. But when an already mapped window is unmapped,
+it retains its stacking order when mapped again with <B>XMapWindow()</B>.</DD>
+
+<DT>
+<B>XLowerWindow()</B></DT>
+
+<DD>
+Moves a window to the bottom of the stacking order among
+its siblings.</DD>
+
+<DT>
+<B>XConfigureWindow()</B></DT>
+
+<DD>
+Restacks the window according to a <B>stack_mode</B> and
+relative to a particular sibling. This function is also capable of moving,
+resizing, and changing the border width of a window.</DD>
+</DL>
+All these functions have the ability to change the screen
+layout and therefore can be monitored and intercepted by the window manager.
+They are also commonly used by the window manager itself to allow the user
+to change the screen layout.
+
+<P>The <B>stack_mode</B> of the <B>XConfigureWindow()</B>
+routine has five possible values: <B>Above</B>, <B>Below</B>, <B>BottomIf</B>,
+<B>TopIf</B>, and <B>Opposite</B>. If the window is simultaneously being
+moved or resized, this calculation is performed with respect to the window's
+final size and position, not its initial position. If a sibling and a <B>stack_mode</B>
+are specified, the window is restacked as described in Table 16-2.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 16-2 : </B>Meaning of Stacking Mode with
+Sibling Specified</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Window Stack Mode</TH>
+
+<TH>Description</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>Above</B></TD>
+
+<TD>Window is placed just above sibling.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>Below</B></TD>
+
+<TD>Window is placed just below sibling.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>TopIf</B></TD>
+
+<TD>If sibling obscures window, then window is placed at
+the top of the stack.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>BottomIf</B></TD>
+
+<TD>If window obscures sibling, then window is placed at
+the bottom of the stack.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>Opposite</B></TD>
+
+<TD>If any sibling occludes window, then window is placed
+at the top of the stack, else if window occludes any sibling, then window
+is placed at the bottom of the stack.</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>If a <B>stack_mode</B> is specified but no sibling is
+specified, the window is restacked as described in Table 16-3.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 16-3 : </B>Meaning of Stacking Mode without
+Sibling</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Window Stack Mode</TH>
+
+<TH>Description</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>Above</B></TD>
+
+<TD>Window is placed at the top of the stack.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>Below</B></TD>
+
+<TD>Window is placed at the bottom of the stack.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>TopIf</B></TD>
+
+<TD>If any sibling obscures window, then window is placed
+at the top of the stack.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>BottomIf</B></TD>
+
+<TD>If window obscures any sibling, then window is placed
+at the bottom of the stack.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><B>Opposite</B></TD>
+
+<TD>If any sibling occludes window, then window is placed
+at the top of the stack, else if window occludes any sibling, then window
+is placed at the bottom of the stack.</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>Another set of routines that are usually only used by
+the window manager are the ones that grab and ungrab the server. <B>XGrabServer()</B>
+and <B>XUngrabServer()</B> are used when a program requires total control
+of the screen, so that output requests from other programs are queued but
+not displayed. One application of grabbing is to draw temporary moving
+objects on the screen, such as the outline of a window being moved. This
+is called <I>rubber-banding</I>. The outline (or grid) is drawn with logical
+function <B>GXxor</B>, which, when drawn twice, leaves the screen as it
+was initially. If the server were not grabbed in between the first drawing
+and the second of the same line, some other program might update the same
+part of the display, resulting in glitches after the second drawing. This
+server grab also speeds up the rubber-banding, because the server stops
+performing updates to other windows.
+<BR>
+<HR>
+<H2>
+A Basic Window Manager</H2>
+This section describes the design of a simple window manager
+called <I>winman</I>. This example window manager should be helpful in
+several ways. It demonstrates many of the Xlib routines that are intended
+to be used only by window managers. It also shows what a window manager
+might do with the properties that applications set and how window managers
+implement icons. This window manager also demonstrates the use of the save-set
+to make sure that, if it dies, the windows it has iconified will be restored.
+It does not, however, demonstrate substructure redirection or reparenting.
+See the code for <I>twm</I> for examples of substructure redirection and
+reparenting.
+
+<P>The <I>winman</I> program also demonstrates some techniques
+that may be helpful in ordinary applications, such as how to implement
+a menu using Xlib. (Most applications will ultimately do this with a toolkit.)
+
+<P>If you have the example programs from O'Reilly and Associates,
+you can compile and run <I>winman</I> to see how it works (how to get this
+code is described in the <I>Preface</I>). Be sure to stop or kill any other
+window managers running before running <I>winman</I>. Both <I>winman</I>
+and the other window manager may get confused because they are not designed
+to cooperate with each other. The following explanations will be easier
+to follow if you have used the program.
+<H3>
+Operation of the Program</H3>
+The <I>winman</I> program creates a menu composed of horizontal
+bars and places it in the upper-right corner of the screen, as shown in
+Figure 16-4.
+
+<P><B>The menu created by winman</B>
+
+<P><IMG SRC="imgs/fig.16.04.gif" ALT="fig.16.04.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;The menu provides a number of basic functions for
+manipulating windows on the screen:
+<DL>
+<DT>
+<B>Raise</B></DT>
+
+<DD>
+Brings a window to the top of the stack, so that it is fully
+visible.</DD>
+
+<DT>
+<B>Lower</B></DT>
+
+<DD>
+Lowers a window to the bottom so that the area formerly hidden
+is made visible.</DD>
+
+<DT>
+<B>Move</B></DT>
+
+<DD>
+Changes the position of a window on the screen, and raises
+it.</DD>
+
+<DT>
+<B>Resize</B></DT>
+
+<DD>
+Changes the size of a window, and raises it.</DD>
+
+<DT>
+<B>CirculateDn</B></DT>
+
+<DD>
+Moves the window on the bottom to the top.</DD>
+
+<DT>
+<B>CirculateUp</B></DT>
+
+<DD>
+Moves the window on the top to the bottom.</DD>
+
+<DT>
+<B>(De)Iconify</B></DT>
+
+<DD>
+Turns a window into a small marker window or vice versa.</DD>
+
+<DT>
+<B>Keybrd Focus</B></DT>
+
+<DD>
+Assigns all keyboard input to the selected window, regardless
+of the position of the pointer.</DD>
+
+<DT>
+<B>New Xterm</B></DT>
+
+<DD>
+Creates a new <B>xterm</B> window, and places it at the upper-left
+corner of the screen. You can subsequently move or resize the new window
+with the Move and Resize functions.</DD>
+
+<DT>
+<B>Exit</B></DT>
+
+<DD>
+It is good practice for all programs to provide a way to
+quit. (<I>uwm</I> requires the user to look up the process number and kill
+the process.) Since this window manager is primarily for demonstration
+purposes, this choice is provided to make it easy to kill the program.</DD>
+</DL>
+All input for the window manager is supplied through the
+pointer. A cursor (which tracks the pointer) is assigned to the menu to
+indicate that input in this area selects a menu item. Choices are made
+from the menu by pressing a pointer button in the appropriate region of
+the menu. When a menu choice is made, the menu bar and its label change
+to inverse video. In other words, everything that was black in the bar
+changes to white and vice versa (<I>winman</I> works in black and white
+on all systems, even those with color). After the choice is made but before
+the operation is complete, the pointer is grabbed, so that all pointer
+input is directed to the menu window independent of the position of the
+pointer. While the pointer is grabbed, <I>winman</I>'s cursor changes to
+a hand and tracks the pointer anywhere on the screen. This reminds you
+that the window manager is expecting the next pointer input even though
+the pointer is no longer on the menu. When the chosen operation is complete,
+the menu is returned to its initial condition, and the pointer grab is
+released. If this menu was to be used in a normal application, a passive
+grab would be used instead of the active one used here.
+
+<P>If CirculateDn, CirculateUp, or New Xterm is chosen, selection
+of a window is not necessary. The circulation operations act on all overlapping
+windows that are children of the root. The New Xterm choice simply creates
+a new <I>xterm</I> window.
+
+<P>If Raise, Lower, (De)Iconify or Kybrd Focus is chosen,
+the user must press a pointer button to select a window. (<I>winman</I>'s
+own menu cannot be iconified, because this would make it impossible to
+recover the window manager menu.) Kybrd Focus sets the keyboard focus window
+and highlights that window with a white background behind the window.
+
+<P>If Move or Resize is chosen, the user must press a pointer
+button on the window to be manipulated, drag the pointer with the button
+held until the outline of the window is in the chosen size or position,
+and then release the button. (<I>winman</I>'s own menu can be moved but
+not resized.) A moving outline of the window is used to indicate the intended
+dimensions or position of the window.
+<H3>
+Description of the Code of main</H3>
+Example 16-1 shows the <B>main</B> for the <I>winman</I>
+window manager. The <B>isIcon</B> routine that is called in <B>main</B>
+is described in Section 16.7.15, "Creating the Icons" below. The <B>draw_box</B>
+routine, also called in <B>main</B>, is described in Section 16.7.13, "The
+draw_box Routine." All the rest of <I>winman</I>'s code is described in
+sections following <B>main</B>.
+
+<P>Instead of breaking up the code in little pieces as we
+have done in earlier examples, this time we'll show you <B>main</B> together
+in one place. By this point in the manual, you should know enough to understand
+most of this code. Any questions you may have should be answered by the
+description immediately following the code.
+
+<P><B>winman -- main C program</B>
+<BLOCKQUOTE>
+<PRE><TT>#include &lt;X11/Xlib.h>
+#include &lt;X11/Xutil.h>
+#include &lt;X11/Xatom.h>
+#include &lt;X11/Xos.h>
+#include &lt;X11/cursorfont.h>
+#include &lt;stdio.h>
+#include &lt;signal.h>
+#include "bitmaps/focus_frame_bi"&nbsp;&nbsp;&nbsp; /* Name must be &lt;= 14 chars
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * for sys V compatibility */
+/* Include file for printing event types */
+#include "eventnames.h"
+#define MAX_CHOICE 10
+#define DRAW 1
+#define ERASE 0
+#define RAISE 1
+#define LOWER 0
+#define MOVE 1
+#define RESIZE 0
+#define NONE 100
+#define NOTDEFINED 0
+#define BLACK&nbsp; 1
+#define WHITE&nbsp; 0
+Window focus_window;
+Window inverted_pane = NONE;
+static char *menu_label[] =
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp; "Raise",
+&nbsp;&nbsp;&nbsp; "Lower",
+&nbsp;&nbsp;&nbsp; "Move",
+&nbsp;&nbsp;&nbsp; "Resize",
+&nbsp;&nbsp;&nbsp; "CirculateDn",
+&nbsp;&nbsp;&nbsp; "CirculateUp",
+&nbsp;&nbsp;&nbsp; "(De)Iconify",
+&nbsp;&nbsp;&nbsp; "Kybrd Focus",
+&nbsp;&nbsp;&nbsp; "New Xterm",
+&nbsp;&nbsp;&nbsp; "Exit",
+&nbsp;&nbsp;&nbsp; };
+Display *display;
+int screen_num;
+XFontStruct *font_info;
+char icon_name[50];
+main()
+{
+&nbsp;&nbsp;&nbsp; Window menuwin;
+&nbsp;&nbsp;&nbsp; Window panes[MAX_CHOICE];
+&nbsp;&nbsp;&nbsp; int menu_width, menu_height, x = 0, y = 0, border_width = 4;
+&nbsp;&nbsp;&nbsp; int winindex;
+&nbsp;&nbsp;&nbsp; int cursor_shape;
+&nbsp;&nbsp;&nbsp; Cursor cursor, hand_cursor;
+&nbsp;&nbsp;&nbsp; char *font_name = "9x15";
+&nbsp;&nbsp;&nbsp; int direction, ascent, descent;
+&nbsp;&nbsp;&nbsp; int char_count;
+&nbsp;&nbsp;&nbsp; char *string;
+&nbsp;&nbsp;&nbsp; XCharStruct overall;
+&nbsp;&nbsp;&nbsp; Bool owner_events;
+&nbsp;&nbsp;&nbsp; int pointer_mode;
+&nbsp;&nbsp;&nbsp; int keyboard_mode;
+&nbsp;&nbsp;&nbsp; Window confine_to;
+&nbsp;&nbsp;&nbsp; GC gc, rgc;
+&nbsp;&nbsp;&nbsp; int pane_height;
+&nbsp;&nbsp;&nbsp; Window assoc_win;
+&nbsp;&nbsp;&nbsp; XEvent event;
+&nbsp;&nbsp;&nbsp; unsigned int button;
+&nbsp;&nbsp;&nbsp; if ( (display=XOpenDisplay(NULL)) == NULL ) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf( stderr, "winman: cannot connect to \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; X server %s\n", XDisplayName(NULL));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit( -1 );
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; screen_num = DefaultScreen(display);
+&nbsp;&nbsp;&nbsp; /* Access font */
+&nbsp;&nbsp;&nbsp; font_info = XLoadQueryFont(display,font_name);
+&nbsp;&nbsp;&nbsp; if (font_info == NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf( stderr, "winman: Cannot open font %s\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font_name);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit( -1 );
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; string = menu_label[6];
+&nbsp;&nbsp;&nbsp; char_count = strlen(string);
+&nbsp;&nbsp;&nbsp; /* Determine the extent of each menu pane based on
+&nbsp;&nbsp;&nbsp;&nbsp; * the font size */
+&nbsp;&nbsp;&nbsp; XTextExtents(font_info, string, char_count, &amp;direction, &amp;ascent,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;descent, &amp;overall);
+&nbsp;&nbsp;&nbsp; menu_width = overall.width + 4;
+&nbsp;&nbsp;&nbsp; pane_height = overall.ascent + overall.descent + 4;
+&nbsp;&nbsp;&nbsp; menu_height = pane_height * MAX_CHOICE;
+&nbsp;&nbsp;&nbsp; /* Place the window in upper-right corner*/
+&nbsp;&nbsp;&nbsp; x = DisplayWidth(display,screen_num) - menu_width -
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (2*border_width);
+&nbsp;&nbsp;&nbsp; y = 0;&nbsp;&nbsp; /* Appears at top */
+&nbsp;&nbsp;&nbsp; /* Create opaque window */
+&nbsp;&nbsp;&nbsp; menuwin = XCreateSimpleWindow(display, RootWindow(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; screen_num), x, y, menu_width, menu_height,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; border_width, BlackPixel(display,screen_num),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WhitePixel(display,screen_num));
+&nbsp;&nbsp;&nbsp; /* Create the choice windows for the text */
+&nbsp;&nbsp;&nbsp; for (winindex = 0; winindex &lt; MAX_CHOICE; winindex++) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; panes[winindex] = XCreateSimpleWindow(display, menuwin, 0,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; menu_height/MAX_CHOICE*winindex, menu_width,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pane_height, border_width = 1,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BlackPixel(display,screen_num),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WhitePixel(display,screen_num));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSelectInput(display, panes[winindex], ButtonPressMask
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | ButtonReleaseMask |&nbsp; ExposureMask);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; XSelectInput(display, RootWindow(display, screen_num),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SubstructureNotifyMask);
+&nbsp;&nbsp;&nbsp; /* These do not appear until parent (menuwin) is mapped */
+&nbsp;&nbsp;&nbsp; XMapSubwindows(display,menuwin);
+&nbsp;&nbsp;&nbsp; /* Create the cursor for the menu */
+&nbsp;&nbsp;&nbsp; cursor = XCreateFontCursor(display, XC_left_ptr);
+&nbsp;&nbsp;&nbsp; hand_cursor = XCreateFontCursor(display, XC_hand2);
+&nbsp;&nbsp;&nbsp; XDefineCursor(display, menuwin, cursor);
+&nbsp;&nbsp;&nbsp; focus_window = RootWindow(display, screen_num);
+&nbsp;&nbsp;&nbsp; /* Create two graphics contexts for inverting panes (white
+&nbsp;&nbsp;&nbsp;&nbsp; * and black).&nbsp; We invert the panes by changing the background
+&nbsp;&nbsp;&nbsp;&nbsp; * pixel, clearing the window, and using the GC with the
+&nbsp;&nbsp;&nbsp;&nbsp; * contrasting color to redraw the text.&nbsp; Another way is using
+&nbsp;&nbsp;&nbsp;&nbsp; * XCopyArea.&nbsp; The default is to generate GraphicsExpose and
+&nbsp;&nbsp;&nbsp;&nbsp; * NoExpose events to indicate whether the source area was
+&nbsp;&nbsp;&nbsp;&nbsp; * obscured.&nbsp; Since the logical function is GXinvert, the
+&nbsp;&nbsp;&nbsp;&nbsp; * destination is also the source.&nbsp; Therefore, if other
+&nbsp;&nbsp;&nbsp;&nbsp; * windows are obscuring parts of the exposed pane, the
+&nbsp;&nbsp;&nbsp;&nbsp; * wrong area will be inverted.&nbsp; Therefore, we would need
+&nbsp;&nbsp;&nbsp;&nbsp; * to handle GraphicsExpose and NoExpose events.&nbsp; We'll do
+&nbsp;&nbsp;&nbsp;&nbsp; * it the easier way. */
+&nbsp;&nbsp;&nbsp; gc = XCreateGC(display, RootWindow(display, screen_num), 0,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; NULL);
+&nbsp;&nbsp;&nbsp; XSetForeground(display, gc, BlackPixel(display, screen_num));
+&nbsp;&nbsp;&nbsp; rgc = XCreateGC(display, RootWindow(display, screen_num), 0,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; NULL);
+&nbsp;&nbsp;&nbsp; XSetForeground(display, rgc, WhitePixel(display, screen_num));
+&nbsp;&nbsp;&nbsp; /* Map the menu window (and its subwindows) to the screen_num */
+&nbsp;&nbsp;&nbsp; XMapWindow(display, menuwin);
+&nbsp;&nbsp;&nbsp; /* Force child processes to disinherit the TCP file descriptor;
+&nbsp;&nbsp;&nbsp;&nbsp; * this helps the shell command (creating new xterm) forked and
+&nbsp;&nbsp;&nbsp;&nbsp; * executed from the menu to work properly */
+&nbsp;&nbsp;&nbsp; if ((fcntl(ConnectionNumber(display), F_SETFD, 1)) == -1)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "winman: child cannot disinherit TCP fd");
+&nbsp;&nbsp;&nbsp; /* Loop getting events on the menu window and icons */
+&nbsp;&nbsp;&nbsp; while (1) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Wait for an event */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNextEvent(display, &amp;event);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* If expose, draw text in pane if it is pane */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch (event.type) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case Expose:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if&nbsp; (isIcon(event.xexpose.window, event.xexpose.x,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; event.xexpose.y, &amp;assoc_win, icon_name, False))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XDrawString(display, event.xexpose.window, gc, 2,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ascent + 2, icon_name, strlen(icon_name));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else { /* It's a pane, might be inverted */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (inverted_pane == event.xexpose.window)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; paint_pane(event.xexpose.window, panes, gc, rgc,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BLACK);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; paint_pane(event.xexpose.window, panes, gc, rgc,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WHITE);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ButtonPress:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; paint_pane(event.xbutton.window, panes, gc, rgc, BLACK);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; button = event.xbutton.button;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; inverted_pane = event.xbutton.window;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Get the matching ButtonRelease on same button */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; while (1) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Get rid of presses on other buttons */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; while (XCheckTypedEvent(display, ButtonPress,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;event));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Wait for release; if on correct button, exit */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XMaskEvent(display, ButtonReleaseMask, &amp;event);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (event.xbutton.button == button)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* All events are sent to the grabbing window
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * regardless of whether this is True or False;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * owner_events only affects the distribution
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * of events when the pointer is within this
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * application's windows */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; owner_events = True;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* We don't want pointer or keyboard events
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * frozen in the server */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pointer_mode = GrabModeAsync;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; keyboard_mode = GrabModeAsync;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* We don't want to confine the cursor */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; confine_to = None;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XGrabPointer(display, menuwin, owner_events,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ButtonPressMask | ButtonReleaseMask,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pointer_mode, keyboard_mode,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; confine_to, hand_cursor, CurrentTime);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* If press and release occurred in same window,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * do command; if not, do nothing */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (inverted_pane == event.xbutton.window) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Convert window ID to window array index&nbsp; */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (winindex = 0; inverted_pane !=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; panes[winindex]; winindex++)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch (winindex) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 0:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; raise_lower(menuwin, RAISE);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 1:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; raise_lower(menuwin, LOWER);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 2:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; move_resize(menuwin, hand_cursor, MOVE);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 3:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; move_resize(menuwin, hand_cursor, RESIZE);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 4:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; circup(menuwin);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 5:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; circdn(menuwin);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 6:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iconify(menuwin);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 7:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; focus_window = focus(menuwin);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 8:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; execute("xterm&amp;");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case 9: /* Exit */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSetInputFocus(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; RootWindow(display,screen_num),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; RevertToPointerRoot,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CurrentTime);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Turn all icons back into windows */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Must clear focus highlights */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XClearWindow(display, RootWindow(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; screen_num));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Need to change focus border width back here */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XFlush(display);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XCloseDisplay(display);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; exit(1);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; default:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (void) fprintf(stderr,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Something went wrong\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } /* End switch */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } /* End if */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Invert Back Here (logical function is invert) */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; paint_pane(event.xexpose.window, panes, gc, rgc, WHITE);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; inverted_pane = NONE;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; draw_focus_frame();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XUngrabPointer(display, CurrentTime);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XFlush(display);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case DestroyNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Window we have iconified has died, remove its
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * icon; don't need to remove window from save-set
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * because that is done automatically */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; removeIcon(event.xdestroywindow.window);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case CirculateNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ConfigureNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case UnmapNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* All these uncover areas of screen_num */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; draw_focus_frame();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case CreateNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case GravityNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case MapNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ReparentNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Don't need these, but get them anyway since
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * we need DestroyNotify and UnmapNotify */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ButtonRelease:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Throw these way, they are spurious here */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case MotionNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Throw these way, they are spurious here */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; default:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "winman: got unexpected %s event.\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; event_names[event.type]);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } /* End switch */
+&nbsp;&nbsp;&nbsp; } /* End menu loop (while) */
+} /* End main */</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Window Layering</H3>
+The first issue that comes up when writing a menu is how
+to layer the windows that contain each menu item. It would be possible
+to write a menu that only used one window, placing the text within the
+window in the right places and highlighting areas when the pointer coordinates
+in the <B>ButtonPress</B> events indicated that an item was chosen. This
+is a hard way, because it does not take advantage of X's windowing capabilities.
+It would also be possible to make each menu panel a subwindow of the root
+window. While this would simplify the event handling and highlighting,
+we would have to define a cursor for each of the windows. More importantly,
+the user would have to move all the windows separately if the menu were
+to be moved, unless we monitored movement of any one of the windows and
+made the rest follow. There are also other ramifications, including that
+it would be difficult to identify the menu as a whole to make sure it was
+not iconified; this would require comparing the IDs in events with the
+IDs of all the windows. The best solution is a combination of the above
+approaches.
+
+<P>The menu is created by superimposing ten small <B>InputOutput</B>
+child windows (<B>defs</B>[]) on one large <B>InputOutput</B> parent window
+(<B>menuwin</B>), as shown in Figure 16-5. This has the advantage that
+there is a single parent window for the window manager, which we can use
+to locate the panes of the menu and to identify the menu as a whole. You
+can also assign a cursor to the larger window, and since the smaller windows
+are its children, the same cursor appears in all of them. This avoids nine
+cursor assignments.
+
+<P>The nine smaller windows do three other convenient things;
+their borders make a neat division between areas of the menu, they determine
+which area of the menu the user chooses, and they define a convenient area
+to invert from black on white to white on black to indicate which menu
+choice was made.
+
+<P><B>Window layering for the menu</B>
+
+<P><IMG SRC="imgs/fig.16.05.gif" ALT="fig.16.05.gif" BORDER=0  ALIGN=ABSCENTER>
+<H3>
+Selecting Input</H3>
+Now that we have decided how to layer the windows to best
+advantage, it is time to plan what events are going to be needed. The <B>menuwin</B>
+window requires no events, since it is chiefly there to tie together the
+menu panes. <B>ButtonPress</B>, <B>ButtonRelease</B>, and <B>Expose</B>
+events are required for the panes, so they can accept a choice and redraw
+the pane in case anything obscures and then exposes part or all of the
+menu. <B>ButtonRelease</B> events are selected so that we can verify menu
+choices by making sure the <B>ButtonRelease</B> happens in the same window
+as the <B>ButtonPress</B>. Since the pointer is grabbed during the selection
+of a window on the screen to be manipulated (a window not associated with
+the window manager), we do not need to select input on any of these windows.
+However, we need to know when applications that <I>winman</I> has iconified
+have been killed, so that we can remove the icon. This requires selecting
+<B>SubstructureNotifyMask</B> on the root window.
+
+<P>Some of the other events selected by <B>SubstructureNotifyMask</B>
+also come in handy for triggering the redrawing of the highlighting background
+drawn around the focus window by <I>winman</I>. This background is drawn
+on the root window and might have to be redrawn whenever a new area of
+the root window becomes exposed. It has to be redrawn when <B>CirculateNotify</B>,
+<B>ConfigureNotify</B>, or <B>UnmapNotify</B> events arrive. This could
+also have been done by selecting <B>Expose</B> events on the root window,
+but since we have already selected these other events and they will be
+sent from the server to Xlib anyway, it improves performance slightly to
+use them instead of <B>Expose</B> events on the root window.
+<H3>
+Handling Input</H3>
+There are numerous commands available for getting input.
+The routines used in <B>main</B> are <B>XCheckTypedEvent()</B>, <B>XMaskEvent()</B>,
+and <B>XNextEvent()</B>.
+<DL>
+<DT>
+<B>XCheckTypedEvent()</B></DT>
+
+<DD>
+Allows you to choose the types of events to look for, monitors
+all windows, and does not wait even if no matching event is on the queue.</DD>
+
+<DT>
+<B>XMaskEvent()</B></DT>
+
+<DD>
+Allows you to choose which event masks of the events to look
+for, monitoring all windows. It waits until an event arrives.</DD>
+
+<DT>
+<B>XNextEvent()</B></DT>
+
+<DD>
+Used to get any type of event that occurs in any window.
+It waits until an event arrives.</DD>
+</DL>
+These routines were described and most of them demonstrated
+in Chapter 8, "Events," and Chapter 9, "The Keyboard and Pointer." But
+the way they are used in <B>main</B> might need some explanation. Consider
+the excerpt from <B>main</B> shown in Example 16-2.
+
+<P><B>Using event-getting routines together</B>
+<BLOCKQUOTE>
+<PRE><TT>/* Get the matching ButtonRelease on same button */
+while (1) {
+&nbsp;&nbsp; /* Get rid of all presses (on other buttons) */
+&nbsp;&nbsp; while (XCheckTypedEvent(display, ButtonPress,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;event))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;
+&nbsp;&nbsp; /* Wait for release; if on correct button, exit *
+&nbsp;&nbsp; XMaskEvent(display, ButtonReleaseMask, &amp;event);
+&nbsp;&nbsp; if (event.xbutton.button == button) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Get rid of other releases */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; while (XCheckTypedEvent(display, ButtonRelease,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;event))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp; }
+}</TT></PRE>
+</BLOCKQUOTE>
+Here we have already read a <B>ButtonPress</B> event and
+are waiting for a <B>ButtonRelease</B> on the same button. This cannot
+be done with <B>XMaskEvent()</B> alone, because we might get a <B>ButtonRelease</B>
+on a different button first and there is no way to select or get only the
+button events on a single button (except by writing a predicate procedure
+as shown in Example 8-6). Therefore, <B>XMaskEvent()</B> is called in a
+loop, and the <B>button</B> member in each event must be checked. Furthermore,
+the <B>CheckTypedEvent</B> calls are necessary to make sure that Xlib's
+queue does not fill up with <B>ButtonPress</B> or <B>ButtonRelease</B>
+events that are not wanted, since the code is really waiting for a particular
+button release. <B>XCheckTypedEvent()</B> is used again in the routine
+that actually moves or resizes a window to throw away excess <B>MotionNotify</B>
+events.
+
+<P>The <B>Expose</B> event processing in <B>main</B> redraws
+<I>winman</I>'s menu only when the <B>count</B> field in the <B>Expose</B>
+event is zero, thus responding only to the last <B>Expose</B> event in
+a contiguous series on a single window. Remember that any of the menu panes
+or any icon can receive <B>Expose</B> events. We also minimize redrawing
+by redrawing only the panes that are exposed.
+<H3>
+Inverting an Area</H3>
+There are at least four possible strategies for inverting
+a menu pane containing text. They are not all equally good.
+
+<P>One is to use <B>XCopyArea()</B> to copy the pane to itself
+using <B>GXinvert</B> as the logical function in the GC. This approach
+is weak because <B>GXinvert</B> would not achieve the desired effect on
+a color system, even though it would work fine on a monochrome system.
+
+<P>The second strategy, adopted in <B>main</B>, is to change
+the background pixel value of the window and change the foreground pixel
+value in the GC to draw the text in a contrasting color. In <I>winman</I>,
+the colors are black and white, but this approach will work correctly with
+any two contrasting colors.
+
+<P>The third approach would be to use <B>XDrawImageString()</B>
+to draw the text. <B>XDrawImageString()</B> draws a complete rectangle,
+with the text in the foreground pixel value from the GC and the rest of
+the rectangle in the background pixel value. If this rectangle were the
+same size as the menu pane, the entire pane could be inverted in color
+simply by swapping the foreground and background pixel values in the GC.
+The one weakness of this approach is that the rectangle drawn by <B>XDrawImageString()</B>
+might not leave as much space around the text as you would like. However,
+this is a very fast approach, useful in menus and for the selection of
+text, which works in both monochrome and color.
+
+<P>The fourth approach involves a trick using colors allocated
+by <B>XAllocColorCells()</B>. It is possible to allocate colors so that
+the two contrasting colors in the drawable are swapped by setting to 1
+or 0 all the bits in a plane of the drawable. In this technique, the text
+does not need drawing at all for highlighting, because the plane on which
+the text is drawn is not modified by the operation to set or clear the
+bits in the other plane. You would need to allocate four colorcells, two
+of which contained the foreground RGB values and two the background. This
+would not work on a monochrome system, since you could not allocate four
+colorcells. This technique is described in Section 7.5.2, "Allocating Read/Write
+Colorcells for Overlays."
+<H3>
+Cursors</H3>
+The <B>main</B> creates two cursors: one an arrow for selecting
+from the menu, and the other a hand for manipulating windows. It uses the
+call to grab the pointer to change the cursor to the hand. That has the
+nice side effect that the cursor will automatically change back when the
+grab is released, so that the <B>cursor</B> window attribute does not need
+to be changed with <B>XDefineCursor()</B>.
+<H3>
+Grabbing the Pointer</H3>
+<B>XGrabPointer()</B> is called to allow the user to select
+a window anywhere on the screen to be manipulated. While the pointer is
+grabbed, all pointer input is sent to the menu. Note that keyboard input
+is still sent normally to the application the pointer is in.
+
+<P>The arguments of <B>XGrabPointer()</B> can be confusing.
+The owner_events argument affects the distribution of events when the pointer
+is within this application's windows. Therefore, it does not affect our
+application, because we are using the grab to get input from outside the
+menu windows. The pointer_mode and keyboard_mode arguments also do not
+apply to the job at hand, so they are set to <B>GrabModeAsync</B>, which
+does not affect the processing of events. Their other settings cause events
+to be held in the server until a releasing <B>XAllowEvents()</B> call.
+Finally, the confine_to argument also does not fit our job, because we
+want the pointer to be able to roam around the screen rather than be confined
+to a window.
+
+<P>That about wraps up the new techniques used in <B>main</B>
+that have not been used earlier in this manual. Now we'll move on to some
+of the routines that <B>main</B> calls, beginning with <B>paint_pane</B>.
+<H3>
+Painting the Menu</H3>
+The <B>paint_pane</B> routine in Example 16-3 displays text
+in a menu pane. It is called when an exposure event occurs on a pane. When
+the menu is exposed, all of the exposure events are sent contiguously,
+refreshing each of the panes that was exposed. When the menu is first mapped,
+the <B>Expose</B> events trigger the drawing of all the panes for the first
+time.
+
+<P>Each call of this routine draws the text in one choice
+window. The first operation compares the window ID from the event with
+the IDs in the <B>panes</B> array to determine which string from the <B>menu_label</B>
+array to use.
+
+<P>Window backgrounds are automatically redrawn by the server
+when exposure occurs. But <B>paint_pane</B> is not always called in response
+to <B>Expose</B> events; it is also used to invert the pane when a choice
+is made. Therefore, the request buffer will not necessarily be flushed
+before the next call to draw the area. Therefore, an <B>XClearWindow()</B>
+call is necessary to redraw the background. (A completely different strategy
+could have been used. The background could be filled with <B>XFillRectangle()</B>
+instead of using the server.)
+
+<P><B>winman -- the paint_pane routine</B>
+<BLOCKQUOTE>
+<PRE><TT>static char *menu_label[] = {
+&nbsp;&nbsp; "Raise",
+&nbsp;&nbsp; "Lower",
+&nbsp;&nbsp; "Move",
+&nbsp;&nbsp; "Resize",
+&nbsp;&nbsp; "CirculateDn",
+&nbsp;&nbsp; "CirculateUp",
+&nbsp;&nbsp; "(De)Iconify",
+&nbsp;&nbsp; "Kybrd Focus",
+&nbsp;&nbsp; "New Xterm",
+&nbsp;&nbsp; "Exit",
+};
+paint_pane(window, panes, ngc, rgc, mode)
+Window window;
+Window panes[];
+GC ngc, rgc;
+int mode;
+{
+&nbsp;&nbsp; int win;
+&nbsp;&nbsp; int x = 2, y;
+&nbsp;&nbsp; GC gc;
+&nbsp;&nbsp; if (mode == BLACK) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSetWindowBackground(display, window, BlackPixel(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; screen_num));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gc = rgc;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSetWindowBackground(display, window, WhitePixel(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; screen_num));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gc = ngc;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Clearing repaints the background */
+&nbsp;&nbsp; XClearWindow(display, window);
+&nbsp;&nbsp; /* Find out index of window for label text */
+&nbsp;&nbsp; for (win = 0; window != panes[win]; win++)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;
+&nbsp;&nbsp; y = font_info->max_bounds.ascent;
+&nbsp;&nbsp; /* The string length is necessary because strings
+&nbsp;&nbsp;&nbsp; * for XDrawString may not be null terminated */
+&nbsp;&nbsp; XDrawString(display, window, gc, x, y, menu_label[win],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; strlen( menu_label[win]));
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Circulating Windows</H3>
+The <B>circup</B> and <B>circdn</B> routines are simple,
+because they have no arguments and they require no user input. They simply
+take all overlapping top-level windows and move the bottom one to the top
+or the top one to the bottom.
+
+<P><B>winman -- the circle up and circle down routines</B>
+<BLOCKQUOTE>
+<PRE><TT>circup(menuwin)
+Window menuwin;
+{
+&nbsp;&nbsp; XCirculateSubwindowsUp(display, RootWindow(display,screen_num));
+&nbsp;&nbsp; XRaiseWindow(display, menuwin);
+}
+circdn(menuwin)
+Window menuwin;
+{
+&nbsp;&nbsp; XCirculateSubwindowsDown(display, RootWindow(display,screen_num));
+&nbsp;&nbsp; XRaiseWindow(display, menuwin);
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Raising and Lowering Windows</H3>
+The <B>raise_lower</B> routine gets a <B>ButtonPress</B>
+event, finds out which window it occurred in, and raises or lowers the
+window unless it was the root.
+
+<P>The <B>XQueryPointer()</B> call is used to get the window
+ID of the window that the button is pressed in. This call is necessary
+because the program did not create or select input on the windows that
+it is going to manipulate.
+
+<P><B>winman -- the raise and lower routines</B>
+<BLOCKQUOTE>
+<PRE><TT>raise_lower( menuwin, raise_or_lower )
+Window menuwin;
+Bool raise_or_lower;
+{
+&nbsp;&nbsp; XEvent report;
+&nbsp;&nbsp; int root_x,root_y;
+&nbsp;&nbsp; Window child, root;
+&nbsp;&nbsp; int win_x, win_y;
+&nbsp;&nbsp; unsigned int mask;
+&nbsp;&nbsp; unsigned int button;
+&nbsp;&nbsp; /* Wait for ButtonPress, find out which subwindow of root */
+&nbsp;&nbsp; XMaskEvent(display, ButtonPressMask, &amp;report);
+&nbsp;&nbsp; button = report.xbutton.button;
+&nbsp;&nbsp; XQueryPointer(display, RootWindow(display,screen_num), &amp;root,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;child, &amp;root_x, &amp;root_y, &amp;win_x, &amp;win_y,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;mask);
+&nbsp;&nbsp; /* If not RootWindow, raise */
+&nbsp;&nbsp; if (child != NULL) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (raise_or_lower == RAISE)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XRaiseWindow(display, child);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XLowerWindow(display, child);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Make sure window manager can never be obscured */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XRaiseWindow(display, menuwin);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Get the matching ButtonRelease on same button */
+&nbsp;&nbsp; while (1)&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XMaskEvent(display, ButtonReleaseMask, &amp;report);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (report.xbutton.button == button) break;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Throw out any remaining events so we start fresh */
+&nbsp;&nbsp; while (XCheckMaskEvent(display, ButtonReleaseMask |
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ButtonPressMask, &amp;report))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Moving and Resizing Windows</H3>
+The <B>move_resize</B> routine shown in Example 16-6 is similar
+to <B>raise_lower</B> but uses the difference in position between a <B>ButtonPress</B>
+and a <B>ButtonRelease</B> event to determine the change in position or
+size of the window. It also uses <B>MotionNotify</B> events to draw an
+outline of the window during the move or resize. During resizing, the upper-left
+corner of the window stays in place, while the lower-right corner moves
+the same way the pointer does between the press and the release. The code
+could be expanded to allow any corner of the window to be resized.
+
+<P>The routine that draws the box for the temporary window
+outline was described in Chapter 6, "Drawing Graphics and Text."
+
+<P>If there is an icon associated with the moved window,
+that icon is not moved. Similarly, if the window moved is an icon, its
+associated main window is not moved. This is an arbitrary window manager
+policy decision. Some window managers might legislate a certain relationship
+between the position of a window and its icon.
+
+<P><B>winman -- the move and resize routines</B>
+<BLOCKQUOTE>
+<PRE><TT>move_resize(menuwin, hand_cursor, move_or_resize)
+Window menuwin;
+Cursor hand_cursor;
+Bool move_or_resize;
+{
+&nbsp;&nbsp; XEvent report;
+&nbsp;&nbsp; XWindowAttributes win_attr;
+&nbsp;&nbsp; int press_x, press_y, release_x, release_y, move_x, move_y;
+&nbsp;&nbsp; static int box_drawn = False;
+&nbsp;&nbsp; int left, right, top, bottom;
+&nbsp;&nbsp; Window root, child;
+&nbsp;&nbsp; Window win_to_configure;
+&nbsp;&nbsp; int win_x, win_y;
+&nbsp;&nbsp; unsigned int mask;
+&nbsp;&nbsp; unsigned int pressed_button;
+&nbsp;&nbsp; XSizeHints size_hints;
+&nbsp;&nbsp; Bool min_size, increment;
+&nbsp;&nbsp; unsigned int width, height;
+&nbsp;&nbsp; int temp_size;
+&nbsp;&nbsp; static GC gc;
+&nbsp;&nbsp; static int first_time = True;
+&nbsp;&nbsp; long user_supplied_mask;
+&nbsp;&nbsp; if (first_time) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gc = XCreateGC(display, RootWindow(display,screen_num), 0,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; NULL);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSetSubwindowMode(display, gc, IncludeInferiors);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSetForeground(display, gc, BlackPixel(display, screen_num));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSetFunction(display, gc, GXxor);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; first_time = False;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Wait for ButtonPress choosing window to configure */
+&nbsp;&nbsp; XMaskEvent(display, ButtonPressMask, &amp;report);
+&nbsp;&nbsp; pressed_button = report.xbutton.button;
+&nbsp;&nbsp; /* Which child of root was press in? */
+&nbsp;&nbsp; XQueryPointer(display, RootWindow(display,screen_num), &amp;root,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;child, &amp;press_x, &amp;press_y, &amp;win_x,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;win_y, &amp;mask);
+&nbsp;&nbsp; win_to_configure = child;
+&nbsp;&nbsp; if ((win_to_configure == NULL)&nbsp; ||
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ((win_to_configure == menuwin)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;&amp; (move_or_resize == RESIZE)))&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* If in RootWindow or resizing menuwin,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * get release event and get out */
+&nbsp;&nbsp; while (XCheckMaskEvent(display, ButtonReleaseMask |
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ButtonPressMask, &amp;report))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Button press was in a valid subwindow of root */
+&nbsp;&nbsp; /* Get original position and size of window */
+&nbsp;&nbsp; XGetWindowAttributes(display, win_to_configure,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;win_attr);
+&nbsp;&nbsp; /* Get size hints for the window */
+&nbsp;&nbsp; XGetWMNormalHints(display, win_to_configure, &amp;size_hints,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;user_supplied_mask);
+&nbsp;&nbsp; if (size_hints.flags &amp;&amp; PMinSize)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; min_size = True;
+&nbsp;&nbsp; if (size_hints.flags &amp;&amp; PResizeInc)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; increment = True;
+&nbsp;&nbsp;&nbsp; /* Now we need pointer motion events */
+&nbsp;&nbsp; XChangeActivePointerGrab(display, PointerMotionHintMask |
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ButtonMotionMask | ButtonReleaseMask |
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OwnerGrabButtonMask, hand_cursor, CurrentTime);
+&nbsp;&nbsp; /* Don't allow other display operations during move
+&nbsp;&nbsp;&nbsp; * because the moving outline drawn with Xor won't
+&nbsp;&nbsp;&nbsp; * work properly otherwise */
+&nbsp;&nbsp; XGrabServer(display);
+&nbsp;&nbsp; /* Move outline of window until button release */
+&nbsp;&nbsp; while&nbsp; (1) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XNextEvent(display, &amp;report);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; switch (report.type) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case ButtonRelease:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (report.xbutton.button == pressed_button) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (box_drawn)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Undraw box */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; draw_box(gc, left, top, right, bottom);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* This may seem premature but actually
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * ButtonRelease indicates that the
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * rubber-banding is done */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XUngrabServer(display);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Get final window position */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XQueryPointer(display, RootWindow(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; screen_num), &amp;root, &amp;child,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;release_x, &amp;release_y, &amp;win_x,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;win_y, &amp;mask);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Move or resize window */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (move_or_resize == MOVE)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XMoveWindow(display, win_to_configure,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; win_attr.x + (release_x -
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; press_x), win_attr.y +
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (release_y - press_y));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XResizeWindow(display, win_to_configure,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; win_attr.width + (release_x - press_x),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; win_attr.height + (release_y - press_y));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XRaiseWindow(display, win_to_configure);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XFlush(display);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; box_drawn = False;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; while (XCheckMaskEvent(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ButtonReleaseMask
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | ButtonPressMask,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;report))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; case MotionNotify:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (box_drawn == True)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Undraw box */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; draw_box(gc, left, top, right, bottom);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Can get rid of all MotionNotify events in
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * queue, since otherwise the round-trip delays
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * caused by XQueryPointer may cause a backlog
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * of MotionNotify events, which will cause
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * additional wasted XQueryPointer calls */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; while (XCheckTypedEvent(display, MotionNotify,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;report));
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Get current mouse position */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XQueryPointer(display, RootWindow(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; screen_num), &amp;root, &amp;child, &amp;move_x,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;move_y, &amp;win_x, &amp;win_y, &amp;mask);
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (move_or_resize == MOVE) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left = move_x - press_x + win_attr.x;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top = move_y - press_y + win_attr.y;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; right = left + win_attr.width;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; bottom = top + win_attr.height;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (move_x &lt; win_attr.x)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; move_x = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (move_y &lt; win_attr.y )
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; move_y = 0;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left = win_attr.x;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top = win_attr.y;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; right = left + win_attr.width + move_x
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - press_x;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; bottom = top + win_attr.height + move_y
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - press_y;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Must adjust size according to size hints */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Enforce minimum dimensions */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width = right - left;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; height = bottom - top;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Make sure dimension are increment of
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * width_inc and height_inc and at least
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * min_width and min_height */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (temp_size = size_hints.min_width;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; temp_size &lt; width;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; temp_size += size_hints.width_inc)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (temp_size = size_hints.min_height;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; temp_size &lt; height;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; temp_size += size_hints.height_inc)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Most applications (xterm
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * included) pad their right
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * and bottom dimensions by
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * 2 pixels */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; bottom = top + temp_size + 2;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; right = left + temp_size + 2;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; draw_box(gc, left, top, right, bottom);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; box_drawn = True;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; default:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* StructureNotify events should not appear
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * here because of the ChangeActivePointerGrab
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * call, but they do for some reason; anyway,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * it doesn't matter */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* fprintf(stderr, "unexpected event type %s\n",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * report.type); */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } /* End switch */
+&nbsp;&nbsp; } /* End outer while */
+} /* End move */</TT></PRE>
+</BLOCKQUOTE>
+Figure 16-6 shows an example of the screen during a move
+operation.
+
+<P><B>Dragging a window outline</B>
+
+<P><IMG SRC="imgs/fig.16.06.gif" ALT="fig.16.06.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;The <B>XChangeActivePointerGrab()</B> function is
+used to narrow the types of events that are received. In other terms, it
+changes the events that are selected for the window for the duration of
+the grab. This makes it unnecessary to throw away <B>ButtonPress</B> events
+that are used early in the program but not needed in this routine.
+
+<P>The server is grabbed in this example to make sure that
+no other program displays output on the screen while the box is being dragged.
+This is necessary because the box is drawn and then undrawn with the same
+command and GC using the <B>GXxor</B> logical function. Graphics drawn
+twice with Exclusive OR will appear as they started but only if the pixels
+affected are not changed by any other application in between. If any other
+client were allowed to draw between the draw and the undraw, the screen
+might not be returned to normal.
+
+<P>Note that the actual color of the rubber-banded line is
+unpredictable on a color system, because the pixel value is simply the
+Exclusive OR of what was already there. If a particular color of rubber-banded
+line is desired, you will have to use the overlay technique described in
+Section 7.5.2, "Allocating Read/Write Colorcells for Overlays."
+<H3>
+The draw_box Routine</H3>
+The <B>draw_box</B> routine shown in Example 16-7 modifies
+a GC and draws a box. It raises some interesting issues since it draws
+on the root window. It is called from the simple window manager program
+<I>winman</I> described in Chapter 16, "Window Management." Its purpose
+is to draw an outline of a window during the rubber-banding that shows
+the user the current size or position of a window being resized or moved.
+The program also calls this routine to erase the box and to redraw the
+box to show the current position or size of a window as it is moved.
+
+<P><B>The draw_box routine</B>
+<BLOCKQUOTE>
+<PRE><TT>Display *display;
+int screen;
+draw_box(gc, x, y, width, height)
+GC gc;
+int x, y,
+unsigned int width, height;
+{
+&nbsp;&nbsp; /* Set foreground pixel value -- default may be white on white */
+&nbsp;&nbsp; XSetForeground(display, gc, BlackPixel(display,screen));
+&nbsp;&nbsp; /* Drawing on root window -- through all windows */
+&nbsp;&nbsp; XSetSubwindowMode(display, gc, IncludeInferiors);
+&nbsp;&nbsp; /* Logical function is XOR, so that double drawing erases box
+&nbsp;&nbsp;&nbsp; * on both color and monochrome screens */
+&nbsp;&nbsp; XSetFunction(display, gc, GXxor);
+&nbsp;&nbsp; XDrawRectangle(display, RootWindow(display,screen), gc, x, y,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width, height);
+}</TT></PRE>
+</BLOCKQUOTE>
+This routine uses a couple of tricks that need explanation.
+Notice that three elements of the GC are changed and that the drawing request
+draws on the root window. Since the box may be moved anywhere on the screen
+during a move operation (by the window manager), the box must be drawn
+on the root window. We set the foreground color to black so that the box
+will be visible over the default backgrounds of most windows (white). By
+default, the <B>subwindow_mode</B> member is set to <B>ClipByChildren</B>,
+specifying that graphics drawn to a window do not show through child windows.
+Because we want the entire box to be visible anywhere on the screen, we
+set the <B>subwindow_mode</B> to <B>IncludeInferiors</B>.
+
+<P>We are using a logical operation of <B>GXxor</B> so that
+the box can be drawn again to erase itself. This logical operation has
+the unique feature of returning the pixels to their original state in monochrome
+or color if the box is drawn twice, as long as none of the pixels were
+changed between the first and second drawings. To make sure nothing else
+is drawn in between, the program that calls <B>draw_box</B> grabs the server
+for the brief period of the window manipulation. Avoid grabbing the server
+unless absolutely necessary.
+<H3>
+(De)Iconifying Windows</H3>
+The <B>iconify</B> routine must be able to turn a window
+into an icon or turn an icon back into a window. It is completely up to
+the window manager to keep track of the association between windows and
+icons. Therefore, a substantial portion of <I>winman</I>'s code is devoted
+to maintaining a list of the main windows and their associated icon windows.
+We will look at the code for the routine that <B>main</B> calls, <B>iconify</B>,
+and then delve into the details of implementing icons.
+
+<P>Example 16-8 shows the <B>iconify</B> routine that is
+called in response to the user selecting the (De)Iconify item on <I>winman</I>'s
+menu.
+
+<P><B>winman -- the iconify routine</B>
+<BLOCKQUOTE>
+<PRE><TT>iconify(menuwin)
+Window menuwin;
+{
+&nbsp;&nbsp; XEvent report;
+&nbsp;&nbsp; extern Window focus_window;
+&nbsp;&nbsp; Window assoc_win;
+&nbsp;&nbsp; int press_x,press_y;
+&nbsp;&nbsp; Window child;
+&nbsp;&nbsp; Window root;
+&nbsp;&nbsp; int win_x, win_y;
+&nbsp;&nbsp; unsigned int mask;
+&nbsp;&nbsp; unsigned int button;
+&nbsp;&nbsp; /* Wait for ButtonPress, any win */
+&nbsp;&nbsp; XMaskEvent(display, ButtonPressMask, &amp;report);
+&nbsp;&nbsp; button = report.xbutton.button;
+&nbsp;&nbsp; /* Find out which subwindow the mouse was in */
+&nbsp;&nbsp; XQueryPointer(display, RootWindow(display,screen_num), &amp;root,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;child, &amp;press_x, &amp;press_y, &amp;win_x, &amp;win_y, &amp;mask);
+&nbsp;&nbsp; /* Can't iconify rootwindow or menu window */
+&nbsp;&nbsp; if ((child == NULL) || (child == menuwin))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Wait for ButtonRelease before exiting */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; while (1)&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XMaskEvent(display, ButtonReleaseMask, &amp;report);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (report.xbutton.button == button) break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Returned value of isIcon not used here, but
+&nbsp;&nbsp;&nbsp; * it is elsewhere in the code */
+&nbsp;&nbsp; isIcon(child, press_x, press_y, &amp;assoc_win, icon_name, True);
+&nbsp;&nbsp; /* Window selected is unmapped, whether it is icon
+&nbsp;&nbsp;&nbsp;&nbsp; * or main window; the other is then mapped */
+&nbsp;&nbsp; XUnmapWindow(display, child);
+&nbsp;&nbsp; XMapWindow(display, *assoc_win);
+&nbsp;&nbsp; /* Wait for ButtonRelease before exiting */
+&nbsp;&nbsp; /* Get the matching ButtonRelease on same button */
+&nbsp;&nbsp; while (1)&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XMaskEvent(display, ButtonReleaseMask, &amp;report);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (report.xbutton.button == button) break;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Throw out any remaining events so we start fresh
+&nbsp;&nbsp;&nbsp; * for next op */
+&nbsp;&nbsp; while (XCheckMaskEvent(display, ButtonReleaseMask |
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ButtonPressMask, &amp;report))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;
+}</TT></PRE>
+</BLOCKQUOTE>
+If the window is not an icon, the window is unmapped and
+an icon window is created and mapped. If the window is an icon, it is unmapped
+and the associated main window is remapped. The <B>iconify</B> routine
+guards against iconifying the menu, since there is no way in this program
+to undo that operation.
+
+<P>The <B>iconify</B> routine calls the <B>isIcon</B> routine.
+If the window selected is not an icon, <B>isIcon</B> creates an icon window,
+enters it into a linked list, and returns the icon window's ID. If the
+window selected is an icon, the associated main window's ID is returned.
+Either way, the window selected is unmapped and the associated window is
+mapped.
+
+<P>The routines underlying <B>isIcon</B> are a simplified
+version of the icon-handling code from <I>uwm</I>. Notice that these routines
+are in a separate source file, so they must include the standard include
+files and declare as <B>extern</B> the global variables set in <I>winman.c</I>.
+
+<P><B>winman -- the isIcon routine</B>
+<BLOCKQUOTE>
+<PRE><TT>#include &lt;X11/Xlib.h>
+#include &lt;X11/Xatom.h>
+#include &lt;X11/Xutil.h>
+#include &lt;X11/cursorfont.h>
+#include &lt;stdio.h>
+extern Display *display;
+extern int screen_num;
+/* For linked list containing window ID, icon ID, and icon_name;
+&nbsp;* own indicates whether winman created the icon window (True)
+&nbsp;* or was passed it through the WMHints (False) */
+typedef struct _windowList {
+&nbsp;&nbsp; struct _windowList *next;
+&nbsp;&nbsp; Window window;
+&nbsp;&nbsp; Window icon;
+&nbsp;&nbsp; Bool own;
+&nbsp;&nbsp; char *icon_name;
+} WindowListRec, *WindowList;
+
+WindowList Icons = NULL;
+Bool isIcon(win, x, y, assoc, icon_name, makeicon)
+Window win;
+int x, y;
+Window *assoc;
+char *icon_name;
+Bool makeicon;
+{
+&nbsp;&nbsp; WindowList win_list;
+&nbsp;&nbsp; Window makeIcon();
+&nbsp;&nbsp; /* Go through linked list of window-icon structures */
+&nbsp;&nbsp; for (win_list = Icons; win_list; win_list = win_list->next) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (win == win_list->icon) { /* Win is icon */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *assoc = win_list->window;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; strcpy(icon_name, win_list->icon_name);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return(True);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (win == win_list->window) { /* Win is main window */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *assoc = win_list->icon;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; strcpy(icon_name, win_list->icon_name);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return(False);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Window not in list means icon not created yet; create icon
+&nbsp;&nbsp;&nbsp; * and add main window to save-set in case window manager dies */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (makeicon) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *assoc = makeIcon(win, x, y, icon_name);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XAddToSaveSet(display, win);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; return(False);
+}</TT></PRE>
+</BLOCKQUOTE>
+The <B>isIcon</B> routine looks through the linked list of
+structures, of which there is one for each top-level window that has ever
+been iconified.
+<UL>
+<LI>
+If <B>win</B> is found in the structures and it is an icon,
+<B>isIcon</B> returns <B>True</B>.</LI>
+
+<LI>
+If <B>win</B> is found and it is a main window, <B>isIcon</B>
+returns <B>False</B>.</LI>
+
+<LI>
+If <B>win</B> is not found at all, <B>isIcon</B> calls <B>makeIcon</B>
+to create an icon for the window and then calls <B>XAddToSaveSet()</B>
+to add the window to <I>winman</I>'s save-set. This code only gets called
+when an application is being iconified for the first time. Since it is
+possible that <I>winman</I> will get killed before it has a chance to remap
+the main windows of the applications it has iconified, these windows must
+be automatically remapped when <I>winman</I> dies. That is what the save-set
+does. (<I>winman</I> can be killed by typing CTRL-C in the window it was
+invoked from if it has been run in the foreground or with the Exit choice
+from <I>winman</I>'s menu.)</LI>
+</UL>
+
+<H3>
+Creating the Icons</H3>
+The <B>makeIcon</B> routine called in <B>isIcon</B> is used
+to read the hints that the application has specified for the icon. As you
+will recall, the window manager has the option of honoring or ignoring
+these hints. <I>winman</I> honors them to the greatest extent possible.
+It allows an application to specify an icon pixmap or icon window, an icon
+name, and the icon's position.
+
+<P>If some or all of these hints are not set, <I>winman</I>
+does the best it can. If no icon window is specified, <I>winman</I> creates
+one. If no icon pixmap is specified, <I>winman</I> uses a white background
+and writes the icon name on it in black.
+
+<P><B>winman -- the makeIcon routine</B>
+<BLOCKQUOTE>
+<PRE><TT>Window makeIcon(window, x, y, icon_name_return)
+Window window;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Associated window */
+int x, y;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Current mouse position */
+char *icon_name_return;
+{
+&nbsp;&nbsp;&nbsp; int icon_x, icon_y;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Icon U. L. X and Y
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * coordinates */
+&nbsp;&nbsp;&nbsp; int icon_w, icon_h;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Icon width and height */
+&nbsp;&nbsp;&nbsp; int icon_bdr;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Icon border width */
+&nbsp;&nbsp;&nbsp; int depth;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* For XGetGeometry */
+&nbsp;&nbsp;&nbsp; Window root;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* For XGetGeometry */
+&nbsp;&nbsp;&nbsp; XSetWindowAttributes icon_attrib;&nbsp;&nbsp; /* For icon creation */
+&nbsp;&nbsp;&nbsp; unsigned long icon_attrib_mask;
+&nbsp;&nbsp;&nbsp; XWMHints *wmhints;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* See if icon position
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * provided */
+&nbsp;&nbsp;&nbsp; XWMHints *XGetWMHints();
+&nbsp;&nbsp;&nbsp; Window FinishIcon();
+&nbsp;&nbsp;&nbsp; char *icon_name;
+&nbsp;&nbsp;&nbsp; /* Process window manager hints.&nbsp; If icon window hint
+&nbsp;&nbsp;&nbsp;&nbsp; * exists, use it directly.&nbsp; If icon pixmap hint exists,
+&nbsp;&nbsp;&nbsp;&nbsp; * get its size.&nbsp; Otherwise, get default size.&nbsp; If icon
+&nbsp;&nbsp;&nbsp;&nbsp; * position hint exists, use it; otherwise, use the
+&nbsp;&nbsp;&nbsp;&nbsp; * position passed (current mouse position). */
+&nbsp;&nbsp;&nbsp; if (wmhints = XGetWMHints(display, window)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (wmhints->flags&amp;IconWindowHint)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Icon window was passed; use it as is */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return(finishIcon(window, wmhints->icon_window,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; False, icon_name));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else if (wmhints->flags&amp;IconPixmapHint)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Pixmap was passed.&nbsp; Determine size of icon
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * window from pixmap.&nbsp; Only icon_w and icon_h
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * are significant. */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!XGetGeometry(display, wmhints->icon_pixmap,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;root, &amp;icon_x, &amp;icon_y,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;icon_w, &amp;icon_h, &amp;icon_bdr, &amp;depth)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "winman: client passed invalid \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon pixmap." );
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return( NULL );
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon_attrib.background_pixmap = wmhints->icon_pixmap;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon_attrib_mask = CWBorderPixel|CWBackPixmap;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Else no window or pixmap passed */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon_name = getDefaultIconSize(window, &amp;icon_w, &amp;icon_h);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon_attrib_mask = CWBorderPixel | CWBackPixel;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon_attrib.background_pixel = (unsigned long)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WhitePixel(display,screen_num);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; /* Else no hints at all exist */
+&nbsp;&nbsp;&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon_name = getDefaultIconSize(window, &amp;icon_w, &amp;icon_h);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon_attrib_mask = CWBorderPixel | CWBackPixel;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; /* Pad sizes */
+&nbsp;&nbsp;&nbsp; icon_w += 2;
+&nbsp;&nbsp;&nbsp; icon_h += 2;
+&nbsp;&nbsp;&nbsp; strcpy(icon_name_return, icon_name);
+&nbsp;&nbsp;&nbsp; /* Set the icon border attributes */
+&nbsp;&nbsp;&nbsp; icon_bdr = 2;
+&nbsp;&nbsp;&nbsp; icon_attrib.border_pixel = (unsigned long)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BlackPixel(display,screen_num);
+&nbsp;&nbsp;&nbsp; /* If icon position hint exists, get it; this also checks
+&nbsp;&nbsp;&nbsp;&nbsp; * to see if wmhints is NULL, which it will be if WMHints
+&nbsp;&nbsp;&nbsp;&nbsp; * were never set at all */
+&nbsp;&nbsp;&nbsp; if (wmhints &amp;&amp; (wmhints->flags&amp;IconPositionHint))
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon_x = wmhints->icon_x;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon_y = wmhints->icon_y;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Put it where the mouse was */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon_x = x;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon_y = y;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; /* Create the icon window */
+&nbsp;&nbsp;&nbsp; return(finishIcon(window, XCreateWindow(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; RootWindow(display, screen_num),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon_x, icon_y, icon_w, icon_h,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon_bdr, 0, CopyFromParent, CopyFromParent,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon_attrib_mask, &amp;icon_attrib),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; True, icon_name));
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Getting the Icon Size</H3>
+We will show you <B>getDefaultIconSize</B> (which calls <B>getIconName</B>)
+and then <B>finishIcon</B>, the two routines called from <B>makeIcon</B>.
+<B>getDefaultIconSize</B> and <B>getIconName</B> are shown in Example 16-11.
+
+<P><B>winman -- the getDefaultIconSize and getIconName routines</B>
+<BLOCKQUOTE>
+<PRE><TT>char *
+getDefaultIconSize(window, icon_w, icon_h)
+Window window;
+int *icon_w, *icon_h;
+{
+&nbsp;&nbsp; /* Determine the size of the icon window */
+&nbsp;&nbsp; char *icon_name;
+&nbsp;&nbsp; icon_name = getIconName(window);
+&nbsp;&nbsp; *icon_h = font_info->ascent + font_info->descent + 4;
+&nbsp;&nbsp; *icon_w = XTextWidth(font_info, icon_name, strlen(icon_name));
+&nbsp;&nbsp; return(icon_name);
+}
+char *
+getIconName(window)
+Window window;
+{
+&nbsp;&nbsp;&nbsp; char *name;
+&nbsp;&nbsp;&nbsp; if (XGetIconName( display, window, &amp;name )) return( name );
+&nbsp;&nbsp;&nbsp; /* Get program name if set */
+&nbsp;&nbsp;&nbsp; if (XFetchName( display, window, &amp;name )) return( name );
+&nbsp;&nbsp;&nbsp; return( "Icon" );
+}</TT></PRE>
+</BLOCKQUOTE>
+The routines in Example 16-11 simply get the icon name and
+determine a size for the icon from the name, given the font dimensions.
+If no icon name is available, they use the program name, and if that is
+not available, they use the string "Icon." However, this should never happen
+if the applications are written properly.
+<H3>
+Updating the Icon List</H3>
+Now we'll turn to <B>finishIcon</B>, which is called from
+<B>makeIcon</B>. <B>finishIcon</B> creates and defines a cursor for the
+icon, selects <B>Expose</B> events for it, and updates the linked list
+of structures to include the new icon and its associated window. (Actually,
+the cursor should have been created in another routine, because here it
+is executed every time a new icon is created.)
+
+<P><B>winman -- the finishIcon routine</B>
+<BLOCKQUOTE>
+<PRE><TT>Window finishIcon(window, icon, own, icon_name)
+Window window, icon;
+Bool own;&nbsp;&nbsp; /* Whether winman created the icon window */
+char *icon_name;
+{
+&nbsp;&nbsp; WindowList win_list;
+&nbsp;&nbsp; Cursor manCursor;
+&nbsp;&nbsp; /* If icon window didn't get created, return failure */
+&nbsp;&nbsp;&nbsp; if (icon == NULL) return(NULL);
+&nbsp;&nbsp; /* Use the man cursor whenever the mouse is in the
+&nbsp;&nbsp;&nbsp; * icon window */
+&nbsp;&nbsp; manCursor = XCreateFontCursor(display, XC_man);
+&nbsp;&nbsp; XDefineCursor(display, icon, manCursor);
+
+&nbsp;&nbsp;&nbsp; /* Select events for the icon window */
+&nbsp;&nbsp; XSelectInput(display, icon, ExposureMask);
+
+&nbsp;&nbsp; /* Set the event window's icon window to be the new
+&nbsp;&nbsp;&nbsp; * icon window */
+&nbsp;&nbsp; win_list = (WindowList) malloc(sizeof(WindowListRec));
+&nbsp;&nbsp; win_list->window = window;
+&nbsp;&nbsp; win_list->icon = icon;
+&nbsp;&nbsp; win_list->own = own;
+&nbsp;&nbsp; win_list->icon_name = icon_name;
+&nbsp;&nbsp; win_list->next = Icons;
+&nbsp;&nbsp; Icons = win_list;
+&nbsp;&nbsp; return(icon);
+}</TT></PRE>
+</BLOCKQUOTE>
+One nice user interface possibility is suggested by the code
+for <B>finishIcon</B>. We could let the user turn an icon back into a main
+window by pressing some key or button in the icon. To do this, we would
+select button or key events on the icon and then look for them in one of
+the event loops in <B>main</B>. If button events were chosen, we would
+need to identify which window the button event appeared in to distinguish
+between events from the menu and events in the icon, but this would be
+easy.
+<H3>
+Removing Icons</H3>
+Finally, we need a way to remove icons for applications that
+have been iconified but exit while the window manager is running. The <B>main</B>
+selects <B>StructureNotifyMask</B> to be notified when top-level windows
+are destroyed and responds by calling <B>removeIcon</B>, which is shown
+in Example 16-13.
+
+<P><B>winman -- the removeIcon routine</B>
+<BLOCKQUOTE>
+<PRE><TT>removeIcon(window)
+Window window;
+{
+&nbsp;&nbsp; WindowList win_list, win_list1;
+&nbsp;&nbsp; for (win_list = Icons; win_list; win_list = win_list->next)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (win_list->window == window) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (win_list->own)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XDestroyWindow(display, win_list->icon);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp; if (win_list) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (win_list==Icons) Icons = Icons->next;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (win_list1 = Icons; win_list1->next;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; win_list1 = win_list1->next)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (win_list1->next == win_list) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; win_list1->next = win_list->next;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; break;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; };
+&nbsp;&nbsp; }
+}</TT></PRE>
+</BLOCKQUOTE>
+Whether <I>winman</I> exits graciously (through the Exit
+choice on the menu) or by being killed, all the main windows it has iconified
+have already been placed in the save-set, so that they will automatically
+be mapped. Therefore, no routine to clear the icons is necessary.
+<H3>
+Changing Keyboard Focus</H3>
+Setting the keyboard focus allows the user to stop worrying
+about whether the pointer is in the window to be typed into. The underlying
+function here is <B>XSetInputFocus()</B>. It causes keyboard input to go
+to the selected window regardless of the position of the pointer. When
+the root window is selected, keyboard events are distributed normally according
+to the position of the pointer (this is the default situation).
+
+<P><I>winman</I> highlights the focus window by increasing
+the width of the border and drawing a white outline around the window.
+This is necessary because it would not be obvious which application had
+the focus unless the application itself was programmed to indicate when
+it has the focus. Of course, applying the keyboard focus to a window that
+does not use keyboard input, like the main window of <I>xclock</I>, would
+cause your input to be just thrown away and the only indication of what
+is happening would be the highlighting drawn around the focus window.
+
+<P>The <B>focus</B> routine in Example 16-14 selects a window
+much like the <B>raise_lower</B> function does. If the subwindow returned
+by <B>XQueryPointer()</B> is <B>NULL</B>, the pointer must be on the root
+window, and the focus can be set to the ID of the root window. Otherwise
+we need to find out if the subwindow is an icon. The focus should be on
+the real window as opposed to the icon, since the icon is controlled by
+the window manager and does not accept keyboard input for the application.
+
+<P>To change the border width of the new focus window, we
+need to get the old width with <B>XGetWindowAttributes()</B>, and save
+it so it can be replaced when the focus is changed again.
+
+<P><B>winman -- the focus routine</B>
+<BLOCKQUOTE>
+<PRE><TT>focus(menuwin)
+Window menuwin;
+{
+&nbsp;&nbsp; XEvent report;
+&nbsp;&nbsp; int x,y;
+&nbsp;&nbsp; Window child;
+&nbsp;&nbsp; Window root;
+&nbsp;&nbsp; Window assoc_win;
+&nbsp;&nbsp; extern Window focus_window;
+&nbsp;&nbsp; int win_x, win_y;
+&nbsp;&nbsp; unsigned int mask;
+&nbsp;&nbsp; char *icon_name;
+&nbsp;&nbsp; unsigned int button;
+&nbsp;&nbsp; XWindowAttributes win_attr;
+&nbsp;&nbsp; static int old_width;
+&nbsp;&nbsp; static Window old_focus;
+&nbsp;&nbsp; int status;
+&nbsp;&nbsp; /* Wait for ButtonPress, any win */
+&nbsp;&nbsp; XMaskEvent(display, ButtonPressMask, &amp;report);
+&nbsp;&nbsp; button = report.xbutton.button;
+&nbsp;&nbsp; /* Find out which subwindow the mouse was in */
+&nbsp;&nbsp; XQueryPointer(display, RootWindow(display,screen_num), &amp;root,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;child, &amp;x, &amp;y, &amp;win_x, &amp;win_y, &amp;mask);
+&nbsp;&nbsp; if ((child == NULL) || (isIcon(child, x, y, &amp;assoc_win,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;icon_name)))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; focus_window = RootWindow(display, screen_num);
+&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; focus_window = child;
+&nbsp;&nbsp; if (focus_window != old_focus)&nbsp; { /* If focus changed */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* If not first time set, set border back */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if&nbsp; (old_focus != NULL)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSetWindowBorderWidth(display, old_focus, old_width);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSetInputFocus(display, focus_window, RevertToPointerRoot,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CurrentTime);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (focus_window != RootWindow(display, screen_num)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Get current border width and add one */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!(status = XGetWindowAttributes(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; focus_window, &amp;win_attr)))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "winman: can't get attributes for \
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; focus window\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSetWindowBorderWidth(display, focus_window,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; win_attr.border_width + 1);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Keep record so we can change it back */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; old_width = win_attr.border_width;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Get the matching ButtonRelease on same button */
+&nbsp;&nbsp; while (1)&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XMaskEvent(display, ButtonReleaseMask, &amp;report);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (report.xbutton.button == button) break;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; old_focus = focus_window;
+&nbsp;&nbsp; return(focus_window);
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Drawing the Focus Frame</H3>
+The <B>focus</B> routine calls <B>draw_focus_frame</B> to
+further highlight the focus window. There are several ways to do this,
+ranging from almost trivial to fairly complex. The easiest way is to change
+the border width and/or color to indicate which window is the focus. Another
+way is to draw on the root window behind the focus window. This has a slightly
+different effect in that no highlight would appear on windows where they
+did not contact the root window. We do both to be absolutely sure the current
+focus window is well indicated. The window is highlighted by increasing
+its border width and by tiling a region underneath the current focus window
+with a pixmap.
+
+<P>A third and more complicated way is to reparent the focus
+window into a background frame, as described above in Section 16.3, "Reparenting."
+This would work well if the windows already had been reparented to add
+a titlebar.
+
+<P>The <B>draw_focus_frame</B> routine shown in Example 16-15
+also demonstrates the two-step process of creating a useful pixmap from
+the data in an include file generated by the bitmap program. You must create
+a bitmap from the data before making a pixmap from the bitmap.
+
+<P><B>winman -- the draw_focus_frame routine</B>
+<BLOCKQUOTE>
+<PRE><TT>draw_focus_frame()
+{
+&nbsp;&nbsp; XWindowAttributes win_attr;
+&nbsp;&nbsp; int frame_width = 4;
+&nbsp;&nbsp; Pixmap focus_tile;
+&nbsp;&nbsp; GC gc;
+&nbsp;&nbsp; int foreground = BlackPixel(display, screen_num);
+&nbsp;&nbsp; int background = WhitePixel(display, screen_num);
+&nbsp;&nbsp; extern Window focus_window;
+&nbsp;&nbsp; Bool first_time = True;
+&nbsp;&nbsp; if (first_time) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Make Bitmap from bitmap data */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; focus_tile = XCreatePixmapFromBitmapData(display,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; RootWindow(display,screen_num),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; focus_frame_bi_bits, focus_frame_bi_width,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; focus_frame_bi_height, foreground,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; background, DefaultDepth(display, screen_num));
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Create graphics context */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gc = XCreateGC(display, RootWindow(display,screen_num), 0,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; NULL);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSetFillStyle(display, gc, FillTiled);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XSetTile(display, gc, focus_tile);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; first_time = False;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; /* Get rid of old frames */
+&nbsp;&nbsp; XClearWindow(display, RootWindow(display,screen_num));
+&nbsp;&nbsp; /* If focus is RootWindow, no frame drawn */
+&nbsp;&nbsp; if (focus_window == RootWindow(display,screen_num)) return;
+&nbsp;&nbsp; /* Get dimensions and position of focus_window*/
+&nbsp;&nbsp; XGetWindowAttributes(display, focus_window, &amp;win_attr);
+&nbsp;&nbsp; XFillRectangle(display, RootWindow(display,screen_num), gc,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; win_attr.x - frame_width, win_attr.y - frame_width,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; win_attr.width + 2 * (win_attr.border_width + frame_width),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; win_attr.height + 2 * (win_attr.border_width + frame_width));
+}</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Executing a Shell Command</H3>
+The menu item to create a new <I>xterm</I> window uses <B>execute</B>,
+which is a routine taken directly from the code for <I>uwm</I>. This routine
+can be used to execute any shell command and, therefore, may come in handy
+in virtually any application, not just a window manager. Example 16-16
+shows the <B>execute</B> routine. Obviously, this routine is for UNIX-based
+systems. Code for other operating systems can be added between preprocessor
+directives (<B>#ifdef</B>, <B>#endif</B>).
+
+<P><B>winman -- the execute routine</B>
+<BLOCKQUOTE>
+<PRE><TT>#ifdef SYSV
+#ifndef hpux
+#define vfork() fork()
+#endif /* hpux */
+#endif /* SYSV */
+/* The following procedure is a copy of the implementation of
+&nbsp;* system, modified to reset the handling of SIGINT, SIGQUIT,
+&nbsp;* and SIGHUP before executing */
+execute(s)
+char *s;
+{
+&nbsp;&nbsp; int status, pid, w;
+&nbsp;&nbsp; register int (*istat)(), (*qstat)();
+&nbsp;&nbsp; if ((pid = vfork()) == 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; signal(SIGINT, SIG_DFL);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; signal(SIGQUIT, SIG_DFL);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; signal(SIGHUP, SIG_DFL);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; execl("/bin/sh", "sh", "-c", s, 0);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; _exit(127);
+&nbsp;&nbsp; }
+&nbsp;&nbsp; istat = signal(SIGINT, SIG_IGN);
+&nbsp;&nbsp; qstat = signal(SIGQUIT, SIG_IGN);
+&nbsp;&nbsp; while ((w = wait(&amp;status)) != pid &amp;&amp; w != -1)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;
+&nbsp;&nbsp; if (w == -1)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; status = -1;
+&nbsp;&nbsp; signal(SIGINT, istat);
+&nbsp;&nbsp; signal(SIGQUIT, qstat);
+&nbsp;&nbsp; return(status);
+}</TT></PRE>
+</BLOCKQUOTE>
+There is some code in <B>main</B> that helps <B>execute</B>
+do its thing. It makes sure that the new process does not inherit any open
+files from the parent process, our window manager. Without this call, the
+child process might affect the operation of the client instead of being
+completely separate. All routines that execute shell commands should include
+the code shown in Example 16-17 in the routine that calls <B>execute</B>.
+
+<P><B>winman -- code for assisting execution of shell commands</B>
+<BLOCKQUOTE>
+<PRE><TT>&nbsp;&nbsp; /* Force child processes to disinherit the TCP file.
+&nbsp;&nbsp;&nbsp; * descriptor; this helps the shell command (creating
+&nbsp;&nbsp;&nbsp; * new xterm) forked and executed from the menu to work
+&nbsp;&nbsp;&nbsp; * properly */
+&nbsp;&nbsp;&nbsp; if ((fcntl(ConnectionNumber(display), F_SETFD, 1)) == -1)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fprintf(stderr, "winman: child cannot disinherit TCP fd");</TT></PRE>
+</BLOCKQUOTE>
+Remember that <I>winman</I> is only a minimal window manager.
+It does not perform all the tasks required of window managers as specified
+by the ICCCM. See Appendix L, <I>Interclient Communcation Conventions</I>,
+of <I>Volume Zero, X Protocol Reference Manual</I> (as of the second printing),
+to read about the complete set of requirements for window managers.
+<BR>
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

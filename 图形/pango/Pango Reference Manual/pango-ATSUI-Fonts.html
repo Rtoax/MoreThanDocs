@@ -1,0 +1,116 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>ATSUI Fonts</title>
+<meta name="generator" content="DocBook XSL Stylesheets V1.68.1">
+<link rel="start" href="index.html" title="Pango Reference Manual">
+<link rel="up" href="rendering.html" title="Rendering with Pango">
+<link rel="prev" href="pango-Cairo-Rendering.html" title="Cairo Rendering">
+<link rel="next" href="pango-X-Fonts-and-Rendering.html" title="Deprecated X font backend">
+<meta name="generator" content="GTK-Doc V1.7 (XML mode)">
+<link rel="stylesheet" href="style.css" type="text/css">
+<link rel="chapter" href="pango.html" title="Basic Pango Interfaces">
+<link rel="chapter" href="rendering.html" title="Rendering with Pango">
+<link rel="chapter" href="lowlevel.html" title="Low Level Functionality">
+<link rel="chapter" href="tools.html" title="Pango Tools">
+<link rel="index" href="ix01.html" title="Index">
+<link rel="index" href="ix02.html" title="Index of deprecated symbols">
+<link rel="index" href="ix03.html" title="Index of new symbols in 1.2">
+<link rel="index" href="ix04.html" title="Index of new symbols in 1.4">
+<link rel="index" href="ix05.html" title="Index of new symbols in 1.6">
+<link rel="index" href="ix06.html" title="Index of new symbols in 1.8">
+<link rel="index" href="ix07.html" title="Index of new symbols in 1.10">
+<link rel="index" href="ix08.html" title="Index of new symbols in 1.12">
+<link rel="index" href="ix09.html" title="Index of new symbols in 1.14">
+<link rel="index" href="ix10.html" title="Index of new symbols in 1.16">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table class="navigation" id="top" width="100%" summary="Navigation header" cellpadding="2" cellspacing="2">
+<tr valign="middle">
+<td><a accesskey="p" href="pango-Cairo-Rendering.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
+<td><a accesskey="u" href="rendering.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
+<td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
+<th width="100%" align="center">Pango Reference Manual</th>
+<td><a accesskey="n" href="pango-X-Fonts-and-Rendering.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
+</tr>
+<tr><td colspan="5" class="shortcuts"><nobr><a href="#id2669242" class="shortcut">Top</a>
+                  &#160;|&#160;
+                  <a href="#id2669286" class="shortcut">Description</a></nobr></td></tr>
+</table>
+<div class="refentry" lang="en">
+<a name="pango-ATSUI-Fonts"></a><div class="titlepage"></div>
+<div class="refnamediv"><table width="100%"><tr>
+<td valign="top">
+<h2>
+<a name="id2669242"></a><span class="refentrytitle">ATSUI Fonts</span>
+</h2>
+<p>ATSUI Fonts &#8212; Font handling and rendering with ATSUI fonts</p>
+</td>
+<td valign="top" align="right"></td>
+</tr></table></div>
+<div class="refsynopsisdiv">
+<h2>Synopsis</h2>
+<pre class="synopsis">
+
+
+
+                    <a href="pango-ATSUI-Fonts.html#PangoCairoATSUIFont">PangoCairoATSUIFont</a>;
+ATSUFontID          <a href="pango-ATSUI-Fonts.html#pango-cairo-atsui-font-get-atsu-font-id">pango_cairo_atsui_font_get_atsu_font_id</a>
+                                                        (<a href="pango-ATSUI-Fonts.html#PangoCairoATSUIFont">PangoCairoATSUIFont</a> *cafont);
+
+</pre>
+</div>
+<div class="refsect1" lang="en">
+<a name="id2669286"></a><h2>Description</h2>
+<p>
+The macros and functions in this section are used to access fonts natively on
+MacOS systems using the ATSUI text rendering subsystem.
+</p>
+</div>
+<div class="refsect1" lang="en">
+<a name="id2669303"></a><h2>Details</h2>
+<div class="refsect2" lang="en">
+<a name="id2669313"></a><h3>
+<a name="PangoCairoATSUIFont"></a>PangoCairoATSUIFont</h3>
+<a class="indexterm" name="id2669326"></a><pre class="programlisting">typedef struct _PangoCairoATSUIFont PangoCairoATSUIFont;</pre>
+<p>
+
+The <a href="pango-ATSUI-Fonts.html#PangoCairoATSUIFont"><span class="type">PangoCairoATSUIFont</span></a> is <a href="pango-Fonts.html#PangoFont"><span class="type">PangoFont</span></a> used to represent
+an ATSUI font used with the cairo backend.
+</p>
+</div>
+<hr>
+<div class="refsect2" lang="en">
+<a name="id2669360"></a><h3>
+<a name="pango-cairo-atsui-font-get-atsu-font-id"></a>pango_cairo_atsui_font_get_atsu_font_id ()</h3>
+<a class="indexterm" name="id2669376"></a><pre class="programlisting">ATSUFontID          pango_cairo_atsui_font_get_atsu_font_id
+                                                        (<a href="pango-ATSUI-Fonts.html#PangoCairoATSUIFont">PangoCairoATSUIFont</a> *cafont);</pre>
+<p>
+Returns the ATSUFontID of a font.</p>
+<p>
+
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><span class="term"><em class="parameter"><code>cafont</code></em>&#160;:</span></td>
+<td> A <a href="pango-ATSUI-Fonts.html#PangoCairoATSUIFont"><span class="type">PangoCairoATSUIFont</span></a>
+</td>
+</tr>
+<tr>
+<td><span class="term"><span class="emphasis"><em>Returns</em></span>&#160;:</span></td>
+<td> the ATSUFontID associated to <em class="parameter"><code>cafont</code></em>.
+
+</td>
+</tr>
+</tbody>
+</table></div>
+<p class="since">Since  1.12
+</p>
+</div>
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,895 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_22_app_F.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_24_app_H.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H2>
+Sources of Additional Information</H2>
+This appendix describes where you can get more information
+about Xlib and about X in general, including other books on the subject
+and the various ways to get the source code for X.
+
+<P>This appendix lists a few of the official and unofficial
+sources for information about the X Window System and associated software.
+
+<P>Note that some of this detailed information may become
+dated rather quickly. The best source of current information is the <I>comp.windows.x</I>
+network news group, described later in this appendix.
+<BR>
+<HR>
+<H2>
+Getting the X Software</H2>
+At this writing, the current public release level is Release
+5. This book documents Release 4 and Release 5. Many people will continue
+to use R4 for a while, since there is a considerable lag time between the
+date that MIT distributes a new release and the date by which vendors integrate
+that release into their own products and issue updates. All changes to
+Xlib in R5 are backwards compatible, although there are many new interfaces
+that provide additional capabilities.
+
+<P>You can get the X software directly from MIT on three
+9-track 1600-BPI magtapes written in UNIX <I>tar</I> format or on one 9-track
+6250-BPI magtape, along with printed copies of MIT's manuals, by sending
+a check in U.S. currency for U.S. $400 to:
+
+<P>MIT Software Distribution Center
+<BR>Technology Licensing Office
+<BR>MIT E32-300
+<BR>77 Massachusetts Avenue
+<BR>Cambridge, MA 02139
+
+<P>Their telephone number is (617) 253-6966, and the "X Ordering
+Hotline" is (617) 258-8330. If you want the tapes and manuals shipped overseas,
+the price is $500. The manual set alone is $125, including U.S. shipping,
+or $175, including overseas shipping.
+
+<P>Other distribution media or formats are not available
+from the MIT Software Distribution Center but are from other independent
+vendors such as ICS, mentioned later. The Release tape comes with source
+code for sample servers for Apollo, DEC, HP, IBM, Sony, Sun, and several
+other workstations, source code for clients written by MIT, sources for
+the toolkits Xt, XView, Interviews, and Andrew, contributed software written
+outside MIT, and sources and Postscript files for all MIT's documentation.
+Note that the servers supplied are sample servers only; commercial vendors
+typically release optimized (faster) servers for the same machines.
+
+<P>Sites that have access to the Internet can retrieve the
+distribution from the following machines using anonymous <I>ftp</I>. Here
+are the current sites:
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table G-1 : </B>X Software Sites</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Location</TH>
+
+<TH>Hostname</TH>
+
+<TH>Address</TH>
+
+<TH>Directory</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Western USA</TD>
+
+<TD><I>gatekeeper.dec.com</I></TD>
+
+<TD>16.1.0.2</TD>
+
+<TD>pub/X11/R5</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Eastern USA</TD>
+
+<TD><I>ftp.uu.net</I></TD>
+
+<TD>192.48.96.9</TD>
+
+<TD>X/R5</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD></TD>
+
+<TD></TD>
+
+<TD>137.39.1.9</TD>
+
+<TD>X/R5</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Northeastern USA</TD>
+
+<TD><I>export.lcs.mit.edu</I></TD>
+
+<TD>18.24.0.12</TD>
+
+<TD>pub/R5</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD></TD>
+
+<TD><I>crl.dec.com</I></TD>
+
+<TD>192.58.206.2</TD>
+
+<TD>pub/X11/R5</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Central USA</TD>
+
+<TD><I>mordred.cs.purdue.edu</I></TD>
+
+<TD>128.10.2.2</TD>
+
+<TD>pub/X11/R5</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD></TD>
+
+<TD><I>giza.cis.ohio-state.edu</I></TD>
+
+<TD>128.146.8.52</TD>
+
+<TD>pub/X.V11R5</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Southern USA</TD>
+
+<TD><I>wuarchive.wustl.edu</I></TD>
+
+<TD>129.252.135.4</TD>
+
+<TD>packages/X11R5</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>UK (Janet)</TD>
+
+<TD><I>src.doc.ic.ac.uk</I></TD>
+
+<TD>146.169.2.1</TD>
+
+<TD>X</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Australia</TD>
+
+<TD><I>munnari.oz.au</I></TD>
+
+<TD>128.250.1.21</TD>
+
+<TD>X.V11/R5</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD></TD>
+
+<TD></TD>
+
+<TD>192.43.207.1</TD>
+
+<TD>X.V11/R5</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>DO NOT do anonymous <I>ftp</I> during normal business
+hours, and please use the machine nearest you.
+
+<P>The distribution is also available by UUCP from UUNET
+for sites without Internet access. The files are split up to be small enough
+for UUCP distribution.
+<H3>
+Bug Fixes</H3>
+Critical bug fixes as well as a limited number of important
+new features are available from the archive server <I>xstuff@expo.lcs.mit.edu</I>.
+Electronic mail sent to this address is forwarded to a program which responds
+with the requested information. The rest of this section and the two sections
+that follow it explain how to use <I>xstuff</I>.
+
+<P>The <I>xstuff</I> server is a mail-response program. This
+means that you mail it a request and it mails back the response.
+
+<P>The <I>xstuff</I> server is a very dumb program. It does
+not have much error checking. If you do not send it commands that it understands,
+it will just answer "I don't understand you."
+
+<P>The <I>xstuff</I> server reads your entire message before
+it does anything, so you can have several different commands in a single
+message. It treats the "Subject:" header line just like any other line
+of the message. You can use any combination of upper and lowercase letters
+in the commands.
+
+<P>The archives are organized into a series of directories
+and subdirectories. Each directory has an index, and each subdirectory
+has an index. The top-level index gives you an overview of what is in the
+subdirectories, and the index for each subdirectory tells you what it contains.
+
+<P>If you are bored with reading documentation and just want
+to try something, then send the server a message containing the line:
+<BLOCKQUOTE>
+<PRE><TT>send index fixes</TT></PRE>
+</BLOCKQUOTE>
+When you get the index back, it will contain the numbers
+of all of the fixes and batches of fixes in the archive. Then you can send
+the server another message asking it to send you the fixes that you want:
+<BLOCKQUOTE>
+<PRE><TT>send fixes 1 5 9 11-20</TT></PRE>
+</BLOCKQUOTE>
+If you are using a mailer that understands "@" notation,
+send to <I>xstuff@expo.lcs.mit.edu</I>. If your mailer deals in "!" notation,
+try sending to <I>{someplace}!eddie!expo.lcs.mit.edu!xstuff.</I> For other
+mailers, you're on your own.
+
+<P>The server has four commands. Each command must be the
+first word on a line.
+<DL>
+<DT>
+<I>help</I></DT>
+
+<DD>
+The command <I>help</I> or <I>send help</I> causes the server
+to send you the help file. No other commands are honored in a message that
+asks for help (the server figures that you had better read the help message
+before you do anything else).</DD>
+
+<DT>
+<I>index</I></DT>
+
+<DD>
+If your message contains a line whose first word is <I>index</I>,
+then the server will send you the top-level index of the contents of the
+archive. If there are other words on that line that match the names of
+subdirectories, then the indexes for those subdirectories are sent instead
+of the top-level index. For example, you can say:</DD>
+
+<LI>
+index</LI>
+
+<DD>
+or:</DD>
+
+<LI>
+index fixes</LI>
+
+<DD>
+You can then send back another message to the <I>xstuff</I>
+server, using a <I>send</I> command (see below) to ask it to send you the
+files whose names you learned from that list.</DD>
+
+<DD>
+<I>index fixes</I> and <I>send index fixes</I> mean the same
+thing: you can use <I>send</I> instead of <I>index</I> for getting an index.</DD>
+
+<DD>
+If your message has an <I>index</I> or a <I>send index</I>
+command, then all other <I>send</I> commands will be ignored. This means
+that you cannot get an index and data in the same request. This is so that
+index requests can be given high priority.</DD>
+
+<DT>
+<I>send</I></DT>
+
+<DD>
+If your message contains a line whose first word is <I>send</I>,
+then the <I>xstuff</I> server will send you the item(s) named on the rest
+of the line. To name an item, you give its directory and its name. For
+example:</DD>
+
+<LI>
+send fixes 1-10</LI>
+
+<DD>
+Once you have named a category, you can put as many names
+as you like on the rest of the line. They will all be taken from that category.
+For example:</DD>
+
+<LI>
+send fixes 1-10 11-20 21-30</LI>
+
+<DD>
+Each <I>send</I> command can reference only one directory.
+If you would like to get one fix and one of something else, you must use
+two <I>send</I> commands.</DD>
+
+<DD>
+You may put as many <I>send</I> commands as you like into
+one message to the server, but the more you ask for, the longer it will
+take to receive. See Section G.1.1.2, "Fairness"" for an explanation. Actually,
+it is not strictly true that you can put as many <I>send</I> commands as
+you want into one message. If the server must use UUCP mail to send your
+files, then it cannot send more than 100K bytes in one message. If you
+ask for more than it can send, then it will send as much as it can and
+ignore the rest.</DD>
+
+<DT>
+<I>path</I></DT>
+
+<DD>
+The <I>path</I> command exists to help in case you do not
+get responses from the server when you mail to it.</DD>
+
+<DD>
+Sometimes the server is unable to return mail over the incoming
+path. There are dozens of reasons why this might happen, and if you are
+a true wizard, you already know what those reasons are. If you are an apprentice
+wizard, you might not know all the reasons, but you might know a way to
+circumvent them.</DD>
+
+<DD>
+If you put in a <I>path</I> command, then everything that
+the server mails to you will be mailed to that address rather than to the
+return address on your mail. The server host <I>expo.lcs.mit.edu</I> does
+not have a direct UUCP connection to anywhere; you must go through <I>mit-eddie</I>
+(the UUCP name of <I>eddie.mit.edu</I>) or somewhere else.</DD>
+</DL>
+
+<H4>
+Notes</H4>
+The <I>xstuff</I> server acknowledges every request by return
+mail. If you do not get a message back in a day or two, you should assume
+that something is going wrong and perhaps try a <I>path</I> command.
+
+<P>The <I>xstuff</I> server does not respond to requests
+from users named <I>root</I>, <I>system</I>, <I>daemon</I>, or <I>mailer</I>.
+This is to prevent mail loops. If your name is "Bruce Root" or "Jane Daemon"
+and you can document this, we will happily rewrite the server to remove
+this restriction. Yes, we know about Norman Mailer and Waverley Root. Norman
+doesn't use netmail and Waverley is dead.
+<H4>
+Fairness</H4>
+The <I>xstuff</I> server contains many safeguards to ensure
+that it is not monopolized by people asking for large amounts of data.
+The mailer is set up so that it will send no more than a fixed amount of
+data each day. If the work queue contains more requests than the day's
+quota, then the unsent files will not be processed until the next day.
+Whenever the mailer is run to send its day's quota, it sends the shortest
+requests out first.
+
+<P>If you have a request waiting in the work queue and you
+send in another request, the new request is added to the old one (thereby
+increasing its size) rather than being filed anew. This prevents you from
+being able to send in a large number of small requests as a way of beating
+the system.
+
+<P>The reason for all of these quotas and limitations is
+that the delivery resources are finite, and there are many people who would
+like to make use of the archive.
+<BR>
+<HR>
+<H2>
+Netnews</H2>
+The Usenet network newsgroup and mailing lists are probably
+the most valuable source of information abouta X. The current list of public
+mailing lists that discuss X is as follows:
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table G-2 : </B>Netnews Public Mailing Lists</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>News Group</TH>
+
+<TH>Description</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><I>motif@alphalpha.com</I></TD>
+
+<TD>People interested in the OSF's Motif X toolkit This mailing
+list is also gatewayed to the Usenet newsgroup <I>comp.windows.x.motif</I>
+. If you receive that newsgroup, you don't need to get this mailing list.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><I>x11-3D@expo.lcs.mit.edu</I></TD>
+
+<TD>People interested in X and 3-D graphics</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><I>x-ada@expo.lcs.mit.edu</I></TD>
+
+<TD>X and ada</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><I>ximage@expo.lcs.mit.edu</I></TD>
+
+<TD>People interested in image processing and X</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><I>xpert@expo.lcs.mit.edu</I></TD>
+
+<TD>General discussion of X This mailing list is also gatewayed
+to the Usenet newsgroup <I>comp.windows.x</I> . If you receive that newsgroup,
+you don't need to get this mailing list.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><I>openlook@unify.com</I></TD>
+
+<TD>Discussion of the OPEN LOOK graphical user interface,
+and its various implementations. This mailing list is also gatewayed to
+the Usenet newsgroup <I>comp.windows.open-look</I> . If you receive that
+newsgroup, you don't need to get this mailing list.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD><I>xvideo@expo.lcs.mit.edu</I></TD>
+
+<TD>Discussion of video extensions for X</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>First ask your site administrator whether you can get
+these news groups locally. Requests to have the motif mailing list mailed
+directly to you should be sent to <I>motif</I>-request@alphalpha.com. Requests
+to have the OPEN LOOK mailing list mailed directly to you should be sent
+to <I>openlook</I>-request@unify.com. Requests for all the other lists
+should be sent to <I>mailing-list-name</I>-request@expo.lcs.mit.edu, or
+uunet!expo.lcs.mit.edu!<I>mailing-list-name</I>-request (for example, to
+join the ximage mailing list, send mail to ximage-request@expo.lcs.mit.edu).
+
+<P>The newsgroup <I>comp.window.x</I> (which is the same
+as <I>xpert</I>), is where users and developers around the world ask and
+answer questions.
+<BR>
+<HR>
+<H2>
+Training, Consulting, and Support</H2>
+Numerous independent vendors provide courses on X programming.
+Several sources that we are aware of include:
+<UL>
+<LI>
+<I>Integrated Computer Solutions</I>, 163 Harvard Street,
+Cambridge, MA 02139; (617) 547-0510. Courses on Xlib, Motif, strategic
+overviews of X. Also provides consulting services and manages an X user's
+group.</LI>
+
+<LI>
+<I>Hands-On Learning</I>, 27 Cambridge Street, Burlington,
+MA 01803; (617) 272-0088. Courses on Xlib and Xt.</LI>
+
+<LI>
+X tutorials are now a regular feature of UNIX conventions,
+such as the UNIX EXPO, Usenix, Uniforum, Xhibition, and the annual X conference
+at MIT. Also contact hardware vendors for information on courses they offer.</LI>
+
+<LI>
+Dyksen Associates offers training in X including courses
+on Xlib, the Intrinsics, the Motif toolkit, and the OPEN LOOK toolkit.
+Contact them at (317) 497-7613.</LI>
+</UL>
+Training companies wishing to be listed here should send
+us information on the courses they offer.
+
+<P>There are currently no telephone support lines at the
+X Consortium, because X was developed by a university, not a system manufacturer
+or software house. Some vendors such as OSF offer support for a fee.
+
+<P>ICS provides telephone support for a fee. See Section
+G.3 for their telephone number.
+<BR>
+<HR>
+<H2>
+The X Consortium</H2>
+The X Consortium can be reached at:
+
+<P>MIT X Consortium
+<BR>545 Technology Square - Room 217
+<BR>Cambridge, MA 02139
+
+<P>The Consortium's telephone number is (617) 253-8861; its
+current members are shown below.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table G-3 : </B>Consortium Members</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Apple Computer, Inc.</TD>
+
+<TD>NCR Corporation</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>AT&amp;T UNIX System Laboratories</TD>
+
+<TD>NEC Corporation</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>BULL</TD>
+
+<TD>Network Computing Devices, Inc.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Control Data Corporation</TD>
+
+<TD>Nippon Telegraph and Telephone Corporation</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Convex Computer Corporation</TD>
+
+<TD>Oki Electric Industry Co., Ltd.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Cray Research, Inc.</TD>
+
+<TD>Olivetti Systems &amp; Networks</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Data General</TD>
+
+<TD>OMRON Corp.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Digital Equipment Corporation</TD>
+
+<TD>Prime Computer, Inc.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Du Pont Imaging System</TD>
+
+<TD>The Santa Cruz Operation, Inc.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Fujitsu America, Inc.</TD>
+
+<TD>Sequent Computer Systems Inc.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Hewlett-Packard Company</TD>
+
+<TD>Siemens Nixdorf Informationssysteme AG</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Hitachi</TD>
+
+<TD>Silicon Graphics Computer Systems</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Hughes Aircraft Co.</TD>
+
+<TD>Sony Corporation</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>IBM Corporation</TD>
+
+<TD>Sun Microsystems, Inc.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Intergraph Corporation</TD>
+
+<TD>Tandberg Data A/S</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Eastman Kodak Company</TD>
+
+<TD>Tektronix, Inc.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Kubota Pacific</TD>
+
+<TD>Texas Instruments, Inc.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Matsushita Electric Industrial CO., LTD.</TD>
+
+<TD>Unisys Corp.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Mitsubishi Electric Corporation</TD>
+
+<TD>Xerox Corporation</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Motorola, Inc.</TD>
+
+<TD></TD>
+</TR>
+</TABLE>
+&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table G-4 : </B>Consortium Affiliates</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Adobe Systems</TD>
+
+<TD>Metheus Corp.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>AGE Logic, Inc.</TD>
+
+<TD>MIPS Computer Systems</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Aptronix, Inc.</TD>
+
+<TD>MITRE Corp.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>ASTEC, Inc.</TD>
+
+<TD>Objectivity, Inc.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Athenix Corp.</TD>
+
+<TD>Open Software Foundation</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Bitstream, Inc.</TD>
+
+<TD>O'Reilly &amp; Associates, Inc.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>CETIA</TD>
+
+<TD>PCS Computer Systeme GmbH (Germany)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Chromatics</TD>
+
+<TD>Peritek Corp.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Codonics, Inc.</TD>
+
+<TD>PsiTech, Inc.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Industrial Technology Research Institute (China)</TD>
+
+<TD>Quarterdeck Office System</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Data Connection Ltd.</TD>
+
+<TD>Ramtek Corp.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Evans &amp; Sutherland</TD>
+
+<TD>Samsung Software America</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Frame Technology Corp.</TD>
+
+<TD>ShoGraphics, Inc.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>GIPSI S.A. (France)</TD>
+
+<TD>Snitily Graphics Consulting Services</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>GfxBase</TD>
+
+<TD>Solbourne Computer Inc.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>HaL Computer Systems</TD>
+
+<TD>SOUM Corporation (Japan)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Institute for Information Industry (Taiwan)</TD>
+
+<TD>SPARC International</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Integrated Computer Solutions, Inc.</TD>
+
+<TD>SpectraGraphics Corp.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Interactive Systems Corp.</TD>
+
+<TD>Stanford University</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Ithaca Software</TD>
+
+<TD>Strategic Research Institute Inc. (Japan)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>IXI Limited</TD>
+
+<TD>Sumitomo Electric Workstation Corp.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Japan Computer Corporation</TD>
+
+<TD>Tatung Science and Technology</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Jupiter Systems</TD>
+
+<TD>Tyan Computer</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>KAIST (Korea Advanced Institute of Science and Technology)</TD>
+
+<TD>Unipalm XTech</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Labtam Australia</TD>
+
+<TD>VisionWare Ltd.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Liant Software Corporation</TD>
+
+<TD>Visix Software, Inc.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Locus Computing Corporation</TD>
+
+<TD>Visual Information Technologies, Inc.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>University of Lowell</TD>
+
+<TD>Visual Technology, Inc.</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Megatek Corp.</TD>
+
+<TD>Widget, Inc. (Japan)</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Metro Link, Inc.</TD>
+
+<TD>X/Open Company Ltd.</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>Most of these companies are preparing products based on
+X. It should not be long before many different products are available that
+support X.
+<BR>
+<HR>
+<H2>
+Finding Out for Yourself</H2>
+X is unusual in that the source code is freely copyable by
+anyone as long as the copyright notices are observed. It should be possible
+for most X programmers to get a copy of the X source code from the sources
+listed above. Once you understand how the code is organized, you can look
+up certain details about how X works as long as you have a good knowledge
+of C and a little persistence. In "Star Wars," the saying was "Use the
+Force, Luke." In X, it is "Use the Source, Luke."
+
+<P>Xlib and the server are two distinct chunks of code. Each
+contains code for sending and receiving information to and from the other
+over the network using protocol requests, replies, events, and errors.
+The source tree as supplied on the X distribution tape places the Xlib
+source in the directory <I>base/lib/X</I>, where <I>base</I> is the top
+of the entire source tree. Their server source is placed in <I>base/server</I>.
+
+<P>The procedure for finding out something about an Xlib
+routine is normally to search for the routine in the Xlib code and then
+figure out what it does. Sometimes the answer can be found there. Many
+of the routines, however, simply place their arguments in a protocol request
+and send it to the server. Then you will have to look in the server code
+for the answer. To find the correct place in the server code, you will
+need the symbol for the protocol request, which is the first argument in
+the <B>GetReq</B> call.
+
+<P>The server code is much more involved than Xlib itself.
+The device-dependent portions are in <I>base/server/ddx</I>, and the device-independent
+portions are in <I>base/server/dix</I>. The device-independent code should
+be your first stop, because it is here that protocol requests from Xlib
+arrive and are dispatched to the appropriate code. Search for the protocol
+request symbol you found in Xlib. It will appear in several source files.
+Start with the occurrence in <I>dispatch.c</I>, and try to figure out what
+the code does. This will require following leads to other routines.
+
+<P>If you do not find a routine in <I>base/server/dix</I>,
+then it must be in the device-dependent code. <I>base/server/ddx</I> has
+one directory in it for each brand of hardware to which a sample server
+has been ported. It also contains the directories <I>/cfb</I>, <I>/mfb</I>,
+<I>/mi</I>, and <I>/snf</I>, which contain routines used in writing the
+sample server device-dependent code. Note that servers may include code
+ostensibly for other machines. For example, the Sun sample server appears
+to use code in several of the directories for other servers such as <I>dec</I>
+and <I>hp</I>.
+
+<P>Xlib and the X protocol are both defined by specification
+documents, not by any particular implementation. Never depend on the implementation
+details of the Xlib or server code. If you do, your code may not run on
+a machine that has optimized X software. This manual documents only those
+features of Xlib and X in general that are governed by X Consortium standard
+specifications. If you follow the guidance you find in this volume and
+the details in <I>Volume Two, Xlib Reference Manual</I>, you will be in
+good shape.
+<BR>
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

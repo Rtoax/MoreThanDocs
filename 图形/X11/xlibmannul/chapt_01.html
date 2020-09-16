@@ -1,0 +1,657 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="index_contents.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]"
+BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif"
+ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_02.html"><IMG
+SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A
+HREF="xlib/introduction/index.html"><IMG SRC="imgs/b_book.gif" ALT="Tronche docs" BORDER=0 HEIGHT=30 WIDTH=30></A>&nbsp;</TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H1>
+Introduction</H1>
+This chapter gives the big picture: what X is all about and
+some fundamentals of how it works. Everyone should look at this chapter,
+though readers who are already familiar with X may only want to skim it.
+
+<P>In September 1987, the Massachusetts Institute of Technology
+released the first snapshot of what may well become one of the most significant
+software technologies of the 1990s: Version 11 of the X Window System,
+commonly referred to as X11. X11 may not change the world, but it is likely
+to change the world of workstations.
+
+<P>The X Window System is being adopted as a standard by
+nearly every workstation manufacturer and should eventually replace or
+be supported under their proprietary windowing systems. Versions will also
+be available for personal computers and supercomputers.
+
+<P>For the first time, portable applications can be written
+for an entire class of machines rather than for a single manufacturer's
+equipment. Programmers can write in a single graphics language and expect
+their applications to work without significant modifications on dozens
+of different computers.
+
+<P>What's more, since X is a network-based windowing system,
+applications can run in a network of systems from different vendors. Programs
+can be run on a remote computer, and the results displayed on a local workstation.
+Proprietary networks have been around for a while. However, network cooperation
+of <I>different</I> computers has been held up by the lack of a common
+applications language. Now there is one.
+
+<P>Vendors hope that X will lead to a software explosion
+similar to the one that occurred in response to the PC standard on microcomputers.
+<BR>
+<HR>
+<H2>
+Versions of X</H2>
+X was developed jointly by MIT's Project Athena and Digital
+Equipment Corporation, with contributions from many other companies. It
+was masterminded by Robert Scheifler and colleagues at MIT, though it owes
+some debt to the "W" windowing package developed by Paul Asente at Stanford.
+
+<P>There have been numerous research versions of X. Version
+10, Release 4 (popularly known as X10.4), which was released in 1986, became
+the basis for several commercial products. Development of most X10.4 products
+was curtailed, however, when it became apparent that Version 11 would not
+be compatible with it. Version 11, Release 1 became available in September
+1987, Release 2 in March 1988, Release 3 in February 1989, Release 4 in
+January 1990, and Release 5 in August 1991.
+
+<P>Version 11 is a complete window programming package. It
+offers much more flexibility in the areas of supported display features,
+window manager styles, and support for multiple screens and provides better
+performance than X Version 10. It is fully extensible. But just as important,
+the X11 subroutine library (Xlib) is expected to be stable for several
+years and to be at least a de facto industry standard. That means that
+programs written with this library will not need major revisions because
+of software updates. While there may be additions to this library, there
+will not be incompatible changes to it.
+
+<P>With X11 Release 2, control of X passed from MIT to the
+X Consortium, an association of major computer manufacturers who plan to
+support the X standard. The Consortium was formed in January 1988 and includes
+virtually all large computer manufacturers. Many software houses and universities
+are associate members, who also have a voice in controlling the standard
+and receive advance access to newly released software.
+<BR>
+<HR>
+<H2>
+X Window System Concepts</H2>
+The X Window System is complex, but it is based on a few
+premises that can be quickly understood. This section describes these major
+concepts.
+<H3>
+Displays and Screens</H3>
+The first and most obvious thing to note about X is that
+it is a windowing system for bitmapped graphics displays. It supports color
+as well as monochrome and gray-scale displays.
+
+<P>A slightly unusual feature is that a <I>display</I> is
+defined as a workstation consisting of a keyboard, a pointing device such
+as a mouse, and <I>one or more</I> screens. Multiple screens can work&nbsp;
+together, with mouse movement allowed to cross physical screen boundaries.
+As long as multiple screens are controlled by a single user with a single
+keyboard and pointing device, they comprise only a single display, as shown
+in Figure 1-1.
+
+<P><B>A display consisting of more than one screen</B>
+
+<P><IMG SRC="imgs/fig.1.01.gif" ALT="fig.1.01.gif" BORDER=0  ALIGN=ABSCENTER>
+<H3>
+The Server-Client Model</H3>
+The next thing to note is that X is a network-oriented windowing
+system. An application need not be running on the same system that actually
+supports the display. While many applications can execute locally on a
+workstation, other applications can execute on other machines, sending
+requests across the network to a particular display and receiving keyboard
+and pointer events from the system controlling the display.
+
+<P>At this point, only TCP/IP and DECnet networks are supported
+by the X Consortium and most vendors, though that may change before long.
+
+<P>The program that controls each display is known as a <I>server</I>.
+At first, this usage of the term server may seem a little odd--when you
+sit at a workstation, you tend to think of a server as something across
+the network (such as a file or print server) rather than the local program
+that controls your own display. The thing to remember is that your display
+is accessible to other systems across the network, and for those systems,
+the code executing in your system does act as a true display server.
+
+<P>The server acts as an intermediary between user programs
+(called <I>clients</I> or <I>applications</I>) running on either the local
+or remote systems and the resources of the local system. The server (without
+extensions) performs the following tasks:
+<UL>
+<LI>
+Allows access to the display by multiple clients.</LI>
+
+<LI>
+Interprets network messages from clients.</LI>
+
+<LI>
+Passes user input to the clients by sending network messages.</LI>
+
+<LI>
+Does two-dimensional drawing--graphics are performed by the
+display server rather than by the client.</LI>
+
+<LI>
+Maintains complex data structures, including windows, cursors,
+fonts, and "graphics contexts," as <I>resources</I> that can be shared
+between clients and referred to simply by resource IDs. Server-maintained
+resources reduce the amount of data that has to be maintained by each client
+and the amount of data that has to be transferred over the network.</LI>
+</UL>
+Since the X Window System makes the network transparent to
+clients, these programs may connect to any display in the network if the
+host they are running on has permission from the server that controls that
+display. In a network environment, it is common for a user to have programs
+running on several different hosts in the network, all invoked from and
+displaying their windows on a single screen, as shown in Figure 1-2.
+
+<P><B>Applications can run on any system across the network</B>
+
+<P><IMG SRC="imgs/fig.1.02.gif" ALT="fig.1.02.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;In practice, each user is sitting at a server and
+can start applications locally to display on the local server or can start
+applications on remote hosts for display on the local server, if the remote
+hosts have permission to connect to the local server. All other users in
+the network are in a similar situation--they can run applications on their
+own system or on yours, but they will, for the most part, be displaying
+on their own server. This use of the network is known as <I>distributed
+processing</I>. Distributed processing helps solve the problem of unbalanced
+system loads. When one host machine is overloaded, the users of that machine
+can arrange for some of their programs to run on other hosts.
+
+<P>One extreme of this arrangement is the PC server or X
+terminal. Because these single-task systems can run only the X server (and
+sometimes a window manager), a user sitting at one of these servers must
+run all clients on systems across the network, with their results displayed
+on the PC or X terminal screen. This makes the single-tasking PC or X terminal
+look and work just like X on a multitasking workstation.
+<H3>
+Window Management</H3>
+Another important concept in X programming is that applications
+do not actually control such things as where a window appears or what size
+it is. Given multiprocessor, multiclient access to the same workstation
+display, clients must not be dependent on a particular window configuration.
+Instead, a client gives <I>hints</I> about how long and where it would
+like to be displayed. The screen layout or appearance and the style of
+user interaction with the system are left up to a separate program, called
+the <I>window manager</I>.
+
+<P>The window manager is just another program written with
+Xlib, except that it is given special authority to control the layout of
+windows on the screen. The window manager typically allows the user to
+move or resize windows, start new applications, and control the stacking
+of windows on the screen, but only according to the window manager's window
+layout policy. A <I>window layout policy</I> is a set of rules that specify
+allowable sizes and positions of windows and icons.
+
+<P>Unlike citizens, the window manager has rights but not
+responsibilities. Programs must be prepared to cooperate with any type
+of window manager or with none at all (there are fairly simple ways to
+prepare programs for these contingencies). The simple window manager <I>twm</I>
+does not enforce any window layout policy, but clients should still assume
+that there could be one. For example, the window manager must be informed
+of the desired size of a new window before the window is displayed on the
+screen. If the window manager does not accept the desired window size and
+position, the program must be prepared to accept a different size or position
+or be able to display a message such as "Too small!"
+
+<P>If you are having trouble visualizing this situation,
+imagine a window manager where no windows are allowed to overlap. This
+is known as a <I>tiled</I> window manager. The Siemens RTL tiled window
+manager lets only transient windows (such as pop-up menus) overlap. The
+<I>twm</I> window manager, on the other hand, is referred to as <I>real-estate-driven</I>
+because keyboard input is automatically assigned to whatever window the
+pointer currently happens to be in.
+
+<P>There is at least one other window manager variety that
+you will encounter, called a <I>listener</I> or <I>click-to-type</I>. Its
+distinguishing feature is that it assigns all keyboard input to a single
+window when that window is selected by clicking on it with the pointer.
+A listener may or may not allow windows to overlap. Apple Macintosh&Ocirc;
+users will recognize this type of interface.
+
+<P>X is somewhat unusual in that it does not mandate a particular
+type of window manager. Its developers have tried to make X itself as free
+of window management or user interface policy as possible. And, while the
+X11 distribution includes <I>twm</I> as a sample window manager, individual
+manufacturers are expected to write their own window managers and user
+interface guidelines. In fact, two commercial window managers with user
+interface guidelines are already becoming established. They are <I>olwm</I>,
+the OPEN LOOK&Ocirc; window manager from AT&amp;T and Sun, and <I>mwm</I>,
+the Motif&Ocirc; window manager from Open Software Foundation. The OSF
+Motif window manager <I>mwm</I>, and OPEN LOOK window manager <I>olwm</I>
+both can be configured to be real-estate-driven or click-to-type.
+
+<P>In the long run, the developers of X may well have made
+the right choice, in that the lack of clear user interface guidelines will
+allow a period of experimentation in which the marketplace could come up
+with better designs than are presently available. Some industry observers,
+however, decry this move, pointing out that it undercuts X's appeal as
+a standard user platform--X <I>programs</I> may be portable across systems
+from multiple vendors, but if users have to deal with a different user
+interface on each system, half the benefit of that portability will be
+lost. Until a clear user interface standard emerges from the marketplace,
+developers must be careful to write their programs in such a way that they
+can run under different window managers and user interface conventions.
+<H3>
+Events</H3>
+As in any mouse-driven window system, an X client must be
+prepared to respond to any of many different <I>events</I>. Events include
+user input (keypress, mouse click, or mouse movement) as well as interaction
+with other programs. (For example, if an obscured portion of a window is
+exposed when another overlapping window is moved, closed, or resized, the
+client must redraw it.) Events of many different types can occur at any
+time and in any order. They are placed on a queue in the order they occur
+and usually are processed by clients in that order. Event-driven programming
+makes it natural to let the user tell the program what to do instead of
+vice versa.
+
+<P>The need to handle events is a major difference between
+programming under a window system and traditional UNIX or PC programming.
+X programs do not use the standard C functions for getting characters,
+and they do not poll for input. Instead there are functions for receiving
+events, and then the program must branch according to the type of event
+and perform the appropriate response. But unlike traditional programs,
+an X program must be ready for any kind of event at any time. In traditional
+programs the program is in control, asking for certain types of input at
+certain times. In X programs, the user is in control most of the time.
+<H3>
+Extensions to X</H3>
+The final thing to know about X is that it is <I>extensible</I>.
+The code includes a defined mechanism for incorporating extensions, so
+that vendors are not forced to hack up the existing system in incompatible
+ways when adding features. These extensions are used just like the core
+Xlib routines and perform at the same level. Some extensions are standards
+of the MIT X Consortium, such as the Shape extension, which supports non-rectangular
+windows, and the X Input extension, which supports input devices other
+than keyboard and mouse. There is also a standard 3-D graphics extension
+called PEX, with two APIs called PHIGS and PEXlib. Other extensions are
+under development.
+
+<P>Extensions have both client-side and server-side code.
+A server vendor is not required to provide support for all the standard
+extensions. Therefore, before using an extension, you must query the server
+to see if the extension is supported. At this writing, only the Shape extension
+is widely supported.
+<BR>
+<HR>
+<H2>
+X Window System Software Architecture</H2>
+By now, we have described enough to draw a simple picture
+of the X Window System architecture (see Figure 1-3).
+
+<P><B>Clients communicate with the server via Xlib calls</B>
+
+<P><IMG SRC="imgs/fig.1.03.gif" ALT="fig.1.03.gif" BORDER=0  ALIGN=ABSCENTER>
+
+<P>&nbsp;A display server is a program that runs on each
+system that supports a graphics display, keyboard, and mouse. The X release
+from MIT includes sample monochrome and color servers for Sun, DEC, Hewlett
+Packard, IBM, Apple Macintosh, and many other systems. Commercially developed
+servers are available for virtually all major workstation vendors. In addition,
+companies such as Graphics Software Systems, Interactive Systems, and Locus
+Computing offer server implementations for IBM-compatible PCs. Finally,
+there are X terminals, which are screens controlled by an X server running
+in ROM. X terminals are available from companies such as Visual, Network
+Computing Devices, and GraphOn.
+
+<P>Applications communicate with the server by means of calls
+to a low-level library of C language routines known as <I>Xlib</I>.&nbsp;
+Xlib provides functions for connecting to a particular display server,
+creating windows, drawing graphics, responding to events, and so on. Xlib
+calls are translated to protocol requests sent via tcp/ip either to the
+local server or to another server across the network. Some of the many
+sample applications available on the X release include <I>xterm</I> (a
+terminal emulator), <I>xcalc</I> (a calculator), <I>xmh</I> (a mail handler),
+<I>xclock</I> (a clock), and a troff previewer.
+
+<P>The window manager is just another program written with
+the X library, except that by convention it is given special authority
+to control the layout of windows on the screen.
+
+<P>Client is a slightly more general term than application,
+although they are almost synonymous. All clients except the window manager
+are called applications. When a statement in this manual applies only to
+the window manager or only to the applications managed by the window manager,
+the appropriate term is used. In other instances, whichever term seems
+more natural is used.
+
+<P>Applications and window managers can be written solely
+with Xlib or with a set of higher-level subroutine libraries known as <I>toolkits</I>.
+Toolkits implement a set of user interface features such as menus or command
+buttons (referred to generically as toolkit <I>widgets</I>) and allow applications
+to manipulate these features using object-oriented programming techniques.
+Toolkit <I>intrinsics</I> allow programmers to create new widgets.
+
+<P>There are several toolkits distributed with the X11 release,
+the most notable of them being the Xt Toolkit, which was developed by Digital
+and MIT, and the Interviews toolkit, which was developed by Stanford University.
+Xt is now officially part of the X11 standard.
+
+<P>Toolkits can make programming much, much easier and the
+finished project more thorough. Toolkits have built-in user configurability
+and built-in code for interaction with the window manager, which will save
+you a lot of trouble. You are advised to use a toolkit for most of your
+X programming. However, all existing toolkits in C also require or allow
+you to use Xlib code. And, more than that, they use Xlib internally; so
+understanding Xlib will help you understand how the toolkits work.
+
+<P>Another reason to use a toolkit is to take advantage of
+established user interface conventions. Several of these are available,
+such as OSF's Motif and Sun's OPEN LOOK. If you use Xlib for all your X
+programming, either you will have to reimplement one of the established
+conventions such as OPEN LOOK or your program will be an oddball that will
+not look or respond as people expect.
+
+<P>There are tradeoffs in using toolkits, however. One is
+that the executable for a given program using a toolkit is considerably
+larger than the equivalent program written using Xlib. Another is that
+the toolkits utilize highly abstract concepts and require strict programming
+conventions because of their object-oriented design. These take time to
+learn.
+
+<P>This manual describes how to write programs with Xlib.
+Other volumes in our X Window System series cover the toolkits.
+<BR>
+<HR>
+<H2>
+Overview of Xlib</H2>
+Just what does the X library contain? Table 1-1 groups the
+Xlib routines according to their major function and lists the chapter in
+which the group is discussed.
+<BR>&nbsp;
+<TABLE BORDER CELLSPACING=2 CELLPADDING=2 >
+<CAPTION><B>Table 1-1 : </B>Xlib Routines by Function&nbsp;
+
+<P>&nbsp;As you can see, Xlib provides a lot of functionality.
+X was designed to allow any style of user interface, and that requires
+a very flexible set of routines. But not all the routines are necessary
+or intended for writing normal applications. Many are intended for window
+management or for other specialized purposes.&nbsp;
+
+<P>A more detailed listing that provides the name and a brief
+description of the routines in each group can be found in Appendix A, <I>Function
+Group Summary</I>, of <I>Volume Two, Xlib Reference Manual</I>.</CAPTION>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TH>Function Group</TH>
+
+<TH>Description</TH>
+
+<TH>Chapter</TH>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Color</TD>
+
+<TD>Routines to change the way colors drawn by an application
+are interpreted on the screen.</TD>
+
+<TD>Chapter 7</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Cursors</TD>
+
+<TD>Routines to change the shape and colors of the image
+that tracks the pointer around the screen.</TD>
+
+<TD>Chapter 6</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Data Management</TD>
+
+<TD>Several mechanisms to associate data with windows or
+numbers.</TD>
+
+<TD>Chapter 15</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Display Connection</TD>
+
+<TD>Routines to connect and disconnect an application with
+a display, possibly across the network.</TD>
+
+<TD>Chapter 3</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Display and Server Specifications</TD>
+
+<TD>Macros and equivalent functions are provided that provide
+information about a particular server implementation and the connected
+display hardware.</TD>
+
+<TD>Volume One, throughout;Volume Two, Appendix C</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Drawing</TD>
+
+<TD>Routines to draw dots, lines, rectangles, polygons, and
+arcs, and an analogous set to fill the last three.</TD>
+
+<TD>Chapter 6</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Errors</TD>
+
+<TD>Routines to set the functions called when errors occur.</TD>
+
+<TD>Chapter 2</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Events</TD>
+
+<TD>Routines to get input from the user, from other applications,
+and from the server. In X, these are collectively called events.</TD>
+
+<TD>Chapter 8</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Extensions</TD>
+
+<TD>Routines to find out what extensions are available on
+a particular server and get information about how to use one.</TD>
+
+<TD>Chapter 15</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Fonts</TD>
+
+<TD>Routines to list available fonts, load fonts, and find
+out their characteristics.</TD>
+
+<TD>Chapter 6</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Geometry</TD>
+
+<TD>Routines to manipulate and translate geometry specifications.</TD>
+
+<TD>Chapter 13</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Graphics Context</TD>
+
+<TD>Routines to set the way drawing requests are interpreted.</TD>
+
+<TD>Chapter 5</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Host Access</TD>
+
+<TD>Routines to control access to a server from other machines
+connected in a network.</TD>
+
+<TD>Chapter 15</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Images</TD>
+
+<TD>Routines to get, display, or manipulate screen images.</TD>
+
+<TD>Chapter 6</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Interclient Communication</TD>
+
+<TD>Routines enabling any client to make available information
+for any other client to read.</TD>
+
+<TD>Chapter 12</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Internationalization</TD>
+
+<TD>Functions to handle user input and draw text independent
+of language.</TD>
+
+<TD>Chapters 6, 10, and 11</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Keyboard</TD>
+
+<TD>Functions to modify the way keyboard input is handled,
+including the keyboard mapping.</TD>
+
+<TD>Chapter 9</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Pointer</TD>
+
+<TD>Functions to modify the way pointer input is handled.</TD>
+
+<TD>Chapter 9</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Regions</TD>
+
+<TD>Routines to perform mathematical operations on polygonal
+regions.</TD>
+
+<TD>Chapter 6</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Resource Management</TD>
+
+<TD>Routines to make managing user preferences and command
+line arguments easier.</TD>
+
+<TD>Chapter 13, Chapter 14</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Screen Saver</TD>
+
+<TD>Routines to set the operating characteristics of the
+daemon that blanks the screen when the keyboard and pointer have been idle
+for a time.</TD>
+
+<TD>Chapter 15</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Text</TD>
+
+<TD>Routines for drawing text and for determining the size
+of a string to be drawn.</TD>
+
+<TD>Chapter 6</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>User Preferences</TD>
+
+<TD>Routines for setting and getting the keyboard click and
+auto-repeat settings.</TD>
+
+<TD>Chapter 9</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Window Attributes</TD>
+
+<TD>Routines for setting and getting the current characteristics
+of a window.</TD>
+
+<TD>Chapter 4</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Window Life</TD>
+
+<TD>Routines to create or destroy a window.</TD>
+
+<TD>Chapter 3</TD>
+</TR>
+
+<TR ALIGN=LEFT VALIGN=TOP>
+<TD>Window Management</TD>
+
+<TD>Routines to allow the manipulation of windows around
+the screen, changing their size, their visibility on the screen, and their
+apparent position above or below other windows.</TD>
+
+<TD>Chapter 16</TD>
+</TR>
+</TABLE>
+&nbsp;
+
+<P>
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>

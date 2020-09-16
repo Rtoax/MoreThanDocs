@@ -1,0 +1,1813 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.05 [en] (X11; I; Linux 2.0.34 i586) [Netscape]">
+   <TITLE>Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</TITLE>
+</HEAD>
+
+	<body BGCOLOR="#F9F9F9">
+
+	<p style="text-align:right;float:right;">
+	<a href="http://www.sbin.org/">www.sbin.org</a>
+	</p>
+
+
+<HR SIZE=4></FORM>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=2 WIDTH="100%" >
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP><A HREF="chapt_18_app_B.html"><IMG SRC="imgs/b_prev.gif" ALT="[PreviousSection]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="index_contents.html"><IMG SRC="imgs/b_toc.gif" ALT="[Back to Table of Contents]" BORDER=0 HEIGHT=17 WIDTH=17></A>&nbsp;<A HREF="chapt_20_app_D.html"><IMG SRC="imgs/b_next.gif" ALT="[Next Section]" BORDER=0 HEIGHT=17 WIDTH=17></A></TD>
+
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+<A NAME="X"></A>
+<HR>
+<H2>
+Writing Extensions to X</H2>
+Extensibility is an important part of X. Hooks are provided
+into Xlib and the protocol so that extensions will have the same performance
+as the core routines. This appendix provides reference information on how
+to write extensions and integrate them into Xlib. This appendix is not
+a tutorial, and you will need to look at existing extensions to figure
+out how to write one yourself.
+
+<P>&nbsp;Extensions can be added to Xlib only with no protocol
+addition or to both Xlib and the server with a protocol addition. Several
+extensions are already available that support nonrectangular windows, 3-D
+graphics, and alternate input devices and multibuffering. See the code
+for these for examples of writing extensions.
+
+<P>Because X can only evolve by extension to the core protocol,
+it is important that extensions not be perceivable as second-class citizens.
+At some point, some extensions may be adopted as parts of the "X Standard."
+
+<P>Therefore, there should be little to distinguish the use
+of an extension from that of the core protocol. To avoid having to initialize
+extensions explicitly in application programs, extensions should perform
+"lazy evaluations" and automatically initialize themselves when called
+for the first time.
+
+<P>Extensions written according to these instructions will
+run at essentially the same performance as the core protocol requests.
+
+<P>It is expected that a given extension to X will consist
+of multiple requests. Defining ten new features as ten separate extensions
+is a bad practice. Rather, they should be packaged into a single extension
+and should use minor opcodes to distinguish the requests.
+
+<P>The symbols and macros used for writing stubs to Xlib
+are listed in &lt;<I>Xlibint.h</I>>.
+<BR>
+<HR>
+<H2>
+Basic Protocol Support Routines</H2>
+The basic protocol requests for extensions are <B>XQueryExtension()</B>
+and <B>XListExtensions()</B>.
+<BLOCKQUOTE>
+<PRE><TT>Bool XQueryExtension(<I>display</I>, <I>name</I>, <I>major_opcode_return</I>, \
+<I>first_event_return</I>, <I>first_error_return</I>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; char *<I>name;
+</I>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int *<I>major_opcode_return</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int *<I>first_event_return</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int *<I>first_error_return</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>name</I></DT>
+
+<DD>
+Specifies the extension name.</DD>
+
+<DT>
+<I>major_opcode_return</I></DT>
+
+<DD>
+Returns the major opcode.</DD>
+
+<DT>
+<I>first_event_return</I></DT>
+
+<DD>
+Returns the first event code, if any.</DD>
+
+<DD>
+Specifies the extension list.</DD>
+</DL>
+<B>XQueryExtension()</B>determines if the named extension
+is present. If the extension is not present, <B>False</B> is returned;
+otherwise <B>True</B> is returned. If the extension is present, the major
+opcode for the extension is returned to major_opcode_return; otherwise,
+zero is returned. Any minor opcode and the request formats are specific
+to the extension. If the extension involves additional event types, the
+base event type code is returned to first_event_return; otherwise, zero
+is returned. The format of the events is specific to the extension. If
+the extension involves additional error codes, the base error code is returned
+to first_error_return; otherwise, zero is returned. The format of additional
+data in the errors is specific to the extension.
+
+<P>If the extension name is not in the Host Portable Character
+Encoding the result is implementation dependent. Case matters; the strings
+<I>thing</I>, <I>Thing</I>, and <I>thinG</I> are all considered different
+names.
+<H3>
+XListExtensions</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>char **XListExtensions(<I>display</I>, <I>nextensions_return</I>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int *<I>nextensions_return</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>nextensions_return</I></DT>
+
+<DD>
+Returns the number of extensions listed.</DD>
+</DL>
+<B>XListExtensions()</B>returns a list of all extensions
+supported by the server. If the data returned by the server is in the Latin
+Portable Character Encoding, then the returned strings are in the Host
+Portable Character Encoding. Otherwise, the result is implementation dependent.
+<H3>
+XFreeExtensionList</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>XFreeExtensionList(<I>list</I>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; char **<I>list</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>list</I></DT>
+
+<DD>
+Specifies the list of extension names.</DD>
+</DL>
+<B>XFreeExtensionList()</B>frees the memory allocated by
+<B>XListExtensions()</B>.
+<BR>
+<HR>
+<H2>
+Hooking into Xlib</H2>
+These functions allow you to hook into the library. They
+are not normally used by application programmers but are used by people
+who need to extend the core X protocol and the X library interface. The
+functions, which generate protocol requests for X, are typically called
+stubs.
+
+<P>In extensions, stubs first should check to see if they
+have initialized themselves on a connection. If they have not, they then
+should call <B>XInitExtension()</B> to attempt to initialize themselves
+on the connection.
+
+<P>If the extension needs to be informed of GC/font allocation
+or deallocation or if the extension defines new event types, the functions
+described here allow the extension to be called when these events occur.
+<H3>
+XInitExtension</H3>
+The <B>XExtCodes</B> structure returns the information from
+<B>XInitExtension()</B> and is defined in &lt;<I>Xlib.h</I>>:
+<BLOCKQUOTE>
+<PRE><TT>typedef struct _XExtCodes {&nbsp; /* public to extension, cannot be changed */
+&nbsp;&nbsp;&nbsp; int extension;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* extension number */
+&nbsp;&nbsp;&nbsp; int major_opcode;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* major op-code assigned by server */
+&nbsp;&nbsp;&nbsp; int first_event;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* first event number for the extension */
+&nbsp;&nbsp;&nbsp; int first_error;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* first error number for the extension */
+} XExtCodes;</TT></PRE>
+</BLOCKQUOTE>
+
+<BLOCKQUOTE>
+<PRE><TT>XExtCodes *XInitExtension(<I>display</I>, <I>name</I>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; char *<I>name</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>name</I></DT>
+
+<DD>
+Specifies the extension name.</DD>
+</DL>
+<B>XInitExtension()</B>determines if the named extension
+exists. Then it allocates storage for maintaining the information about
+the extension on the connection, chains this onto the extension list for
+the connection, and returns the information the stub implementor will need
+to access the extension. If the extension does not exist, <B>XInitExtension()</B>
+returns NULL.
+
+<P>If the extension name is not in the Host Portable Character
+Encoding the result is implementation dependent. Case matters; the strings
+<I>thing</I>, <I>Thing</I>, and <I>thinG</I> are all considered different
+names.
+
+<P>The extension number in the <B>XExtCodes</B> structure
+is needed in the other calls that follow. This extension number is unique
+only to a single connection.
+<H3>
+XAddExtension</H3>
+
+<BLOCKQUOTE>
+<PRE><TT>XExtCodes *XAddExtension(<I>display</I>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+</DL>
+For local Xlib extensions, <B>XAddExtension()</B> allocates
+the <B>XExtCodes</B> structure, bumps the extension number count, and chains
+the extension onto the extension list. (This permits extensions to Xlib
+without requiring server extensions.)
+<H3>
+Hooks into the Library</H3>
+These functions allow you to define procedures that are to
+be called when various circumstances occur. The procedures include the
+creation of a new GC for a connection, the copying of a GC, the freeing
+of a GC, the creating and freeing of fonts, the conversion of events defined
+by extensions to and from wire format, and the handling of errors.
+
+<P>All of these functions return the previous routine defined
+for this extension.
+<H4>
+XESetCloseDisplay</H4>
+
+<BLOCKQUOTE>
+<PRE><TT>int (*XESetCloseDisplay(<I>display</I>, <I>extension</I>, <I>proc</I>))()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int <I>extension</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int (*<I>proc</I>)();</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>extension</I></DT>
+
+<DD>
+Specifies the extension number.</DD>
+
+<DT>
+<I>proc</I></DT>
+
+<DD>
+Specifies the routine to call when the display is closed.</DD>
+</DL>
+You use this procedure to define a procedure to be called
+whenever <B>XCloseDisplay()</B> is called. This procedure returns any previously
+defined procedure, usually NULL.
+
+<P>When <B>XCloseDisplay()</B> is called, your routine is
+called with these arguments:
+<BLOCKQUOTE>
+<PRE><TT>(*<I>proc</I>)(<I>display</I>, <I>codes</I>)
+&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp; XExtCodes *<I>codes</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<H4>
+XESetCreateGC</H4>
+
+<BLOCKQUOTE>
+<PRE><TT>int (*XESetCreateGC(<I>display</I>, <I>extension</I>, <I>proc</I>))()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int <I>extension</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int (*<I>proc</I>)();</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>extension</I></DT>
+
+<DD>
+Specifies the extension number.</DD>
+
+<DT>
+<I>proc</I></DT>
+
+<DD>
+Specifies the routine to call when a GC is closed.</DD>
+</DL>
+You use this procedure to define a procedure to be called
+whenever a new GC is created. This procedure returns any previously defined
+procedure, usually NULL.
+
+<P>When a GC is created, your routine is called with these
+arguments:
+<BLOCKQUOTE>
+<PRE><TT>(*<I>proc</I>)(<I>display</I>, <I>gc</I>, <I>codes</I>)
+&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp; GC <I>gc</I>;
+&nbsp;&nbsp;&nbsp; XExtCodes *<I>codes</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<H4>
+XESetCopyGC</H4>
+
+<BLOCKQUOTE>
+<PRE><TT>int (*XESetCopyGC(<I>display</I>, <I>extension</I>, <I>proc</I>))()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int <I>extension</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int (*<I>proc</I>)();</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>extension</I></DT>
+
+<DD>
+Specifies the extension number.</DD>
+
+<DT>
+<I>proc</I></DT>
+
+<DD>
+Specifies the routine to call when GC components are copied.</DD>
+</DL>
+You use this procedure to define a procedure to be called
+whenever a GC is copied. This procedure returns any previously defined
+procedure, usually NULL.
+
+<P>When a GC is copied, your routine is called with these
+arguments:
+<BLOCKQUOTE>
+<PRE><TT>(*<I>proc</I>)(<I>display</I>, <I>gc</I>, <I>codes</I>)
+&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp; GC <I>gc</I>;
+&nbsp;&nbsp;&nbsp; XExtCodes *<I>codes</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<H4>
+XESetFreeGC</H4>
+
+<BLOCKQUOTE>
+<PRE><TT>int (*XESetFreeGC(<I>display</I>, <I>extension</I>, <I>proc)</I>)()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int <I>extension</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int (*<I>proc</I>)();</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>extension</I></DT>
+
+<DD>
+Specifies the extension number.</DD>
+
+<DT>
+<I>proc</I></DT>
+
+<DD>
+Specifies the routine to call when a GC is freed.</DD>
+</DL>
+You use this procedure to define a procedure to be called
+whenever a GC is freed. This procedure returns any previously defined procedure,
+usually NULL.
+
+<P>When a GC is freed, your routine is called with these
+arguments:
+<BLOCKQUOTE>
+<PRE><TT>(*<I>proc</I>)(<I>display</I>, <I>gc</I>, <I>codes</I>)
+&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp; GC <I>gc</I>;
+&nbsp;&nbsp;&nbsp; XExtCodes *<I>codes</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<H4>
+XESetCreateFont</H4>
+
+<BLOCKQUOTE>
+<PRE><TT>int (*XESetCreateFont(<I>display</I>, <I>extension</I>, <I>proc</I>))()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int <I>extension</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int (*<I>proc</I>)();</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>extension</I></DT>
+
+<DD>
+Specifies the extension number.</DD>
+
+<DT>
+<I>proc</I></DT>
+
+<DD>
+Specifies the routine to call when a font is created.</DD>
+</DL>
+You use this procedure to define a procedure to be called
+whenever <B>XLoadQueryFont()</B> and <B>XQueryFont()</B> are called. This
+procedure returns any previously defined procedure, usually NULL.
+
+<P>When <B>XLoadQueryFont()</B> or <B>XQueryFont()</B> is
+called, your routine is called with these arguments:
+<BLOCKQUOTE>
+<PRE><TT>(*<I>proc</I>)(<I>display</I>, <I>fs</I>, <I>codes</I>)
+&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp; XFontStruct *<I>fs</I>;
+&nbsp;&nbsp;&nbsp; XExtCodes *<I>codes</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<H4>
+XESetFreeFont</H4>
+
+<BLOCKQUOTE>
+<PRE><TT>int (*XESetFreeFont(<I>display</I>, <I>extension</I>, <I>proc</I>))()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int <I>extension</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int (*<I>proc</I>)();</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>extension</I></DT>
+
+<DD>
+Specifies the extension number.</DD>
+
+<DT>
+<I>proc</I></DT>
+
+<DD>
+Specifies the routine to call when a font is freed.</DD>
+</DL>
+You use this procedure to define a procedure to be called
+whenever <B>XFreeFont()</B> is called. This procedure returns any previously
+defined procedure, usually NULL.
+
+<P>When <B>XFreeFont()</B> is called, your routine is called
+with these arguments:
+<BLOCKQUOTE>
+<PRE><TT>(*<I>proc</I>)(<I>display</I>, <I>fs</I>, <I>codes</I>)
+&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp; XFontStruct *<I>fs</I>;
+&nbsp;&nbsp;&nbsp; XExtCodes *<I>codes</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Defining New Events and Errors</H3>
+The next three functions allow you to define new events to
+the library. An <B>XEvent</B> structure always has a type code (type <B>int</B>)
+as the first component. This uniquely identifies what kind of event it
+is. The second component is always the serial number (type <B>unsignedlong</B>)
+of the last request processed by the server. The third component is always
+a boolean (type <B>Bool</B>P) indicating whether the event came from a
+<B>SendEvent</B> protocol request. The fourth component is always a pointer
+to the display the event was read from. The fifth component is always a
+resource ID of one kind or another, usually a window, carefully selected
+to be useful to toolkit dispatchers. The fifth component should always
+exist, even if the event does not have a natural "destination"; if there
+is no value from the protocol to put in this component, initialize it to
+zero.
+
+<P>There is an implementation limit such that your host event
+structure size cannot be bigger than the size of the <B>XEvent</B> union
+of structures. There also is no way to guarantee that more than 24 elements
+or 96 characters in the structure will be fully portable between machines.
+<H4>
+XESetWireToEvent</H4>
+
+<BLOCKQUOTE>
+<PRE><TT>int (*XESetWireToEvent()(<I>display</I>, <I>event_number</I>, <I>proc</I>))()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int <I>event_number</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Status (*<I>proc</I>)();</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>event_number</I></DT>
+
+<DD>
+Specifies the event code.</DD>
+
+<DT>
+<I>proc</I></DT>
+
+<DD>
+Specifies the routine to call when converting an event.</DD>
+</DL>
+You use this procedure to define a procedure to be called
+when an event needs to be converted from wire format (<B>xEvent</B>) to
+host format (<B>XEvent</B>). The event number defines which protocol event
+number to install a conversion routine for. This procedure returns any
+previously defined procedure.
+
+<P>You can replace a core event conversion routine with one
+of your own, although this is not encouraged. It would, however, allow
+you to intercept a core event and modify it before being placed in the
+queue or otherwise examined.
+
+<P>When Xlib needs to convert an event from wire format to
+host format, your routine is called with these arguments:
+<BLOCKQUOTE>
+<PRE><TT>Status (*<I>proc</I>)(<I>display</I>, <I>re</I>, <I>event</I>)
+&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp; XEvent *<I>re</I>;
+&nbsp;&nbsp;&nbsp; xEvent *<I>event</I>;</TT></PRE>
+</BLOCKQUOTE>
+Your routine must return status to indicate if the conversion
+succeeded. The <I>re</I> argument is a pointer to where the host format
+event should be stored, and the <I>event</I> argument is the 32-byte wire
+event structure. In the <B>XEvent</B> structure you are creating, you must
+fill in the five required members of the event structure. You should fill
+in the <B>type</B> member with the type specified for the <B>xEvent</B>
+structure. You should copy all other members from the <B>xEvent</B> structure
+(wire format) to the <B>XEvent</B> structure (host format). Your conversion
+routine should return <B>True</B> if the event should be placed in the
+queue or <B>False</B> if it should not be placed in the queue.
+<H4>
+_XSetLastRequestRead</H4>
+To initialize the serial number component of the event, call
+<B>_XSetLastRequestRead()</B> with the event and use the return value.
+<BLOCKQUOTE>
+<PRE><TT>unsigned long _XSetLastRequestRead(<I>display</I>, <I>rep</I>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; xGenericReply *<I>rep</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>rep</I></DT>
+
+<DD>
+Specifies the wire event structure.</DD>
+</DL>
+This function computes and returns a complete serial number
+from the partial serial number in the event.
+<H4>
+XESetEventToWire</H4>
+
+<BLOCKQUOTE>
+<PRE><TT>Status (*XESetEventToWire()(<I>display</I>, <I>event_number</I>, <I>proc</I>))()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int <I>event_number</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int (*<I>proc</I>)();</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>event_number</I></DT>
+
+<DD>
+Specifies the event code.</DD>
+
+<DT>
+<I>proc</I></DT>
+
+<DD>
+Specifies the routine to call when converting an event.</DD>
+</DL>
+You use this procedure to define a procedure to be called
+when an event needs to be converted from host format (<B>XEvent</B>) to
+wire format (<B>xEvent</B>) form. The event number defines which protocol
+event number to install a conversion routine for. This procedure returns
+any previously defined procedure. It returns zero if the conversion fails
+or nonzero otherwise.
+
+<P>You can replace a core event conversion routine with one
+of your own, although this is not encouraged. It would, however, allow
+you to intercept a core event and modify it before being sent to another
+client.
+
+<P>When Xlib needs to convert an event from host format to
+wire format, your routine is called with these arguments:
+<BLOCKQUOTE>
+<PRE><TT>(*<I>proc</I>)(<I>display</I>, <I>re</I>, <I>event</I>)
+&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp; XEvent *<I>re</I>;
+&nbsp;&nbsp;&nbsp; xEvent *<I>event</I>;</TT></PRE>
+</BLOCKQUOTE>
+The <I>re</I> argument is a pointer to the host format event,
+and the <I>event</I> argument is a pointer to where the 32-byte wire event
+structure should be stored. You should fill in the type with the type from
+the <B>XEvent</B> structure. All other members then should be copied from
+the host format to the <B>xEvent</B> structure.
+<H4>
+XESetWireToError</H4>
+
+<BLOCKQUOTE>
+<PRE><TT>Bool (*XESetWireToError()(<I>display</I>, <I>error_number</I>, <I>proc</I>)()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int <I>error_number</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Bool (*<I>proc</I>)();</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>error_number</I></DT>
+
+<DD>
+Specifies the error code.</DD>
+
+<DT>
+<I>proc</I></DT>
+
+<DD>
+Specifies the routine to call when an error is received.</DD>
+</DL>
+This function defines a procedure to be called when an extension
+error needs to be converted from wire format to host format. The error
+number defines which protocol error code to install the conversion routine
+for. This procedure returns any previously defined procedure.
+
+<P>Use this function for extension errors that contain additional
+error values beyond those in a core X error, when multiple wire errors
+must be combined into a single Xlib error, or when it is necessary to intercept
+an X error before it is otherwise examined.
+
+<P>When Xlib needs to convert an error from wire format to
+host format, the routine is called with these arguments:
+<BLOCKQUOTE>
+<PRE><TT>Bool (*<I>proc</I>)(<I>display</I>, <I>he</I>, <I>we</I>)
+&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp; XErrorEvent *<I>he</I>;
+&nbsp;&nbsp;&nbsp; xError *<I>we</I>;</TT></PRE>
+</BLOCKQUOTE>
+The <I>he</I> argument is a pointer to where the host format
+error should be stored. The structure pointed at by he is guaranteed to
+be as large as an <B>XEvent</B> structure, and so can be cast to a type
+larger than an <B>XErrorEvent()</B>, in order to store additional values.
+If the error is to be completely ignored by Xlib (for example, several
+protocol error structures will be combined into one Xlib error), then the
+function should return <B>False</B>; otherwise it should return <B>True</B>.
+<H4>
+XESetError</H4>
+
+<BLOCKQUOTE>
+<PRE><TT>int (*XESetError()(<I>display</I>, <I>extension</I>, <I>proc</I>))()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int <I>extension</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int (*<I>proc</I>)();</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>extension</I></DT>
+
+<DD>
+Specifies the extension number.</DD>
+
+<DT>
+<I>proc</I></DT>
+
+<DD>
+Specifies the routine to call when an error is received.</DD>
+</DL>
+Inside Xlib, there are times that you may want to suppress
+the calling of the external error handling when an error occurs. This allows
+status to be returned on a call at the cost of the call being synchronous
+(though most such routines are query operations, in any case, and are typically
+programmed to be synchronous).
+
+<P>When Xlib detects a protocol error in <B>_XReply()</B>,
+it calls your procedure with these arguments:
+<BLOCKQUOTE>
+<PRE><TT>int (*<I>proc</I>)(<I>display</I>, <I>err</I>, <I>codes</I>, <I>ret_code</I>)
+&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp; xError *<I>err</I>;
+&nbsp;&nbsp;&nbsp; XExtCodes *<I>codes</I>;
+&nbsp;&nbsp;&nbsp; int *<I>ret_code</I>;</TT></PRE>
+</BLOCKQUOTE>
+The <I>err</I> argument is a pointer to the 32-byte wire
+format error. The <I>codes</I> argument is a pointer to the extension codes
+structure. The <I>ret_code</I> argument is the return code you may want
+<B>_XReply</B> returned to.
+
+<P>If your routine returns a zero value, the error is not
+suppressed, and the client's error handler is called. (For further information,
+see Section 11.8.2.) If your routine returns nonzero, the error is suppressed,
+and <B>_XReply</B> returns the value of ret_code.
+<H4>
+XESetErrorString</H4>
+
+<BLOCKQUOTE>
+<PRE><TT>char&nbsp; *(*XESetErrorString()(<I>display</I>, <I>extension</I>, <I>proc</I>))()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int <I>extension</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; char *(*<I>proc</I>)();</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>extension</I></DT>
+
+<DD>
+Specifies the extension number.</DD>
+
+<DT>
+<I>proc</I></DT>
+
+<DD>
+Specifies the routine to call to obtain an error string.</DD>
+</DL>
+The <B>XGetErrorText()</B> function returns a string to the
+user for an error. <B>XESetErrorString()</B> allows you to define a routine
+to be called that should return a pointer to the error message. The following
+is an example.
+<BLOCKQUOTE>
+<PRE><TT>(*<I>proc</I>)(<I>display</I>, <I>code</I>, <I>codes</I>, <I>buffer</I>, <I>nbytes</I>)
+&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp; int <I>code</I>;
+&nbsp;&nbsp;&nbsp; XExtCodes *<I>codes</I>;
+&nbsp;&nbsp;&nbsp; char *<I>buffer</I>;
+&nbsp;&nbsp;&nbsp; int <I>nbytes</I>;</TT></PRE>
+</BLOCKQUOTE>
+Your procedure is called with the error code for every error
+detected. You should copy nbytes of a null-terminated string containing
+the error message into buffer.
+<H4>
+XESetPrintErrorValues</H4>
+
+<BLOCKQUOTE>
+<PRE><TT>void (*XESetPrintErrorValues()(<I>display</I>, <I>extension</I>, <I>proc</I>))()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int <I>extension</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; void (*<I>proc</I>)();</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>extension</I></DT>
+
+<DD>
+Specifies the extension number.</DD>
+
+<DT>
+<I>proc</I></DT>
+
+<DD>
+Specifies the routine to call when an error is printed.</DD>
+</DL>
+This function defines a procedure to be called when an extension
+error is printed, to print the error values. Use this function for extension
+errors that contain additional error values beyond those in a core X error.
+This function returns any previously defined procedure.
+
+<P>When Xlib needs to print an error, the routine is called
+with these arguments:
+<BLOCKQUOTE>
+<PRE><TT>void (*<I>proc</I>)(<I>display</I>, <I>ev</I>, <I>fp</I>)
+&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp; XErrorEvent *<I>ev</I>;
+&nbsp;&nbsp;&nbsp; void *<I>fp</I>;</TT></PRE>
+</BLOCKQUOTE>
+The structure pointed at by <I>ev</I> is guaranteed to be
+as large as an <B>XEvent</B> structure, and so can be cast to a type larger
+than an <B>XErrorEvent()</B>, in order to obtain additional values set
+by using <B>XESetWireToError()</B>. The underlying type of the <I>fp</I>
+argument is system dependent; on a POSIX-compliant fp should be cast to
+type <B>FILE*</B>.
+<H4>
+XESetFlushGC</H4>
+
+<BLOCKQUOTE>
+<PRE><TT>int (*XESetFlushGC()(<I>display</I>, <I>extension</I>, <I>proc</I>))()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int <I>extension</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int *(*<I>proc</I>)();</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>extension</I></DT>
+
+<DD>
+Specifies the extension number.</DD>
+
+<DT>
+<I>proc</I></DT>
+
+<DD>
+Specifies the routine to call when a GC is flushed.</DD>
+</DL>
+The <B>XESetFlushGC()</B> procedure is identical to <B>XESetCopyGC()</B>
+except that <B>XESetFlushGC</B> is called when a GC cache needs to be updated
+in the server.
+<H3>
+Hooks onto Xlib Data Structures</H3>
+Various Xlib data structures have provisions for extension
+routines to chain extension supplied data onto a list. These structures
+are <B>GC</B>, <B>Visual</B>, <B>Screen</B>, <B>ScreenFormat</B>, <B>Display</B>,
+and <B>XFontStruct</B>. Because the list pointer is always the first member
+in the structure, a single set of routines can be used to manipulate the
+data on these lists.
+
+<P>The following structure is used in the routines in this
+section and is defined in &lt;<I>Xlib.h</I>>:
+<BLOCKQUOTE>
+<PRE><TT>typedef struct _XExtData {
+&nbsp;&nbsp;&nbsp; int number;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* number returned by XInitExtension() */
+&nbsp;&nbsp;&nbsp; struct _XExtData *next;&nbsp; /* next item on list of data for structure */
+&nbsp;&nbsp;&nbsp; int (*free_private)();&nbsp;&nbsp; /* if defined,&nbsp; called to free private */
+&nbsp;&nbsp;&nbsp; XPointer private_data;&nbsp;&nbsp; /* data private to this extension. */
+} XExtData;</TT></PRE>
+</BLOCKQUOTE>
+When any of the data structures listed above are freed, the
+list is walked, and the structure's free routine (if any) is called. If
+free is NULL, then the library frees both the data pointed to by the <B>private_data</B>
+member and the structure itself.
+<BLOCKQUOTE>
+<PRE><TT>union {&nbsp;&nbsp;&nbsp; Display *display;
+&nbsp;&nbsp;&nbsp; GC gc;
+&nbsp;&nbsp;&nbsp; Visual *visual;
+&nbsp;&nbsp;&nbsp; Screen *screen;
+&nbsp;&nbsp;&nbsp; ScreenFormat *pixmap_format;
+&nbsp;&nbsp;&nbsp; XFontStruct *font } XEDataObject;</TT></PRE>
+</BLOCKQUOTE>
+
+<H4>
+XEHeadOfExtensionList</H4>
+
+<BLOCKQUOTE>
+<PRE><TT>XExtData **XEHeadOfExtensionList(object)
+&nbsp;&nbsp; XEDataObject object;</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>object</I></DT>
+
+<DD>
+Specifies the object.</DD>
+</DL>
+<B>XEHeadOfExtensionList()</B>returns a pointer to the list
+of extension structures attached to the specified object. In concert with
+<H4>
+XAddToExtensionList</H4>
+<B>XAddToExtensionList()</B>, <B>XEHeadOfExtensionList()</B>
+allows an extension to attach arbitrary data to any of the structures of
+types contained in <B>XEDataObject()</B>.
+<BLOCKQUOTE>
+<PRE><TT>XAddToExtensionList(<I>structure</I>, <I>ext_data</I>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XExtData **<I>structure</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XExtData *<I>ext_data</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>structure</I></DT>
+
+<DD>
+Specifies the extension list.</DD>
+
+<DT>
+<I>ext_data</I></DT>
+
+<DD>
+Specifies the extension data structure to add.</DD>
+</DL>
+The <I>structure</I> argument is a pointer to one of the
+data structures enumerated above. You must initialize <B>ext_data->number</B>
+with the extension number before calling this routine.
+<H4>
+XFindOnExtensionList</H4>
+
+<BLOCKQUOTE>
+<PRE><TT>XExtData *XFindOnExtensionList()(<I>structure</I>, <I>number</I>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; struct _XExtData **<I>structure</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int <I>number</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>structure</I></DT>
+
+<DD>
+Specifies the extension list.</DD>
+
+<DT>
+<I>number</I></DT>
+
+<DD>
+Specifies the extension number from <B>XInitExtension()</B>.</DD>
+</DL>
+<B>XFindOnExtensionList()</B>returns the first extension
+data structure for the extension numbered number. It is expected that an
+extension will add at most one extension data structure to any single data
+structure's extension data list. There is no way to find additional structures.
+<H4>
+XAllocID</H4>
+The <B>XAllocID()</B> macro, which allocates and returns
+a resource ID, is defined in &lt;<I>Xlib.h</I>>.
+<BLOCKQUOTE>
+<PRE><TT>XAllocID(<I>display</I>)
+&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+</DL>
+This macro is a call through the <B>Display</B> structure
+to the internal resource ID allocator. It returns a resource ID that you
+can use when creating new resources.
+<BR>
+<HR>
+<H2>
+GC Caching</H2>
+GCs are cached by the library to allow merging of independent
+change requests to the same GC into single protocol requests. This is typically
+called a write-back cache. Any extension routine whose behavior depends
+on the contents of a GC must flush the GC cache to make sure the server
+has up-to-date contents in its GC.
+
+<P>The <B>FlushGC()</B> macro checks the dirty bits in the
+library's GC structure and calls <B>_XFlushGCCache</B> if any elements
+have changed. The <B>FlushGC()</B> macro is defined as follows:
+<BLOCKQUOTE>
+<PRE><TT>FlushGC(<I>display</I>, <I>gc</I>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GC <I>gc</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>gc</I></DT>
+
+<DD>
+Specifies the GC.</DD>
+</DL>
+Note that if you extend the GC to add additional resource
+ID components, you should ensure that the library stub sends the change
+request immediately. This is because a client can free a resource immediately
+after using it, so if you only stored the value in the cache without forcing
+a protocol request, the resource might be destroyed before being set into
+the GC. You can use the <B>_XFlushGCCache</B> procedure to force the cache
+to be flushed. The <B>_XFlushGCCache</B> procedure is defined as follows:
+<BLOCKQUOTE>
+<PRE><TT>_XFlushGC()Cache(<I>display</I>, <I>gc</I>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GC <I>gc</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>gc</I></DT>
+
+<DD>
+Specifies the GC.</DD>
+</DL>
+
+<HR>
+<H2>
+Graphics Batching</H2>
+If you extend X to add more poly graphics primitives, you
+may be able to take advantage of facilities in the library to allow back-to-back
+single calls to be transformed into poly requests. This may dramatically
+improve performance of programs that are not written using poly requests.
+A pointer to an <B>xReq()</B>, called <B>last_req</B> in the display structure,
+is the last request being processed. By checking that the last request
+type, drawable, gc, and other options are the same as the new one and that
+there is enough space left in the buffer, you may be able to just extend
+the previous graphics request by extending the length field of the request
+and appending the data to the buffer. This can improve performance by five
+times or more in naive programs. For example, here is the source for the
+<B>XDrawPoint()</B> stub. (Writing extension stubs is discussed in the
+next section.)
+<BLOCKQUOTE>
+<PRE><TT>#include "copyright.h"
+#include "Xlibint.h"
+/* precompute the maximum size of batching request allowed */
+static int size = sizeof(xPolyPointReq) + EPERBATCH * sizeof(xPoint);
+XDrawPoint()(dpy, d, gc, x, y)
+&nbsp;&nbsp;&nbsp; register Display *dpy;
+&nbsp;&nbsp;&nbsp; Drawable d;
+&nbsp;&nbsp;&nbsp; GC gc;
+&nbsp;&nbsp;&nbsp; int x, y; /* INT16 */
+{
+&nbsp;&nbsp;&nbsp; xPoint *point;
+&nbsp;&nbsp;&nbsp; LockDisplay()(dpy);
+&nbsp;&nbsp;&nbsp; FlushGC()(dpy, gc);
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp; register xPolyPointReq *req = (xPolyPointReq *) dpy->last_req;
+&nbsp;&nbsp;&nbsp; /* if same as previous request, with same drawable, batch requests */
+&nbsp;&nbsp;&nbsp; if (
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (req->reqType == X_PolyPoint)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;&amp; (req->drawable == d)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;&amp; (req->gc == gc->gid)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;&amp; (req->coordMode == CoordModeOrigin)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;&amp; ((dpy->bufptr + sizeof (xPoint)) &lt;= dpy->bufmax)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;&amp; (((char *)dpy->bufptr - (char *)req) &lt; size) ) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; point = (xPoint *) dpy->bufptr;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; req->length += sizeof (xPoint) >> 2;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; dpy->bufptr += sizeof (xPoint);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GetReqExtra(PolyPoint, 4, req); /* 1 point = 4 bytes */
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; req->drawable = d;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; req->gc = gc->gid;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; req->coordMode = CoordModeOrigin;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; point = (xPoint *) (req + 1);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; point->x = x;
+&nbsp;&nbsp;&nbsp; point->y = y;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; UnlockDisplay()(dpy);
+&nbsp;&nbsp;&nbsp; SyncHandle();
+}</TT></PRE>
+</BLOCKQUOTE>
+To keep clients from generating very long requests that may
+monopolize the server, there is a symbol defined in &lt;<I>Xlibint.h</I>>
+of EPERBATCH on the number of requests batched. Most of the performance
+benefit occurs in the first few merged requests. Note that <B>FlushGC()</B>
+is called <I>before</I> picking up the value of <B>last_req</B>, because
+it may modify this field.
+<BR>
+<HR>
+<H2>
+Writing Extension Stubs</H2>
+All X requests always contain the length of the request,
+expressed as a 16-bit quantity of 32 bits. This means that a single request
+can be no more than 256K bytes in length. Some servers may not support
+single requests of such a length. The value of <B>dpy->max_request_size</B>
+contains the maximum length as defined by the server implementation. For
+further information, see "X Window System Protocol."
+<H3>
+Requests, Replies, and Xproto.h</H3>
+The &lt;<I>Xproto.h</I>> file contains three sets of definitions
+that are of interest to the stub implementor: request names, request structures,
+and reply structures.
+
+<P>You need to generate a file equivalent to &lt;<I>Xproto.h</I>>
+for your extension and need to include it in your stub routine. Each stub
+routine also must include &lt;<I>Xlibint.h</I>>.
+
+<P>The identifiers are deliberately chosen in such a way
+that, if the request is called X_DoSomething, then its request structure
+is xDoSomethingReq, and its reply is xDoSomethingReply. The GetReq family
+of macros, defined in &lt;<I>Xlibint.h</I>>, takes advantage of this naming
+scheme.
+
+<P>For each X request, there is a definition in &lt;<I>Xproto.h</I>>
+that looks similar to this:
+<BLOCKQUOTE>
+<PRE><TT>#define X_DoSomething&nbsp;&nbsp; 42</TT></PRE>
+</BLOCKQUOTE>
+In your extension header file this will be a minor opcode,
+rather than a major opcode.
+<H3>
+Request Format</H3>
+Every request contains an 8-bit major opcode and a 16-bit
+length field expressed in units of four bytes. Every request consists of
+four bytes of header (containing the major opcode, the length field, and
+a data byte) followed by zero or more additional bytes of data. The length
+field defines the total length of the request, including the header. The
+length field in a request must equal the minimum length required to contain
+the request. If the specified length is smaller or larger than the required
+length, the server should generate a <B>BadLength</B> error. Unused bytes
+in a request are not required to be zero. Extensions should be designed
+in such a way that long protocol requests can be split up into smaller
+requests, if it is possible to exceed the maximum request size of the server.
+The protocol guarantees the maximum request size to be no smaller than
+4096 units (16384 bytes).
+
+<P>Major opcodes 128 through 255 are reserved for extensions.
+Extensions are intended to contain multiple requests, so extension requests
+typically have an additional minor opcode encoded in the "spare" data byte
+in the request header, but the placement and interpretation of this minor
+opcode as well as all other fields in extension requests are not defined
+by the core protocol. Every request is implicitly assigned a sequence number
+(starting with one) used in replies, errors, and events.
+
+<P>To help but not cure portability problems to certain machines,
+the <B>B16</B> and <B>B32</B> macros have been defined so that they can
+become bitfield specifications on some machines. For example, on a Cray,
+these should be used for all 16-bit and 32-bit quantities, as discussed
+below.
+
+<P>Most protocol requests have a corresponding structure
+typedef in &lt;<I>Xproto.h</I>>, which looks like:
+<BLOCKQUOTE>
+<PRE><TT>typedef struct _DoSomethingReq {
+&nbsp;&nbsp;&nbsp; CARD8 reqType;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* X_DoSomething */
+&nbsp;&nbsp;&nbsp; CARD8 someDatum;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* used differently in different requests */
+&nbsp;&nbsp;&nbsp; CARD16 length B16;&nbsp;&nbsp;&nbsp; /* total # of bytes in request, divided by 4 */
+&nbsp;&nbsp;&nbsp; ...
+&nbsp;&nbsp;&nbsp; /* request-specific data */
+&nbsp;&nbsp;&nbsp; ...
+} xDoSomethingReq;</TT></PRE>
+</BLOCKQUOTE>
+If a core protocol request has a single 32-bit argument,
+you need not declare a request structure in your extension header file.
+Instead, such requests use &lt;<I>Xproto.h</I>>'s <B>xResourceReq</B> structure.
+This structure is used for any request whose single argument is a <B>Window</B>,
+<B>Pixmap</B>, <B>Drawable</B>, <B>GContext</B>, <B>Font</B>, <B>Cursor</B>,
+<B>Colormap</B>, <B>Atom</B>, or <B>VisualID</B>.
+<BLOCKQUOTE>
+<PRE><TT>typedef struct _ResourceReq {
+&nbsp;&nbsp;&nbsp; CARD8 reqType;&nbsp;&nbsp;&nbsp;&nbsp; /* the request type, e.g., X_DoSomething */
+&nbsp;&nbsp;&nbsp; BYTE pad;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* not used */
+&nbsp;&nbsp;&nbsp; CARD16 length B16; /* 2 (= total # of bytes in request, divided by 4) */
+&nbsp;&nbsp;&nbsp; CARD32 id B32;&nbsp;&nbsp;&nbsp;&nbsp; /* the Window, Drawable, Font, GContext, etc. */
+} xResourceReq;</TT></PRE>
+</BLOCKQUOTE>
+If convenient, you can do something similar in your extension
+header file.
+
+<P>In both of these structures, the <B>reqType</B> field
+identifies the type of the request (for example, X_MapWindow or X_CreatePixmap).
+The length field tells how long the request is in units of 4-byte longwords.
+This length includes both the request structure itself and any variable
+length data, such as strings or lists, that follow the request structure.
+Request structures come in different sizes, but all requests are padded
+to be multiples of four bytes long.
+
+<P>A few protocol requests take no arguments at all. Instead,
+they use &lt;<I>Xproto.h</I>>'s <B>xReq</B> structure, which contains only
+a <B>reqType</B> and a length (and a pad byte).
+
+<P>If the protocol request requires a reply, then &lt;<I>Xproto.h</I>>
+also contains a reply structure typedef:
+<BLOCKQUOTE>
+<PRE><TT>typedef struct _DoSomethingReply {
+&nbsp;&nbsp;&nbsp; BYTE type;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* always X_Reply */
+&nbsp;&nbsp;&nbsp; BYTE someDatum;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* used differently in different requests */
+&nbsp;&nbsp;&nbsp; CARD16 sequenceNumber B16; /* # of requests sent so far */
+&nbsp;&nbsp;&nbsp; CARD32 length B32;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* # of additional bytes, divided by 4 */
+&nbsp;&nbsp;&nbsp; ...
+&nbsp;&nbsp;&nbsp; /* request-specific data */
+&nbsp;&nbsp;&nbsp; ...
+} xDoSomethingReply;</TT></PRE>
+</BLOCKQUOTE>
+Most of these reply structures are 32 bytes long. If there
+are not that many reply values, then they contain a sufficient number of
+pad fields to bring them up to 32 bytes. The length field is the total
+number of bytes in the request minus 32, divided by 4. This length will
+be nonzero only if:
+<UL>
+<LI>
+The reply structure is followed by variable length data such
+as a list or string.</LI>
+
+<LI>
+The reply structure is longer than 32 bytes.</LI>
+</UL>
+Only <B>XGetWindowAttributes()</B>, <B>XQueryFont()</B>,
+<B>XQueryKeymap()</B>, and <B>XGetKeyboardControl</B> have reply structures
+longer than 32 bytes in the core protocol.
+
+<P>A few protocol requests return replies that contain no
+data. &lt;<I>Xproto.h</I>> does not define reply structures for these.
+Instead, they use the <B>xGenericReply</B> structure, which contains only
+a type, length, and sequence number (and sufficient padding to make it
+32 bytes long).
+<H3>
+Starting to Write a Stub Routine</H3>
+An Xlib stub routine should always start like this:
+<BLOCKQUOTE>
+<PRE><TT>#include "Xlibint.h"
+XDoSomething (arguments, ... )
+/* argument declarations */
+{
+register XDoSomethingReq *req;</TT></PRE>
+</BLOCKQUOTE>
+If the protocol request has a reply, then the variable declarations
+should include the reply structure for the request. The following is an
+example:
+<BLOCKQUOTE>
+<PRE><TT>xDoSomethingReply rep;</TT></PRE>
+</BLOCKQUOTE>
+
+<H3>
+Locking Data Structures</H3>
+To lock the display structure for systems that want to support
+multithreaded access to a single display connection, each stub will need
+to lock its critical section. Generally, this section is the point from
+just before the appropriate GetReq call until all arguments to the call
+have been stored into the buffer. The precise instructions needed for this
+locking depend upon the machine architecture. Two calls, which are generally
+implemented as macros, have been provided.
+<BLOCKQUOTE>
+<PRE><TT>LockDisplay(<I>display</I>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<BLOCKQUOTE>
+<PRE><TT>UnlockDisplay(<I>display</I>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+</DL>
+
+<H3>
+Sending the Protocol Request and Arguments</H3>
+After the variable declarations, a stub routine should call
+one of four macros defined in &lt;<I>Xlibint.h</I>>: <B>GetReq()</B>, <B>GetReqExtra()</B>,
+<B>GetResReq()</B>, or <B>GetEmptyReq()</B>. All of these macros take,
+as their first argument, the name of the protocol request as declared in
+&lt;<I>Xproto.h</I>> except with X_ removed. Each one declares a <B>Display</B>
+structure pointer, called dpy, and a pointer to a request structure, called
+req, which is of the appropriate type. The macro then appends the request
+structure to the output buffer, fills in its type and length field, and
+sets req to point to it.
+
+<P>If the protocol request has no arguments (for instance,
+X_GrabServer), then use <B>GetEmptyReq()</B>.
+<BLOCKQUOTE>
+<PRE><TT>GetEmptyReq (DoSomething, req);</TT></PRE>
+</BLOCKQUOTE>
+If the protocol request has a single 32-bit argument (such
+as a <B>Pixmap</B>, <B>Window</B>, <B>Drawable</B>, <B>Atom</B>, and so
+on), then use <B>GetResReq()</B>. The second argument to the macro is the
+32-bit object. X_MapWindow is a good example.
+<BLOCKQUOTE>
+<PRE><TT>GetResReq (DoSomething, rid, req);</TT></PRE>
+</BLOCKQUOTE>
+The <I>rid</I> argument is the <B>Pixmap</B>, <B>Window</B>,
+or other resource ID.
+
+<P>If the protocol request takes any other argument list,
+then call <B>GetReq()</B>. After the <B>GetReq()</B>, you need to set all
+the other fields in the request structure, usually from arguments to the
+stub routine.
+<BLOCKQUOTE>
+<PRE><TT>GetReq (DoSomething, req);
+/* fill in arguments here */
+req->arg1 = arg1;
+req->arg2 = arg2;</TT></PRE>
+</BLOCKQUOTE>
+A few stub routines (such as <B>XCreateGC()</B> and <B>XCreatePixmap()</B>)
+return a resource ID to the caller but pass a resource ID as an argument
+to the protocol request. Such routines use the macro <B>XAllocID</B> to
+allocate a resource ID from the range of IDs that were assigned to this
+client when it opened the connection.
+<BLOCKQUOTE>
+<PRE><TT>rid = req->rid = XAllocID();
+return (rid);</TT></PRE>
+</BLOCKQUOTE>
+Finally, some stub routines transmit a fixed amount of variable
+length data after the request. Typically, these routines (such as <B>XMoveWindow()</B>
+and <B>XSetBackground()</B>) are special cases of more general functions
+like <B>XMoveResizeWindow()</B> and <B>XChangeGC()</B>. These special case
+routines use <B>GetReqExtra()</B>, which is the same as <B>GetReq</B> except
+that it takes an additional argument (the number of extra bytes to allocate
+in the output buffer after the request structure). This number should always
+be a multiple of four.
+<H3>
+Variable Length Arguments</H3>
+Some protocol requests take additional variable length data
+that follow the <B>xDoSomethingReq</B> structure. The format of this data
+varies from request to request. Some requests require a sequence of 8-bit
+bytes, others a sequence of 16-bit or 32-bit entities, and still others
+a sequence of structures.
+
+<P>It is necessary to add the length of any variable length
+data to the length field of the request structure. That length field is
+in units of 32-bit longwords. If the data is a string or other sequence
+of 8-bit bytes, then you must round the length up and shift it before adding:
+<BLOCKQUOTE>
+<PRE><TT>req->length += (nbytes+3)>>2;</TT></PRE>
+</BLOCKQUOTE>
+To transmit variable length data, use the <B>Data</B> macros.
+If the data fits into the output buffer, then this macro copies it to the
+buffer. If it does not fit, however, the <B>Data</B> macro calls <B>_XSend()</B>,
+which transmits first the contents of the buffer and then your data. The
+<B>Data</B> macros take three arguments: the Display, a pointer to the
+beginning of the data, and the number of bytes to be sent.
+<BLOCKQUOTE>
+<PRE><TT>Data(<I>display</I>, (char *) <I>data</I>, <I>nbytes</I>);
+Data16(<I>display</I>, (short *) <I>data</I>, <I>nbytes</I>);
+Data32(<I>display</I>, (long *) <I>data</I>, <I>nbytes</I>);</TT></PRE>
+</BLOCKQUOTE>
+<B>Data()</B>, <B>Data16()</B>, and <B>Data32()</B> are macros
+that may use their last argument more than once, so that argument should
+be a variable rather than an expression such as "<B>nitems*sizeof(item)</B>".
+You should do that kind of computation in a separate statement before calling
+them. Use the appropriate macro when sending byte, short, or long data.
+
+<P>If the protocol request requires a reply, then call the
+procedure <B>_XSend</B> instead of the <B>Data</B> macro. <B>_XSend</B>
+takes the same arguments, but because it sends your data immediately instead
+of copying it into the output buffer (which would later be flushed anyway
+by the following call on <B>_XReply()</B>), it is faster.
+<H3>
+Replies</H3>
+If the protocol request has a reply, then call <B>_XReply</B>
+after you have finished dealing with all the fixed and variable length
+arguments. <B>_XReply</B> flushes the output buffer and waits for an <B>xReply</B>
+packet to arrive. If any events arrive in the meantime, <B>_XReply</B>
+places them in the queue for later use.
+<BLOCKQUOTE>
+<PRE><TT>Status _XReply(<I>display</I>, <I>rep</I>, <I>extra</I>, <I>discard</I>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; xReply *<I>rep</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int <I>extra</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Bool <I>discard</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>rep</I></DT>
+
+<DD>
+Specifies the reply structure.</DD>
+
+<DT>
+<I>extra</I></DT>
+
+<DD>
+Specifies the number of 32-bit words expected after the replay.</DD>
+
+<DT>
+<I>discard</I></DT>
+
+<DD>
+Specifies if beyond the "extra" data should be discarded.</DD>
+</DL>
+<B>_XReply</B>waits for a reply packet and copies its contents
+into the specified rep. <B>_XReply</B> handles error and event packets
+that occur before the reply is received. <B>_XReply</B> takes four arguments:
+<UL>
+<LI>
+A <B>Display</B> * structure</LI>
+
+<LI>
+A pointer to a reply structure (which must be cast to an
+<B>xReply</B> *)</LI>
+
+<LI>
+The number of additional 32-bit words (beyond sizeof(<I>xReply</I>)
+= 32 bytes) in the reply structure</LI>
+
+<LI>
+A Boolean that indicates whether <B>_XReply</B> is to discard
+any additional bytes beyond those it was told to read</LI>
+</UL>
+Because most reply structures are 32 bytes long, the third
+argument is usually 0. The only core protocol exceptions are the replies
+to <B>XGetWindowAttributes()</B>, <B>XQueryFont()</B>, <B>XQueryKeymap()</B>,
+and <B>XGetKeyboardControl()</B>, which have longer replies.
+
+<P>The last argument should be <B>False</B> if the reply
+structure is followed by additional variable length data (such as a list
+or string). It should be <B>True</B> if there is not any variable length
+data.
+
+<P>This last argument is provided for upward-compatibility
+reasons to allow a client to communicate properly with a hypothetical later
+version of the server that sends more data than the client expected. For
+example, some later version of <B>XGetWindowAttributes</B> might use a
+larger, but compatible, <B>xGetWindowAttributesReply</B> that contains
+additional attribute data at the end.
+
+<P><B>_XReply</B>returns <B>True</B> if it received a reply
+successfully or <B>False</B> if it received any sort of error.
+
+<P>For a request with a reply that is not followed by variable
+length data, you write something like:
+<BLOCKQUOTE>
+<PRE><TT>_XReply(display, (xReply *)&amp;rep, 0, True);
+*ret1 = rep.ret1;
+*ret2 = rep.ret2;
+*ret3 = rep.ret3;
+UnlockDisplay()(dpy);
+SyncHandle();
+return (rep.ret4);
+}</TT></PRE>
+</BLOCKQUOTE>
+If there is variable length data after the reply, change
+the <B>True</B> to <B>False</B>, and use the appropriate <B>_XRead</B>
+function to read the variable length data.
+<BLOCKQUOTE>
+<PRE><TT>_XRead(<I>display</I>, <I>data_return</I>, <I>nbytes</I>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; char *<I>data_return</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; long <I>nbytes</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>data_return</I></DT>
+
+<DD>
+Specifies the buffer.</DD>
+
+<DT>
+<I>nbytes</I></DT>
+
+<DD>
+Specifies the number of bytes required.</DD>
+</DL>
+<B>_XRead</B>reads the specified number of bytes into data_return.
+<H4>
+_XRead16</H4>
+
+<BLOCKQUOTE>
+<PRE><TT>_XRead16(<I>display</I>, <I>data_return</I>, <I>nbytes</I>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; short *<I>data_return</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; long <I>nbytes</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>data_return</I></DT>
+
+<DD>
+Specifies the buffer.</DD>
+
+<DT>
+<I>nbytes</I></DT>
+
+<DD>
+Specifies the number of bytes required.</DD>
+</DL>
+<B>_XRead16</B>reads the specified number of bytes, unpacking
+them as 16-bit quantities, into the specified array as shorts.
+<H4>
+_XRead32</H4>
+
+<BLOCKQUOTE>
+<PRE><TT>_XRead32(<I>display</I>, <I>data_return</I>, <I>nbytes</I>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; long *<I>data_return</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; long <I>nbytes</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>data_return</I></DT>
+
+<DD>
+Specifies the buffer.</DD>
+
+<DT>
+<I>nbytes</I></DT>
+
+<DD>
+Specifies the number of bytes required.</DD>
+</DL>
+<B>_XRead32</B>reads the specified number of bytes, unpacking
+them as 32-bit quantities, into the specified array as longs.
+<H4>
+_XRead16Pad</H4>
+
+<BLOCKQUOTE>
+<PRE><TT>_XRead16Pad(<I>display</I>, <I>data_return</I>, <I>nbytes</I>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; short *<I>data_return</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; long <I>nbytes</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>data_return</I></DT>
+
+<DD>
+Specifies the buffer.</DD>
+
+<DT>
+<I>nbytes</I></DT>
+
+<DD>
+Specifies the number of bytes required.</DD>
+</DL>
+<B>_XRead16Pad</B>reads the specified number of bytes, unpacking
+them as 16-bit quantities, into the specified array as shorts. If the number
+of bytes is not a multiple of four, <B>_XRead16Pad</B> reads and discards
+up to three additional pad bytes.
+<H4>
+_XReadPad</H4>
+
+<BLOCKQUOTE>
+<PRE><TT>_XReadPad(<I>display</I>, <I>data_return</I>, <I>nbytes</I>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; char *<I>data_return</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; long <I>nbytes</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>data_return</I></DT>
+
+<DD>
+Specifies the buffer.</DD>
+
+<DT>
+<I>nbytes</I></DT>
+
+<DD>
+Specifies the number of bytes required.</DD>
+</DL>
+<B>_XReadPad</B>reads the specified number of bytes into
+data_return. If the number of bytes is not a multiple of four, <B>_XReadPad</B>
+reads and discards up to three additional pad bytes.
+
+<P>Each protocol request is a little different. For further
+information, see the Xlib sources for examples.
+<H3>
+Synchronous Calling</H3>
+To ease debugging, each routine should have a call, just
+before returning to the user, to a routine called <B>SyncHandle()</B>.
+This routine generally is implemented as a macro. If synchronous mode is
+enabled (see <B>XSynchronize()</B>), the request is sent immediately. The
+library, however, waits until any error the routine could generate at the
+server has been handled.
+<H3>
+Allocating and Deallocating Memory</H3>
+To support the possible reentry of these routines, you must
+observe several conventions when allocating and deallocating memory, most
+often done when returning data to the user from the window system of a
+size the caller could not know in advance (for example, a list of fonts
+or a list of extensions). The standard C library routines on many systems
+are not protected against signals or other multithreaded uses. The following
+analogies to standard I/O library routines have been defined:
+<DL>
+<DT>
+<B>Xmalloc()</B></DT>
+
+<DD>
+Replaces <B>malloc()</B>.</DD>
+
+<DT>
+<B>XFree()</B></DT>
+
+<DD>
+Replaces <B>free()</B>.</DD>
+
+<DT>
+<B>Xcalloc()</B></DT>
+
+<DD>
+Replaces <B>calloc()</B>.</DD>
+</DL>
+These should be used in place of any calls you would make
+to the normal C library routines.
+
+<P>If you need a single scratch buffer inside a critical
+section (for example, to pack and unpack data to and from the wire protocol),
+the general memory allocators may be too expensive to use (particularly
+in output routines, which are performance critical). The routine below
+returns a scratch buffer for your use:
+<BLOCKQUOTE>
+<PRE><TT>char *_XAllocScratch(<I>display</I>, <I>nbytes</I>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Display *<I>display</I>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unsigned long <I>nbytes</I>;</TT></PRE>
+</BLOCKQUOTE>
+
+<DL>
+<DT>
+<I>display</I></DT>
+
+<DD>
+Specifies the connection to the X server.</DD>
+
+<DT>
+<I>nbytes</I></DT>
+
+<DD>
+Specifies the number of bytes required.</DD>
+</DL>
+This storage must only be used inside of the critical section
+of your stub.
+<H3>
+Portability Considerations</H3>
+Many machine architectures, including many of the more recent
+RISC architectures, do not correctly access data at unaligned locations;
+their compilers pad out structures to preserve this characteristic. Many
+other machines capable of unaligned references pad inside of structures
+as well to preserve alignment, because accessing aligned data is usually
+much faster. Because the library and the server use structures to access
+data at arbitrary points in a byte stream, all data in request and reply
+packets <I>must</I> be naturally aligned; that is, 16-bit data starts on
+16-bit boundaries in the request and 32-bit data on 32-bit boundaries.
+All requests <I>must</I> be a multiple of 32 bits in length to preserve
+the natural alignment in the data stream. You must pad structures out to
+32-bit boundaries. Pad information does not have to be zeroed unless you
+want to preserve such fields for future use in your protocol requests.
+Floating point varies radically between machines and should be avoided
+completely if at all possible.
+
+<P>This code may run on machines with 16-bit ints. So, if
+any integer argument, variable, or return value either can take only nonnegative
+values or is declared as a CARD16 in the protocol, be sure to declare it
+as unsigned int and not as int. (This, of course, does not apply to Booleans
+or enumerations.)
+
+<P>Similarly, if any integer argument or return value is
+declared CARD32 in the protocol, declare it as an unsigned long and not
+as int or long. This also goes for any internal variables that may take
+on values larger than the maximum 16-bit <B>unsigned int</B>.
+
+<P>The library currently assumes that a <I>char</I> is 8
+bits, a <I>short</I> is 16 bits, an <I>int</I> is 16 or 32 bits, and a
+<I>long</I> is 32 bits. The <B>PackData</B> macro is a half-hearted attempt
+to deal with the possibility of 32 bit shorts. However, much more work
+is needed to make this work properly.
+<H3>
+Deriving the Correct Extension Opcode</H3>
+The remaining problem a writer of an extension stub routine
+faces that the core protocol does not face is to map from the call to the
+proper major and minor opcodes. While there are a number of strategies,
+the simplest and fastest is outlined below.
+<OL>
+<LI>
+Declare an array of pointers, _NFILE long (this is normally
+found in &lt;<I>stdio.h</I>> and is the number of file descriptors supported
+on the system) of type <B>XExtCodes()</B>. Make sure these are all initialized
+to NULL.</LI>
+
+<LI>
+When your stub is entered, your initialization test is just
+to use the display pointer passed in to access the file descriptor and
+an index into the array. If the entry is NULL, then this is the first time
+you are entering the routine for this display. Call your initialization
+routine and pass it to the display pointer.</LI>
+
+<LI>
+Once in your initialization routine, call <B>XInitExtension()</B>;
+if it succeeds, store the pointer returned into this array. Make sure to
+establish a close display handler to allow you to zero the entry. Do whatever
+other initialization your extension requires. (For example, install event
+handlers and so on.) Your initialization routine would normally return
+a pointer to the <B>XExtCodes</B> structure for this extension, which is
+what would normally be found in your array of pointers.</LI>
+
+<LI>
+After returning from your initialization routine, the stub
+can now continue normally, because it has its major opcode safely in its
+hand in the <B>XExtCodes</B> structure.</LI>
+</OL>
+
+<HR>
+<TABLE CELLSPACING=0 CELLPADDING=0 COLS=1 WIDTH="100%" >
+<TR>
+<TD ALIGN=RIGHT>
+<H4>
+Xlib Programming Manual (O'Reilly &amp; Associates, Inc.)</H4>
+</TD>
+</TR>
+</TABLE>
+&nbsp;
+</BODY>
+</HTML>
