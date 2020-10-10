@@ -16,7 +16,7 @@
 <br/>
 <br/>
 
-
+[Adding a plugin](https://fdio-vpp.readthedocs.io/en/latest/gettingstarted/developers/add_plugin.html#add-plugin)
 
 # 1. 添加插件
 
