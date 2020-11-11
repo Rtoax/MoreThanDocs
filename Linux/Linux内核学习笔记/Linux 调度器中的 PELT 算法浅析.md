@@ -4,7 +4,7 @@
 <br/>
 <br/>
 
-<center><font size='20'>Linux内核学习笔记 PELT（Per-entity load tracking）实体负载跟踪算法调度算法</font></center>
+<center><font size='6'>Linux内核学习笔记 PELT（Per-entity load tracking）实体负载跟踪算法调度算法</font></center>
 <br/>
 <br/>
 <center><font size='5'>RToax</font></center>
