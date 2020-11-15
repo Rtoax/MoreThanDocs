@@ -1,0 +1,1577 @@
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+  <link rel="dns-prefetch" href="https://github.githubassets.com">
+  <link rel="dns-prefetch" href="https://avatars0.githubusercontent.com">
+  <link rel="dns-prefetch" href="https://avatars1.githubusercontent.com">
+  <link rel="dns-prefetch" href="https://avatars2.githubusercontent.com">
+  <link rel="dns-prefetch" href="https://avatars3.githubusercontent.com">
+  <link rel="dns-prefetch" href="https://github-cloud.s3.amazonaws.com">
+  <link rel="dns-prefetch" href="https://user-images.githubusercontent.com/">
+
+
+
+  <link crossorigin="anonymous" media="all" integrity="sha512-3D7WIWHAP3fU8nO5QGnFJs64RHcDQmaBGco7phfNhItOCNabRLP+qGl9lKhE0T0nCi7oj/DKL+mizn1njdSn6Q==" rel="stylesheet" href="https://github.githubassets.com/assets/frameworks-dc3ed62161c03f77d4f273b94069c526.css" />
+  <link crossorigin="anonymous" media="all" integrity="sha512-0TfsxX6InRFol+EYz4NB5XBB723w2mJIM2X5LR3KL3js6VO2nyZugaJnqRww1ioyTEYlCi/jYHkbLGrNEYLjIw==" rel="stylesheet" href="https://github.githubassets.com/assets/site-d137ecc57e889d116897e118cf8341e5.css" />
+    <link crossorigin="anonymous" media="all" integrity="sha512-SKMr7xvGdKA+8ghg/xxWkiny4qUv0VvBSlfq4+wuUW0xh05DFh4lMucuuFrbrDQpMTFt3HoyL43zLQhTv1KXjg==" rel="stylesheet" href="https://github.githubassets.com/assets/github-48a32bef1bc674a03ef20860ff1c5692.css" />
+    
+    
+    
+    
+
+
+  <meta name="viewport" content="width=device-width">
+  
+  <title>the-little-redis-book/redis.md at master · karlseguin/the-little-redis-book · GitHub</title>
+    <meta name="description" content="Contribute to karlseguin/the-little-redis-book development by creating an account on GitHub.">
+    <link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="GitHub">
+  <link rel="fluid-icon" href="https://github.com/fluidicon.png" title="GitHub">
+  <meta property="fb:app_id" content="1401488693436528">
+  <meta name="apple-itunes-app" content="app-id=1477376905">
+
+    <meta name="twitter:image:src" content="https://avatars1.githubusercontent.com/u/206480?s=400&amp;v=4" /><meta name="twitter:site" content="@github" /><meta name="twitter:card" content="summary" /><meta name="twitter:title" content="karlseguin/the-little-redis-book" /><meta name="twitter:description" content="Contribute to karlseguin/the-little-redis-book development by creating an account on GitHub." />
+    <meta property="og:image" content="https://avatars1.githubusercontent.com/u/206480?s=400&amp;v=4" /><meta property="og:site_name" content="GitHub" /><meta property="og:type" content="object" /><meta property="og:title" content="karlseguin/the-little-redis-book" /><meta property="og:url" content="https://github.com/karlseguin/the-little-redis-book" /><meta property="og:description" content="Contribute to karlseguin/the-little-redis-book development by creating an account on GitHub." />
+
+
+
+  
+
+  <link rel="assets" href="https://github.githubassets.com/">
+  
+
+  <meta name="request-id" content="191B:752E:3A2A3F:4FFC4F:5F81C8DD" data-pjax-transient="true"/><meta name="html-safe-nonce" content="dedfd92d36dbf1d15f93dc73092d709fb852302a" data-pjax-transient="true"/><meta name="visitor-payload" content="eyJyZWZlcnJlciI6IiIsInJlcXVlc3RfaWQiOiIxOTFCOjc1MkU6M0EyQTNGOjRGRkM0Rjo1RjgxQzhERCIsInZpc2l0b3JfaWQiOiI1MDA2OTQ5OTcwNDk0OTk4NzUzIiwicmVnaW9uX2VkZ2UiOiJhcC1zb3V0aGVhc3QtMSIsInJlZ2lvbl9yZW5kZXIiOiJhcC1zb3V0aGVhc3QtMSJ9" data-pjax-transient="true"/><meta name="visitor-hmac" content="c2c87b52fdb648681d71b9216c168ce74b117307586cf4f104c45108a2ee93e2" data-pjax-transient="true"/><meta name="cookie-consent-required" content="false" data-pjax-transient="true"/>
+
+    <meta name="hovercard-subject-tag" content="repository:3248308" data-pjax-transient>
+
+
+  <meta name="github-keyboard-shortcuts" content="repository,source-code" data-pjax-transient="true" />
+
+  
+
+  <meta name="selected-link" value="repo_source" data-pjax-transient>
+
+    <meta name="google-site-verification" content="c1kuD-K2HIVF635lypcsWPoD4kilo5-jA_wBFyT4uMY">
+  <meta name="google-site-verification" content="KT5gs8h0wvaagLKAVWq8bbeNwnZZK1r1XQysX3xurLU">
+  <meta name="google-site-verification" content="ZzhVyEFwb7w3e0-uOTltm8Jsck2F5StVihD0exw2fsA">
+  <meta name="google-site-verification" content="GXs5KoUUkNCoaAZn7wPN-t01Pywp9M3sEjnt_3_ZWPc">
+
+  <meta name="octolytics-host" content="collector.githubapp.com" /><meta name="octolytics-app-id" content="github" /><meta name="octolytics-event-url" content="https://collector.githubapp.com/github-external/browser_event" /><meta name="octolytics-dimension-ga_id" content="" class="js-octo-ga-id" />
+
+  <meta name="analytics-location" content="/&lt;user-name&gt;/&lt;repo-name&gt;/blob/show" data-pjax-transient="true" />
+
+  
+
+
+
+
+
+    <meta name="google-analytics" content="UA-3769691-2">
+
+
+<meta class="js-ga-set" name="dimension10" content="Responsive" data-pjax-transient>
+
+<meta class="js-ga-set" name="dimension1" content="Logged Out">
+
+
+
+  
+
+      <meta name="hostname" content="github.com">
+    <meta name="user-login" content="">
+
+
+      <meta name="expected-hostname" content="github.com">
+
+
+    <meta name="enabled-features" content="MARKETPLACE_PENDING_INSTALLATIONS">
+
+  <meta http-equiv="x-pjax-version" content="bb7e424afb6493c8be471a2af2de6d8c137731be564091342ed1b0bd2e8f1a66">
+  
+
+        <link href="https://github.com/karlseguin/the-little-redis-book/commits/master.atom" rel="alternate" title="Recent Commits to the-little-redis-book:master" type="application/atom+xml">
+
+  <meta name="go-import" content="github.com/karlseguin/the-little-redis-book git https://github.com/karlseguin/the-little-redis-book.git">
+
+  <meta name="octolytics-dimension-user_id" content="206480" /><meta name="octolytics-dimension-user_login" content="karlseguin" /><meta name="octolytics-dimension-repository_id" content="3248308" /><meta name="octolytics-dimension-repository_nwo" content="karlseguin/the-little-redis-book" /><meta name="octolytics-dimension-repository_public" content="true" /><meta name="octolytics-dimension-repository_is_fork" content="false" /><meta name="octolytics-dimension-repository_network_root_id" content="3248308" /><meta name="octolytics-dimension-repository_network_root_nwo" content="karlseguin/the-little-redis-book" /><meta name="octolytics-dimension-repository_explore_github_marketplace_ci_cta_shown" content="false" />
+
+
+    <link rel="canonical" href="https://github.com/karlseguin/the-little-redis-book/blob/master/en/redis.md" data-pjax-transient>
+
+
+  <meta name="browser-stats-url" content="https://api.github.com/_private/browser/stats">
+
+  <meta name="browser-errors-url" content="https://api.github.com/_private/browser/errors">
+
+  <link rel="mask-icon" href="https://github.githubassets.com/pinned-octocat.svg" color="#000000">
+  <link rel="alternate icon" class="js-site-favicon" type="image/png" href="https://github.githubassets.com/favicons/favicon.png">
+  <link rel="icon" class="js-site-favicon" type="image/svg+xml" href="https://github.githubassets.com/favicons/favicon.svg">
+
+<meta name="theme-color" content="#1e2327">
+
+
+  <link rel="manifest" href="/manifest.json" crossOrigin="use-credentials">
+
+  </head>
+
+  <body class="logged-out env-production page-responsive page-blob">
+    
+
+    <div class="position-relative js-header-wrapper ">
+      <a href="#start-of-content" class="px-2 py-4 bg-blue text-white show-on-focus js-skip-to-content">Skip to content</a>
+      <span class="progress-pjax-loader width-full js-pjax-loader-bar Progress position-fixed">
+    <span style="background-color: #79b8ff;width: 0%;" class="Progress-item progress-pjax-loader-bar "></span>
+</span>      
+      
+
+
+          <header class="Header-old header-logged-out js-details-container Details position-relative f4 py-2" role="banner">
+  <div class="container-xl d-lg-flex flex-items-center p-responsive">
+    <div class="d-flex flex-justify-between flex-items-center">
+        <a class="mr-4" href="https://github.com/" aria-label="Homepage" data-ga-click="(Logged out) Header, go to homepage, icon:logo-wordmark">
+          <svg height="32" class="octicon octicon-mark-github text-white" viewBox="0 0 16 16" version="1.1" width="32" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
+        </a>
+
+          <div class="d-lg-none css-truncate css-truncate-target width-fit p-2">
+            
+
+          </div>
+
+        <div class="d-flex flex-items-center">
+              <a href="/join?ref_cta=Sign+up&amp;ref_loc=header+logged+out&amp;ref_page=%2F%3Cuser-name%3E%2F%3Crepo-name%3E%2Fblob%2Fshow&amp;source=header-repo"
+                class="d-inline-block d-lg-none f5 text-white no-underline border border-gray-dark rounded-2 px-2 py-1 mr-3 mr-sm-5"
+                data-hydro-click="{&quot;event_type&quot;:&quot;authentication.click&quot;,&quot;payload&quot;:{&quot;location_in_page&quot;:&quot;site header&quot;,&quot;repository_id&quot;:null,&quot;auth_type&quot;:&quot;SIGN_UP&quot;,&quot;originating_url&quot;:&quot;https://github.com/karlseguin/the-little-redis-book/blob/master/en/redis.md&quot;,&quot;user_id&quot;:null}}" data-hydro-click-hmac="f8dda2a986e31c1f0bc8b15b9eeb3f200242753fc07cd8477c521bc4afbd7ec1"
+                data-ga-click="Sign up, click to sign up for account, ref_page:/&lt;user-name&gt;/&lt;repo-name&gt;/blob/show;ref_cta:Sign up;ref_loc:header logged out">
+                Sign&nbsp;up
+              </a>
+
+          <button class="btn-link d-lg-none mt-1 js-details-target" type="button" aria-label="Toggle navigation" aria-expanded="false">
+            <svg height="24" class="octicon octicon-three-bars text-white" viewBox="0 0 16 16" version="1.1" width="24" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.75A.75.75 0 011.75 2h12.5a.75.75 0 110 1.5H1.75A.75.75 0 011 2.75zm0 5A.75.75 0 011.75 7h12.5a.75.75 0 110 1.5H1.75A.75.75 0 011 7.75zM1.75 12a.75.75 0 100 1.5h12.5a.75.75 0 100-1.5H1.75z"></path></svg>
+          </button>
+        </div>
+    </div>
+
+    <div class="HeaderMenu HeaderMenu--logged-out position-fixed top-0 right-0 bottom-0 height-fit position-lg-relative d-lg-flex flex-justify-between flex-items-center flex-auto">
+      <div class="d-flex d-lg-none flex-justify-end border-bottom bg-gray-light p-3">
+        <button class="btn-link js-details-target" type="button" aria-label="Toggle navigation" aria-expanded="false">
+          <svg height="24" class="octicon octicon-x text-gray" viewBox="0 0 24 24" version="1.1" width="24" aria-hidden="true"><path fill-rule="evenodd" d="M5.72 5.72a.75.75 0 011.06 0L12 10.94l5.22-5.22a.75.75 0 111.06 1.06L13.06 12l5.22 5.22a.75.75 0 11-1.06 1.06L12 13.06l-5.22 5.22a.75.75 0 01-1.06-1.06L10.94 12 5.72 6.78a.75.75 0 010-1.06z"></path></svg>
+        </button>
+      </div>
+
+        <nav class="mt-0 px-3 px-lg-0 mb-5 mb-lg-0" aria-label="Global">
+          <ul class="d-lg-flex list-style-none">
+              <li class="d-block d-lg-flex flex-lg-nowrap flex-lg-items-center border-bottom border-lg-bottom-0 mr-0 mr-lg-3 edge-item-fix position-relative flex-wrap flex-justify-between d-flex flex-items-center ">
+                <details class="HeaderMenu-details details-overlay details-reset width-full">
+                  <summary class="HeaderMenu-summary HeaderMenu-link px-0 py-3 border-0 no-wrap d-block d-lg-inline-block">
+                    Why GitHub?
+                    <svg x="0px" y="0px" viewBox="0 0 14 8" xml:space="preserve" fill="none" class="icon-chevon-down-mktg position-absolute position-lg-relative">
+                      <path d="M1,1l6.2,6L13,1"></path>
+                    </svg>
+                  </summary>
+                  <div class="dropdown-menu flex-auto rounded-1 bg-white px-0 mt-0 pb-4 p-lg-4 position-relative position-lg-absolute left-0 left-lg-n4">
+                    <a href="/features" class="py-2 lh-condensed-ultra d-block link-gray-dark no-underline h5 Bump-link--hover" data-ga-click="(Logged out) Header, go to Features">Features <span class="Bump-link-symbol float-right text-normal text-gray-light">&rarr;</span></a>
+                    <ul class="list-style-none f5 pb-3">
+                      <li class="edge-item-fix"><a href="/features/code-review/" class="py-2 lh-condensed-ultra d-block link-gray no-underline f5" data-ga-click="(Logged out) Header, go to Code review">Code review</a></li>
+                      <li class="edge-item-fix"><a href="/features/project-management/" class="py-2 lh-condensed-ultra d-block link-gray no-underline f5" data-ga-click="(Logged out) Header, go to Project management">Project management</a></li>
+                      <li class="edge-item-fix"><a href="/features/integrations" class="py-2 lh-condensed-ultra d-block link-gray no-underline f5" data-ga-click="(Logged out) Header, go to Integrations">Integrations</a></li>
+                      <li class="edge-item-fix"><a href="/features/actions" class="py-2 lh-condensed-ultra d-block link-gray no-underline f5" data-ga-click="(Logged out) Header, go to Actions">Actions</a></li>
+                      <li class="edge-item-fix"><a href="/features/packages" class="py-2 lh-condensed-ultra d-block link-gray no-underline f5" data-ga-click="(Logged out) Header, go to GitHub Packages">Packages</a></li>
+                      <li class="edge-item-fix"><a href="/features/security" class="py-2 lh-condensed-ultra d-block link-gray no-underline f5" data-ga-click="(Logged out) Header, go to Security">Security</a></li>
+                      <li class="edge-item-fix"><a href="/features#team-management" class="py-2 lh-condensed-ultra d-block link-gray no-underline f5" data-ga-click="(Logged out) Header, go to Team management">Team management</a></li>
+                      <li class="edge-item-fix"><a href="/features#hosting" class="py-2 lh-condensed-ultra d-block link-gray no-underline f5" data-ga-click="(Logged out) Header, go to Code hosting">Hosting</a></li>
+                      <li class="edge-item-fix hide-xl"><a href="/mobile" class="py-2 lh-condensed-ultra d-block link-gray no-underline f5" data-ga-click="(Logged out) Header, go to Mobile">Mobile</a></li>
+                    </ul>
+
+                    <ul class="list-style-none mb-0 border-lg-top pt-lg-3">
+                      <li class="edge-item-fix"><a href="/customer-stories" class="py-2 lh-condensed-ultra d-block no-underline link-gray-dark no-underline h5 Bump-link--hover" data-ga-click="(Logged out) Header, go to Customer stories">Customer stories <span class="Bump-link-symbol float-right text-normal text-gray-light">&rarr;</span></a></li>
+                      <li class="edge-item-fix"><a href="/security" class="py-2 lh-condensed-ultra d-block no-underline link-gray-dark no-underline h5 Bump-link--hover" data-ga-click="(Logged out) Header, go to Security">Security <span class="Bump-link-symbol float-right text-normal text-gray-light">&rarr;</span></a></li>
+                    </ul>
+                  </div>
+                </details>
+              </li>
+              <li class="border-bottom border-lg-bottom-0 mr-0 mr-lg-3">
+                <a href="/team" class="HeaderMenu-link no-underline py-3 d-block d-lg-inline-block" data-ga-click="(Logged out) Header, go to Team">Team</a>
+              </li>
+              <li class="border-bottom border-lg-bottom-0 mr-0 mr-lg-3">
+                <a href="/enterprise" class="HeaderMenu-link no-underline py-3 d-block d-lg-inline-block" data-ga-click="(Logged out) Header, go to Enterprise">Enterprise</a>
+              </li>
+
+              <li class="d-block d-lg-flex flex-lg-nowrap flex-lg-items-center border-bottom border-lg-bottom-0 mr-0 mr-lg-3 edge-item-fix position-relative flex-wrap flex-justify-between d-flex flex-items-center ">
+                <details class="HeaderMenu-details details-overlay details-reset width-full">
+                  <summary class="HeaderMenu-summary HeaderMenu-link px-0 py-3 border-0 no-wrap d-block d-lg-inline-block">
+                    Explore
+                    <svg x="0px" y="0px" viewBox="0 0 14 8" xml:space="preserve" fill="none" class="icon-chevon-down-mktg position-absolute position-lg-relative">
+                      <path d="M1,1l6.2,6L13,1"></path>
+                    </svg>
+                  </summary>
+
+                  <div class="dropdown-menu flex-auto rounded-1 bg-white px-0 pt-2 pb-0 mt-0 pb-4 p-lg-4 position-relative position-lg-absolute left-0 left-lg-n4">
+                    <ul class="list-style-none mb-3">
+                      <li class="edge-item-fix"><a href="/explore" class="py-2 lh-condensed-ultra d-block link-gray-dark no-underline h5 Bump-link--hover" data-ga-click="(Logged out) Header, go to Explore">Explore GitHub <span class="Bump-link-symbol float-right text-normal text-gray-light">&rarr;</span></a></li>
+                    </ul>
+
+                    <h4 class="text-gray-light text-normal text-mono f5 mb-2 border-lg-top pt-lg-3">Learn &amp; contribute</h4>
+                    <ul class="list-style-none mb-3">
+                      <li class="edge-item-fix"><a href="/topics" class="py-2 lh-condensed-ultra d-block link-gray no-underline f5" data-ga-click="(Logged out) Header, go to Topics">Topics</a></li>
+                        <li class="edge-item-fix"><a href="/collections" class="py-2 lh-condensed-ultra d-block link-gray no-underline f5" data-ga-click="(Logged out) Header, go to Collections">Collections</a></li>
+                      <li class="edge-item-fix"><a href="/trending" class="py-2 lh-condensed-ultra d-block link-gray no-underline f5" data-ga-click="(Logged out) Header, go to Trending">Trending</a></li>
+                      <li class="edge-item-fix"><a href="https://lab.github.com/" class="py-2 lh-condensed-ultra d-block link-gray no-underline f5" data-ga-click="(Logged out) Header, go to Learning lab">Learning Lab</a></li>
+                      <li class="edge-item-fix"><a href="https://opensource.guide" class="py-2 lh-condensed-ultra d-block link-gray no-underline f5" data-ga-click="(Logged out) Header, go to Open source guides">Open source guides</a></li>
+                    </ul>
+
+                    <h4 class="text-gray-light text-normal text-mono f5 mb-2 border-lg-top pt-lg-3">Connect with others</h4>
+                    <ul class="list-style-none mb-0">
+                      <li class="edge-item-fix"><a href="https://github.com/events" class="py-2 lh-condensed-ultra d-block link-gray no-underline f5" data-ga-click="(Logged out) Header, go to Events">Events</a></li>
+                      <li class="edge-item-fix"><a href="https://github.community" class="py-2 lh-condensed-ultra d-block link-gray no-underline f5" data-ga-click="(Logged out) Header, go to Community forum">Community forum</a></li>
+                      <li class="edge-item-fix"><a href="https://education.github.com" class="py-2 lh-condensed-ultra d-block link-gray no-underline f5" data-ga-click="(Logged out) Header, go to GitHub Education">GitHub Education</a></li>
+                      <li class="edge-item-fix"><a href="https://stars.github.com" class="py-2 pb-0 lh-condensed-ultra d-block link-gray no-underline f5" data-ga-click="(Logged out) Header, go to GitHub Stars Program">GitHub Stars program</a></li>
+                    </ul>
+                  </div>
+                </details>
+              </li>
+
+              <li class="border-bottom border-lg-bottom-0 mr-0 mr-lg-3">
+                <a href="/marketplace" class="HeaderMenu-link no-underline py-3 d-block d-lg-inline-block" data-ga-click="(Logged out) Header, go to Marketplace">Marketplace</a>
+              </li>
+
+              <li class="d-block d-lg-flex flex-lg-nowrap flex-lg-items-center border-bottom border-lg-bottom-0 mr-0 mr-lg-3 edge-item-fix position-relative flex-wrap flex-justify-between d-flex flex-items-center ">
+                <details class="HeaderMenu-details details-overlay details-reset width-full">
+                  <summary class="HeaderMenu-summary HeaderMenu-link px-0 py-3 border-0 no-wrap d-block d-lg-inline-block">
+                    Pricing
+                    <svg x="0px" y="0px" viewBox="0 0 14 8" xml:space="preserve" fill="none" class="icon-chevon-down-mktg position-absolute position-lg-relative">
+                       <path d="M1,1l6.2,6L13,1"></path>
+                    </svg>
+                  </summary>
+
+                  <div class="dropdown-menu flex-auto rounded-1 bg-white px-0 pt-2 pb-4 mt-0 p-lg-4 position-relative position-lg-absolute left-0 left-lg-n4">
+                    <a href="/pricing" class="pb-2 lh-condensed-ultra d-block link-gray-dark no-underline h5 Bump-link--hover" data-ga-click="(Logged out) Header, go to Pricing">Plans <span class="Bump-link-symbol float-right text-normal text-gray-light">&rarr;</span></a>
+
+                    <ul class="list-style-none mb-3">
+                      <li class="edge-item-fix"><a href="/pricing#feature-comparison" class="py-2 lh-condensed-ultra d-block link-gray no-underline f5" data-ga-click="(Logged out) Header, go to Compare plans">Compare plans</a></li>
+                      <li class="edge-item-fix"><a href="https://enterprise.github.com/contact" class="py-2 lh-condensed-ultra d-block link-gray no-underline f5" data-ga-click="(Logged out) Header, go to Contact Sales">Contact Sales</a></li>
+                    </ul>
+
+                    <ul class="list-style-none mb-0 border-lg-top pt-lg-3">
+                      <li class="edge-item-fix"><a href="/nonprofit" class="py-2 lh-condensed-ultra d-block no-underline link-gray-dark no-underline h5 Bump-link--hover" data-ga-click="(Logged out) Header, go to Nonprofits">Nonprofit <span class="Bump-link-symbol float-right text-normal text-gray-light">&rarr;</span></a></li>
+                      <li class="edge-item-fix"><a href="https://education.github.com" class="py-2 pb-0 lh-condensed-ultra d-block no-underline link-gray-dark no-underline h5 Bump-link--hover"  data-ga-click="(Logged out) Header, go to Education">Education <span class="Bump-link-symbol float-right text-normal text-gray-light">&rarr;</span></a></li>
+                    </ul>
+                  </div>
+                </details>
+              </li>
+          </ul>
+        </nav>
+
+      <div class="d-lg-flex flex-items-center px-3 px-lg-0 text-center text-lg-left">
+          <div class="d-lg-flex mb-3 mb-lg-0">
+              <div class="header-search header-search-current js-header-search-current flex-auto js-site-search position-relative flex-self-stretch flex-md-self-auto mb-3 mb-md-0 mr-0 mr-md-3 scoped-search site-scoped-search js-jump-to js-header-search-current-jump-to"
+  role="combobox"
+  aria-owns="jump-to-results"
+  aria-label="Search or jump to"
+  aria-haspopup="listbox"
+  aria-expanded="false"
+>
+  <div class="position-relative">
+    <!-- '"` --><!-- </textarea></xmp> --></option></form><form class="js-site-search-form" role="search" aria-label="Site" data-scope-type="Repository" data-scope-id="3248308" data-scoped-search-url="/karlseguin/the-little-redis-book/search" data-unscoped-search-url="/search" action="/karlseguin/the-little-redis-book/search" accept-charset="UTF-8" method="get">
+      <label class="form-control input-sm header-search-wrapper p-0 js-chromeless-input-container header-search-wrapper-jump-to position-relative d-flex flex-justify-between flex-items-center">
+        <input type="text"
+          class="form-control input-sm header-search-input jump-to-field js-jump-to-field js-site-search-focus js-site-search-field is-clearable"
+          data-hotkey="s,/"
+          name="q"
+          value=""
+          placeholder="Search"
+          data-unscoped-placeholder="Search GitHub"
+          data-scoped-placeholder="Search"
+          autocapitalize="off"
+          aria-autocomplete="list"
+          aria-controls="jump-to-results"
+          aria-label="Search"
+          data-jump-to-suggestions-path="/_graphql/GetSuggestedNavigationDestinations"
+          spellcheck="false"
+          autocomplete="off"
+          >
+          <input type="hidden" data-csrf="true" class="js-data-jump-to-suggestions-path-csrf" value="KRAd5uOvns7sYeu9xz7az3WaqhSr/znp0uK4PnClfI6pjZtJ5zAOlEeJnSi33kl1uC19UVJbPCFyKSRMG4RujQ==" />
+          <input type="hidden" class="js-site-search-type-field" name="type" >
+            <img src="https://github.githubassets.com/images/search-key-slash.svg" alt="" class="mr-2 header-search-key-slash">
+
+            <div class="Box position-absolute overflow-hidden d-none jump-to-suggestions js-jump-to-suggestions-container">
+              
+<ul class="d-none js-jump-to-suggestions-template-container">
+  
+
+<li class="d-flex flex-justify-start flex-items-center p-0 f5 navigation-item js-navigation-item js-jump-to-suggestion" role="option">
+  <a tabindex="-1" class="no-underline d-flex flex-auto flex-items-center jump-to-suggestions-path js-jump-to-suggestion-path js-navigation-open p-2" href="">
+    <div class="jump-to-octicon js-jump-to-octicon flex-shrink-0 mr-2 text-center d-none">
+      <svg height="16" width="16" class="octicon octicon-repo flex-shrink-0 js-jump-to-octicon-repo d-none" title="Repository" aria-label="Repository" viewBox="0 0 16 16" version="1.1" role="img"><path fill-rule="evenodd" d="M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8zM5 12.25v3.25a.25.25 0 00.4.2l1.45-1.087a.25.25 0 01.3 0L8.6 15.7a.25.25 0 00.4-.2v-3.25a.25.25 0 00-.25-.25h-3.5a.25.25 0 00-.25.25z"></path></svg>
+      <svg height="16" width="16" class="octicon octicon-project flex-shrink-0 js-jump-to-octicon-project d-none" title="Project" aria-label="Project" viewBox="0 0 16 16" version="1.1" role="img"><path fill-rule="evenodd" d="M1.75 0A1.75 1.75 0 000 1.75v12.5C0 15.216.784 16 1.75 16h12.5A1.75 1.75 0 0016 14.25V1.75A1.75 1.75 0 0014.25 0H1.75zM1.5 1.75a.25.25 0 01.25-.25h12.5a.25.25 0 01.25.25v12.5a.25.25 0 01-.25.25H1.75a.25.25 0 01-.25-.25V1.75zM11.75 3a.75.75 0 00-.75.75v7.5a.75.75 0 001.5 0v-7.5a.75.75 0 00-.75-.75zm-8.25.75a.75.75 0 011.5 0v5.5a.75.75 0 01-1.5 0v-5.5zM8 3a.75.75 0 00-.75.75v3.5a.75.75 0 001.5 0v-3.5A.75.75 0 008 3z"></path></svg>
+      <svg height="16" width="16" class="octicon octicon-search flex-shrink-0 js-jump-to-octicon-search d-none" title="Search" aria-label="Search" viewBox="0 0 16 16" version="1.1" role="img"><path fill-rule="evenodd" d="M11.5 7a4.499 4.499 0 11-8.998 0A4.499 4.499 0 0111.5 7zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04z"></path></svg>
+    </div>
+
+    <img class="avatar mr-2 flex-shrink-0 js-jump-to-suggestion-avatar d-none" alt="" aria-label="Team" src="" width="28" height="28">
+
+    <div class="jump-to-suggestion-name js-jump-to-suggestion-name flex-auto overflow-hidden text-left no-wrap css-truncate css-truncate-target">
+    </div>
+
+    <div class="border rounded-1 flex-shrink-0 bg-gray px-1 text-gray-light ml-1 f6 d-none js-jump-to-badge-search">
+      <span class="js-jump-to-badge-search-text-default d-none" aria-label="in this repository">
+        In this repository
+      </span>
+      <span class="js-jump-to-badge-search-text-global d-none" aria-label="in all of GitHub">
+        All GitHub
+      </span>
+      <span aria-hidden="true" class="d-inline-block ml-1 v-align-middle">↵</span>
+    </div>
+
+    <div aria-hidden="true" class="border rounded-1 flex-shrink-0 bg-gray px-1 text-gray-light ml-1 f6 d-none d-on-nav-focus js-jump-to-badge-jump">
+      Jump to
+      <span class="d-inline-block ml-1 v-align-middle">↵</span>
+    </div>
+  </a>
+</li>
+
+</ul>
+
+<ul class="d-none js-jump-to-no-results-template-container">
+  <li class="d-flex flex-justify-center flex-items-center f5 d-none js-jump-to-suggestion p-2">
+    <span class="text-gray">No suggested jump to results</span>
+  </li>
+</ul>
+
+<ul id="jump-to-results" role="listbox" class="p-0 m-0 js-navigation-container jump-to-suggestions-results-container js-jump-to-suggestions-results-container">
+  
+
+<li class="d-flex flex-justify-start flex-items-center p-0 f5 navigation-item js-navigation-item js-jump-to-scoped-search d-none" role="option">
+  <a tabindex="-1" class="no-underline d-flex flex-auto flex-items-center jump-to-suggestions-path js-jump-to-suggestion-path js-navigation-open p-2" href="">
+    <div class="jump-to-octicon js-jump-to-octicon flex-shrink-0 mr-2 text-center d-none">
+      <svg height="16" width="16" class="octicon octicon-repo flex-shrink-0 js-jump-to-octicon-repo d-none" title="Repository" aria-label="Repository" viewBox="0 0 16 16" version="1.1" role="img"><path fill-rule="evenodd" d="M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8zM5 12.25v3.25a.25.25 0 00.4.2l1.45-1.087a.25.25 0 01.3 0L8.6 15.7a.25.25 0 00.4-.2v-3.25a.25.25 0 00-.25-.25h-3.5a.25.25 0 00-.25.25z"></path></svg>
+      <svg height="16" width="16" class="octicon octicon-project flex-shrink-0 js-jump-to-octicon-project d-none" title="Project" aria-label="Project" viewBox="0 0 16 16" version="1.1" role="img"><path fill-rule="evenodd" d="M1.75 0A1.75 1.75 0 000 1.75v12.5C0 15.216.784 16 1.75 16h12.5A1.75 1.75 0 0016 14.25V1.75A1.75 1.75 0 0014.25 0H1.75zM1.5 1.75a.25.25 0 01.25-.25h12.5a.25.25 0 01.25.25v12.5a.25.25 0 01-.25.25H1.75a.25.25 0 01-.25-.25V1.75zM11.75 3a.75.75 0 00-.75.75v7.5a.75.75 0 001.5 0v-7.5a.75.75 0 00-.75-.75zm-8.25.75a.75.75 0 011.5 0v5.5a.75.75 0 01-1.5 0v-5.5zM8 3a.75.75 0 00-.75.75v3.5a.75.75 0 001.5 0v-3.5A.75.75 0 008 3z"></path></svg>
+      <svg height="16" width="16" class="octicon octicon-search flex-shrink-0 js-jump-to-octicon-search d-none" title="Search" aria-label="Search" viewBox="0 0 16 16" version="1.1" role="img"><path fill-rule="evenodd" d="M11.5 7a4.499 4.499 0 11-8.998 0A4.499 4.499 0 0111.5 7zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04z"></path></svg>
+    </div>
+
+    <img class="avatar mr-2 flex-shrink-0 js-jump-to-suggestion-avatar d-none" alt="" aria-label="Team" src="" width="28" height="28">
+
+    <div class="jump-to-suggestion-name js-jump-to-suggestion-name flex-auto overflow-hidden text-left no-wrap css-truncate css-truncate-target">
+    </div>
+
+    <div class="border rounded-1 flex-shrink-0 bg-gray px-1 text-gray-light ml-1 f6 d-none js-jump-to-badge-search">
+      <span class="js-jump-to-badge-search-text-default d-none" aria-label="in this repository">
+        In this repository
+      </span>
+      <span class="js-jump-to-badge-search-text-global d-none" aria-label="in all of GitHub">
+        All GitHub
+      </span>
+      <span aria-hidden="true" class="d-inline-block ml-1 v-align-middle">↵</span>
+    </div>
+
+    <div aria-hidden="true" class="border rounded-1 flex-shrink-0 bg-gray px-1 text-gray-light ml-1 f6 d-none d-on-nav-focus js-jump-to-badge-jump">
+      Jump to
+      <span class="d-inline-block ml-1 v-align-middle">↵</span>
+    </div>
+  </a>
+</li>
+
+  
+
+<li class="d-flex flex-justify-start flex-items-center p-0 f5 navigation-item js-navigation-item js-jump-to-global-search d-none" role="option">
+  <a tabindex="-1" class="no-underline d-flex flex-auto flex-items-center jump-to-suggestions-path js-jump-to-suggestion-path js-navigation-open p-2" href="">
+    <div class="jump-to-octicon js-jump-to-octicon flex-shrink-0 mr-2 text-center d-none">
+      <svg height="16" width="16" class="octicon octicon-repo flex-shrink-0 js-jump-to-octicon-repo d-none" title="Repository" aria-label="Repository" viewBox="0 0 16 16" version="1.1" role="img"><path fill-rule="evenodd" d="M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8zM5 12.25v3.25a.25.25 0 00.4.2l1.45-1.087a.25.25 0 01.3 0L8.6 15.7a.25.25 0 00.4-.2v-3.25a.25.25 0 00-.25-.25h-3.5a.25.25 0 00-.25.25z"></path></svg>
+      <svg height="16" width="16" class="octicon octicon-project flex-shrink-0 js-jump-to-octicon-project d-none" title="Project" aria-label="Project" viewBox="0 0 16 16" version="1.1" role="img"><path fill-rule="evenodd" d="M1.75 0A1.75 1.75 0 000 1.75v12.5C0 15.216.784 16 1.75 16h12.5A1.75 1.75 0 0016 14.25V1.75A1.75 1.75 0 0014.25 0H1.75zM1.5 1.75a.25.25 0 01.25-.25h12.5a.25.25 0 01.25.25v12.5a.25.25 0 01-.25.25H1.75a.25.25 0 01-.25-.25V1.75zM11.75 3a.75.75 0 00-.75.75v7.5a.75.75 0 001.5 0v-7.5a.75.75 0 00-.75-.75zm-8.25.75a.75.75 0 011.5 0v5.5a.75.75 0 01-1.5 0v-5.5zM8 3a.75.75 0 00-.75.75v3.5a.75.75 0 001.5 0v-3.5A.75.75 0 008 3z"></path></svg>
+      <svg height="16" width="16" class="octicon octicon-search flex-shrink-0 js-jump-to-octicon-search d-none" title="Search" aria-label="Search" viewBox="0 0 16 16" version="1.1" role="img"><path fill-rule="evenodd" d="M11.5 7a4.499 4.499 0 11-8.998 0A4.499 4.499 0 0111.5 7zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04z"></path></svg>
+    </div>
+
+    <img class="avatar mr-2 flex-shrink-0 js-jump-to-suggestion-avatar d-none" alt="" aria-label="Team" src="" width="28" height="28">
+
+    <div class="jump-to-suggestion-name js-jump-to-suggestion-name flex-auto overflow-hidden text-left no-wrap css-truncate css-truncate-target">
+    </div>
+
+    <div class="border rounded-1 flex-shrink-0 bg-gray px-1 text-gray-light ml-1 f6 d-none js-jump-to-badge-search">
+      <span class="js-jump-to-badge-search-text-default d-none" aria-label="in this repository">
+        In this repository
+      </span>
+      <span class="js-jump-to-badge-search-text-global d-none" aria-label="in all of GitHub">
+        All GitHub
+      </span>
+      <span aria-hidden="true" class="d-inline-block ml-1 v-align-middle">↵</span>
+    </div>
+
+    <div aria-hidden="true" class="border rounded-1 flex-shrink-0 bg-gray px-1 text-gray-light ml-1 f6 d-none d-on-nav-focus js-jump-to-badge-jump">
+      Jump to
+      <span class="d-inline-block ml-1 v-align-middle">↵</span>
+    </div>
+  </a>
+</li>
+
+
+</ul>
+
+            </div>
+      </label>
+</form>  </div>
+</div>
+
+          </div>
+
+        <a href="/login?return_to=%2Fkarlseguin%2Fthe-little-redis-book%2Fblob%2Fmaster%2Fen%2Fredis.md"
+          class="HeaderMenu-link no-underline mr-3"
+          data-hydro-click="{&quot;event_type&quot;:&quot;authentication.click&quot;,&quot;payload&quot;:{&quot;location_in_page&quot;:&quot;site header menu&quot;,&quot;repository_id&quot;:null,&quot;auth_type&quot;:&quot;SIGN_UP&quot;,&quot;originating_url&quot;:&quot;https://github.com/karlseguin/the-little-redis-book/blob/master/en/redis.md&quot;,&quot;user_id&quot;:null}}" data-hydro-click-hmac="826ac7aa254e4414ab414a70f044424ca32f7d3b89b0bf46d092ec3d09ec15d1"
+          data-ga-click="(Logged out) Header, clicked Sign in, text:sign-in">
+          Sign&nbsp;in
+        </a>
+            <a href="/join?ref_cta=Sign+up&amp;ref_loc=header+logged+out&amp;ref_page=%2F%3Cuser-name%3E%2F%3Crepo-name%3E%2Fblob%2Fshow&amp;source=header-repo&amp;source_repo=karlseguin%2Fthe-little-redis-book"
+              class="HeaderMenu-link d-inline-block no-underline border border-gray-dark rounded-1 px-2 py-1"
+              data-hydro-click="{&quot;event_type&quot;:&quot;authentication.click&quot;,&quot;payload&quot;:{&quot;location_in_page&quot;:&quot;site header menu&quot;,&quot;repository_id&quot;:null,&quot;auth_type&quot;:&quot;SIGN_UP&quot;,&quot;originating_url&quot;:&quot;https://github.com/karlseguin/the-little-redis-book/blob/master/en/redis.md&quot;,&quot;user_id&quot;:null}}" data-hydro-click-hmac="826ac7aa254e4414ab414a70f044424ca32f7d3b89b0bf46d092ec3d09ec15d1"
+              data-ga-click="Sign up, click to sign up for account, ref_page:/&lt;user-name&gt;/&lt;repo-name&gt;/blob/show;ref_cta:Sign up;ref_loc:header logged out">
+              Sign&nbsp;up
+            </a>
+      </div>
+    </div>
+  </div>
+</header>
+
+    </div>
+
+  <div id="start-of-content" class="show-on-focus"></div>
+
+
+
+
+
+    <div data-pjax-replace id="js-flash-container">
+
+
+  <template class="js-flash-template">
+    <div class="flash flash-full  {{ className }}">
+  <div class=" px-2" >
+    <button class="flash-close js-flash-close" type="button" aria-label="Dismiss this message">
+      <svg class="octicon octicon-x" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"></path></svg>
+    </button>
+    
+      <div>{{ message }}</div>
+
+  </div>
+</div>
+  </template>
+</div>
+
+
+  
+
+  <include-fragment class="js-notification-shelf-include-fragment" data-base-src="https://github.com/notifications/beta/shelf"></include-fragment>
+
+
+
+  <div
+    class="application-main "
+    data-commit-hovercards-enabled
+    data-discussion-hovercards-enabled
+    data-issue-and-pr-hovercards-enabled
+  >
+        <div itemscope itemtype="http://schema.org/SoftwareSourceCode" class="">
+    <main  >
+      
+
+    
+
+
+
+
+
+
+  
+
+
+  <div class="bg-gray-light pt-3 hide-full-screen mb-5">
+
+      <div class="d-flex mb-3 px-3 px-md-4 px-lg-5">
+
+        <div class="flex-auto min-width-0 width-fit mr-3">
+            <h1 class=" d-flex flex-wrap flex-items-center break-word f3 text-normal">
+    <svg class="octicon octicon-repo text-gray mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8zM5 12.25v3.25a.25.25 0 00.4.2l1.45-1.087a.25.25 0 01.3 0L8.6 15.7a.25.25 0 00.4-.2v-3.25a.25.25 0 00-.25-.25h-3.5a.25.25 0 00-.25.25z"></path></svg>
+    <span class="author flex-self-stretch" itemprop="author">
+      <a class="url fn" rel="author" data-hovercard-type="user" data-hovercard-url="/users/karlseguin/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="/karlseguin">karlseguin</a>
+    </span>
+    <span class="mx-1 flex-self-stretch">/</span>
+  <strong itemprop="name" class="mr-2 flex-self-stretch">
+    <a data-pjax="#js-repo-pjax-container" class="" href="/karlseguin/the-little-redis-book">the-little-redis-book</a>
+  </strong>
+  
+</h1>
+
+
+        </div>
+
+          <ul class="pagehead-actions flex-shrink-0 d-none d-md-inline" style="padding: 2px 0;">
+
+  <li>
+          <a class="tooltipped tooltipped-s btn btn-sm btn-with-count" aria-label="You must be signed in to watch a repository" rel="nofollow" data-hydro-click="{&quot;event_type&quot;:&quot;authentication.click&quot;,&quot;payload&quot;:{&quot;location_in_page&quot;:&quot;notification subscription menu watch&quot;,&quot;repository_id&quot;:null,&quot;auth_type&quot;:&quot;LOG_IN&quot;,&quot;originating_url&quot;:&quot;https://github.com/karlseguin/the-little-redis-book/blob/master/en/redis.md&quot;,&quot;user_id&quot;:null}}" data-hydro-click-hmac="c8fee91b824ba6c0b1e5eee7b18264fc447e0dbf908b51b4c7e98fbaf2a049c4" href="/login?return_to=%2Fkarlseguin%2Fthe-little-redis-book">
+    <svg height="16" class="octicon octicon-eye" viewBox="0 0 16 16" version="1.1" width="16" aria-hidden="true"><path fill-rule="evenodd" d="M1.679 7.932c.412-.621 1.242-1.75 2.366-2.717C5.175 4.242 6.527 3.5 8 3.5c1.473 0 2.824.742 3.955 1.715 1.124.967 1.954 2.096 2.366 2.717a.119.119 0 010 .136c-.412.621-1.242 1.75-2.366 2.717C10.825 11.758 9.473 12.5 8 12.5c-1.473 0-2.824-.742-3.955-1.715C2.92 9.818 2.09 8.69 1.679 8.068a.119.119 0 010-.136zM8 2c-1.981 0-3.67.992-4.933 2.078C1.797 5.169.88 6.423.43 7.1a1.619 1.619 0 000 1.798c.45.678 1.367 1.932 2.637 3.024C4.329 13.008 6.019 14 8 14c1.981 0 3.67-.992 4.933-2.078 1.27-1.091 2.187-2.345 2.637-3.023a1.619 1.619 0 000-1.798c-.45-.678-1.367-1.932-2.637-3.023C11.671 2.992 9.981 2 8 2zm0 8a2 2 0 100-4 2 2 0 000 4z"></path></svg>
+    Watch
+</a>    <a class="social-count" href="/karlseguin/the-little-redis-book/watchers"
+       aria-label="75 users are watching this repository">
+      75
+    </a>
+
+  </li>
+
+  <li>
+          <a class="btn btn-sm btn-with-count  tooltipped tooltipped-s" aria-label="You must be signed in to star a repository" rel="nofollow" data-hydro-click="{&quot;event_type&quot;:&quot;authentication.click&quot;,&quot;payload&quot;:{&quot;location_in_page&quot;:&quot;star button&quot;,&quot;repository_id&quot;:3248308,&quot;auth_type&quot;:&quot;LOG_IN&quot;,&quot;originating_url&quot;:&quot;https://github.com/karlseguin/the-little-redis-book/blob/master/en/redis.md&quot;,&quot;user_id&quot;:null}}" data-hydro-click-hmac="bb48b78363e95a1838ca9700c0fdde9be0ba9658ed2cd6cf965a8a233982c722" href="/login?return_to=%2Fkarlseguin%2Fthe-little-redis-book">
+      <svg vertical_align="text_bottom" height="16" class="octicon octicon-star v-align-text-bottom" viewBox="0 0 16 16" version="1.1" width="16" aria-hidden="true"><path fill-rule="evenodd" d="M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25zm0 2.445L6.615 5.5a.75.75 0 01-.564.41l-3.097.45 2.24 2.184a.75.75 0 01.216.664l-.528 3.084 2.769-1.456a.75.75 0 01.698 0l2.77 1.456-.53-3.084a.75.75 0 01.216-.664l2.24-2.183-3.096-.45a.75.75 0 01-.564-.41L8 2.694v.001z"></path></svg>
+      Star
+</a>
+    <a class="social-count js-social-count" href="/karlseguin/the-little-redis-book/stargazers"
+      aria-label="1317 users starred this repository">
+      1.3k
+    </a>
+
+  </li>
+
+  <li>
+        <a class="btn btn-sm btn-with-count tooltipped tooltipped-s" aria-label="You must be signed in to fork a repository" rel="nofollow" data-hydro-click="{&quot;event_type&quot;:&quot;authentication.click&quot;,&quot;payload&quot;:{&quot;location_in_page&quot;:&quot;repo details fork button&quot;,&quot;repository_id&quot;:3248308,&quot;auth_type&quot;:&quot;LOG_IN&quot;,&quot;originating_url&quot;:&quot;https://github.com/karlseguin/the-little-redis-book/blob/master/en/redis.md&quot;,&quot;user_id&quot;:null}}" data-hydro-click-hmac="fd53e1eb85d7ad19b47c7f8767100a6e298975bb6f723e09dedb598edd15e8fb" href="/login?return_to=%2Fkarlseguin%2Fthe-little-redis-book">
+          <svg class="octicon octicon-repo-forked" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v.878A2.25 2.25 0 005.75 8.5h1.5v2.128a2.251 2.251 0 101.5 0V8.5h1.5a2.25 2.25 0 002.25-2.25v-.878a2.25 2.25 0 10-1.5 0v.878a.75.75 0 01-.75.75h-4.5A.75.75 0 015 6.25v-.878zm3.75 7.378a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm3-8.75a.75.75 0 100-1.5.75.75 0 000 1.5z"></path></svg>
+          Fork
+</a>
+      <a href="/karlseguin/the-little-redis-book/network/members" class="social-count"
+         aria-label="500 users forked this repository">
+        500
+      </a>
+  </li>
+</ul>
+
+      </div>
+        
+<nav aria-label="Repository" data-pjax="#js-repo-pjax-container" class="js-repo-nav js-sidenav-container-pjax js-responsive-underlinenav overflow-hidden UnderlineNav px-3 px-md-4 px-lg-5 bg-gray-light">
+  <ul class="UnderlineNav-body list-style-none ">
+          <li class="d-flex">
+        <a class="js-selected-navigation-item selected UnderlineNav-item hx_underlinenav-item no-wrap js-responsive-underlinenav-item" data-tab-item="code-tab" data-hotkey="g c" data-ga-click="Repository, Navigation click, Code tab" aria-current="page" data-selected-links="repo_source repo_downloads repo_commits repo_releases repo_tags repo_branches repo_packages repo_deployments /karlseguin/the-little-redis-book" href="/karlseguin/the-little-redis-book">
+              <svg classes="UnderlineNav-octicon" display="none inline" height="16" class="octicon octicon-code UnderlineNav-octicon d-none d-sm-inline" viewBox="0 0 16 16" version="1.1" width="16" aria-hidden="true"><path fill-rule="evenodd" d="M4.72 3.22a.75.75 0 011.06 1.06L2.06 8l3.72 3.72a.75.75 0 11-1.06 1.06L.47 8.53a.75.75 0 010-1.06l4.25-4.25zm6.56 0a.75.75 0 10-1.06 1.06L13.94 8l-3.72 3.72a.75.75 0 101.06 1.06l4.25-4.25a.75.75 0 000-1.06l-4.25-4.25z"></path></svg>
+            <span data-content="Code">Code</span>
+              <span title="Not available" class="Counter "></span>
+</a>      </li>
+      <li class="d-flex">
+        <a class="js-selected-navigation-item UnderlineNav-item hx_underlinenav-item no-wrap js-responsive-underlinenav-item" data-tab-item="issues-tab" data-hotkey="g i" data-ga-click="Repository, Navigation click, Issues tab" data-selected-links="repo_issues repo_labels repo_milestones /karlseguin/the-little-redis-book/issues" href="/karlseguin/the-little-redis-book/issues">
+              <svg classes="UnderlineNav-octicon" display="none inline" height="16" class="octicon octicon-issue-opened UnderlineNav-octicon d-none d-sm-inline" viewBox="0 0 16 16" version="1.1" width="16" aria-hidden="true"><path fill-rule="evenodd" d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm9 3a1 1 0 11-2 0 1 1 0 012 0zm-.25-6.25a.75.75 0 00-1.5 0v3.5a.75.75 0 001.5 0v-3.5z"></path></svg>
+            <span data-content="Issues">Issues</span>
+              <span title="2" class="Counter ">2</span>
+</a>      </li>
+      <li class="d-flex">
+        <a class="js-selected-navigation-item UnderlineNav-item hx_underlinenav-item no-wrap js-responsive-underlinenav-item" data-tab-item="pull-requests-tab" data-hotkey="g p" data-ga-click="Repository, Navigation click, Pull requests tab" data-selected-links="repo_pulls checks /karlseguin/the-little-redis-book/pulls" href="/karlseguin/the-little-redis-book/pulls">
+              <svg classes="UnderlineNav-octicon" display="none inline" height="16" class="octicon octicon-git-pull-request UnderlineNav-octicon d-none d-sm-inline" viewBox="0 0 16 16" version="1.1" width="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.177 3.073L9.573.677A.25.25 0 0110 .854v4.792a.25.25 0 01-.427.177L7.177 3.427a.25.25 0 010-.354zM3.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zM11 2.5h-1V4h1a1 1 0 011 1v5.628a2.251 2.251 0 101.5 0V5A2.5 2.5 0 0011 2.5zm1 10.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM3.75 12a.75.75 0 100 1.5.75.75 0 000-1.5z"></path></svg>
+            <span data-content="Pull requests">Pull requests</span>
+              <span title="1" class="Counter ">1</span>
+</a>      </li>
+      <li class="d-flex">
+        <a class="js-selected-navigation-item UnderlineNav-item hx_underlinenav-item no-wrap js-responsive-underlinenav-item" data-tab-item="actions-tab" data-hotkey="g a" data-ga-click="Repository, Navigation click, Actions tab" data-selected-links="repo_actions /karlseguin/the-little-redis-book/actions" href="/karlseguin/the-little-redis-book/actions">
+              <svg classes="UnderlineNav-octicon" display="none inline" height="16" class="octicon octicon-play UnderlineNav-octicon d-none d-sm-inline" viewBox="0 0 16 16" version="1.1" width="16" aria-hidden="true"><path fill-rule="evenodd" d="M1.5 8a6.5 6.5 0 1113 0 6.5 6.5 0 01-13 0zM8 0a8 8 0 100 16A8 8 0 008 0zM6.379 5.227A.25.25 0 006 5.442v5.117a.25.25 0 00.379.214l4.264-2.559a.25.25 0 000-.428L6.379 5.227z"></path></svg>
+            <span data-content="Actions">Actions</span>
+              <span title="Not available" class="Counter "></span>
+</a>      </li>
+      <li class="d-flex">
+        <a class="js-selected-navigation-item UnderlineNav-item hx_underlinenav-item no-wrap js-responsive-underlinenav-item" data-tab-item="projects-tab" data-hotkey="g b" data-ga-click="Repository, Navigation click, Projects tab" data-selected-links="repo_projects new_repo_project repo_project /karlseguin/the-little-redis-book/projects" href="/karlseguin/the-little-redis-book/projects">
+              <svg classes="UnderlineNav-octicon" display="none inline" height="16" class="octicon octicon-project UnderlineNav-octicon d-none d-sm-inline" viewBox="0 0 16 16" version="1.1" width="16" aria-hidden="true"><path fill-rule="evenodd" d="M1.75 0A1.75 1.75 0 000 1.75v12.5C0 15.216.784 16 1.75 16h12.5A1.75 1.75 0 0016 14.25V1.75A1.75 1.75 0 0014.25 0H1.75zM1.5 1.75a.25.25 0 01.25-.25h12.5a.25.25 0 01.25.25v12.5a.25.25 0 01-.25.25H1.75a.25.25 0 01-.25-.25V1.75zM11.75 3a.75.75 0 00-.75.75v7.5a.75.75 0 001.5 0v-7.5a.75.75 0 00-.75-.75zm-8.25.75a.75.75 0 011.5 0v5.5a.75.75 0 01-1.5 0v-5.5zM8 3a.75.75 0 00-.75.75v3.5a.75.75 0 001.5 0v-3.5A.75.75 0 008 3z"></path></svg>
+            <span data-content="Projects">Projects</span>
+              <span title="0" hidden="hidden" class="Counter ">0</span>
+</a>      </li>
+      <li class="d-flex">
+        <a class="js-selected-navigation-item UnderlineNav-item hx_underlinenav-item no-wrap js-responsive-underlinenav-item" data-tab-item="security-tab" data-hotkey="g s" data-ga-click="Repository, Navigation click, Security tab" data-selected-links="security overview alerts policy token_scanning code_scanning /karlseguin/the-little-redis-book/security" href="/karlseguin/the-little-redis-book/security">
+              <svg classes="UnderlineNav-octicon" display="none inline" height="16" class="octicon octicon-shield UnderlineNav-octicon d-none d-sm-inline" viewBox="0 0 16 16" version="1.1" width="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.467.133a1.75 1.75 0 011.066 0l5.25 1.68A1.75 1.75 0 0115 3.48V7c0 1.566-.32 3.182-1.303 4.682-.983 1.498-2.585 2.813-5.032 3.855a1.7 1.7 0 01-1.33 0c-2.447-1.042-4.049-2.357-5.032-3.855C1.32 10.182 1 8.566 1 7V3.48a1.75 1.75 0 011.217-1.667l5.25-1.68zm.61 1.429a.25.25 0 00-.153 0l-5.25 1.68a.25.25 0 00-.174.238V7c0 1.358.275 2.666 1.057 3.86.784 1.194 2.121 2.34 4.366 3.297a.2.2 0 00.154 0c2.245-.956 3.582-2.104 4.366-3.298C13.225 9.666 13.5 8.36 13.5 7V3.48a.25.25 0 00-.174-.237l-5.25-1.68zM9 10.5a1 1 0 11-2 0 1 1 0 012 0zm-.25-5.75a.75.75 0 10-1.5 0v3a.75.75 0 001.5 0v-3z"></path></svg>
+            <span data-content="Security">Security</span>
+              <include-fragment src="/karlseguin/the-little-redis-book/security/overall-count" accept="text/fragment+html"></include-fragment>
+</a>      </li>
+      <li class="d-flex">
+        <a class="js-selected-navigation-item UnderlineNav-item hx_underlinenav-item no-wrap js-responsive-underlinenav-item" data-tab-item="insights-tab" data-ga-click="Repository, Navigation click, Insights tab" data-selected-links="repo_graphs repo_contributors dependency_graph dependabot_updates pulse people /karlseguin/the-little-redis-book/pulse" href="/karlseguin/the-little-redis-book/pulse">
+              <svg classes="UnderlineNav-octicon" display="none inline" height="16" class="octicon octicon-graph UnderlineNav-octicon d-none d-sm-inline" viewBox="0 0 16 16" version="1.1" width="16" aria-hidden="true"><path fill-rule="evenodd" d="M1.5 1.75a.75.75 0 00-1.5 0v12.5c0 .414.336.75.75.75h14.5a.75.75 0 000-1.5H1.5V1.75zm14.28 2.53a.75.75 0 00-1.06-1.06L10 7.94 7.53 5.47a.75.75 0 00-1.06 0L3.22 8.72a.75.75 0 001.06 1.06L7 7.06l2.47 2.47a.75.75 0 001.06 0l5.25-5.25z"></path></svg>
+            <span data-content="Insights">Insights</span>
+              <span title="Not available" class="Counter "></span>
+</a>      </li>
+
+</ul>        <div class="position-absolute right-0 pr-3 pr-md-4 pr-lg-5 js-responsive-underlinenav-overflow" style="visibility:hidden;">
+      <details class="details-overlay details-reset position-relative">
+  <summary role="button">
+    <div class="UnderlineNav-item mr-0 border-0">
+            <svg class="octicon octicon-kebab-horizontal" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M8 9a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM1.5 9a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm13 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"></path></svg>
+            <span class="sr-only">More</span>
+          </div>
+</summary>  <div>
+    <details-menu role="menu" class="dropdown-menu dropdown-menu-sw ">
+  
+            <ul>
+                <li data-menu-item="code-tab" hidden>
+                  <a role="menuitem" class="js-selected-navigation-item dropdown-item" data-selected-links=" /karlseguin/the-little-redis-book" href="/karlseguin/the-little-redis-book">
+                    Code
+</a>                </li>
+                <li data-menu-item="issues-tab" hidden>
+                  <a role="menuitem" class="js-selected-navigation-item dropdown-item" data-selected-links=" /karlseguin/the-little-redis-book/issues" href="/karlseguin/the-little-redis-book/issues">
+                    Issues
+</a>                </li>
+                <li data-menu-item="pull-requests-tab" hidden>
+                  <a role="menuitem" class="js-selected-navigation-item dropdown-item" data-selected-links=" /karlseguin/the-little-redis-book/pulls" href="/karlseguin/the-little-redis-book/pulls">
+                    Pull requests
+</a>                </li>
+                <li data-menu-item="actions-tab" hidden>
+                  <a role="menuitem" class="js-selected-navigation-item dropdown-item" data-selected-links=" /karlseguin/the-little-redis-book/actions" href="/karlseguin/the-little-redis-book/actions">
+                    Actions
+</a>                </li>
+                <li data-menu-item="projects-tab" hidden>
+                  <a role="menuitem" class="js-selected-navigation-item dropdown-item" data-selected-links=" /karlseguin/the-little-redis-book/projects" href="/karlseguin/the-little-redis-book/projects">
+                    Projects
+</a>                </li>
+                <li data-menu-item="security-tab" hidden>
+                  <a role="menuitem" class="js-selected-navigation-item dropdown-item" data-selected-links=" /karlseguin/the-little-redis-book/security" href="/karlseguin/the-little-redis-book/security">
+                    Security
+</a>                </li>
+                <li data-menu-item="insights-tab" hidden>
+                  <a role="menuitem" class="js-selected-navigation-item dropdown-item" data-selected-links=" /karlseguin/the-little-redis-book/pulse" href="/karlseguin/the-little-redis-book/pulse">
+                    Insights
+</a>                </li>
+            </ul>
+
+</details-menu>
+</div></details>    </div>
+
+</nav>
+  </div>
+
+
+<div class="container-xl clearfix new-discussion-timeline px-3 px-md-4 px-lg-5">
+  <div class="repository-content " >
+
+    
+      
+  
+
+
+    <a class="d-none js-permalink-shortcut" data-hotkey="y" href="/karlseguin/the-little-redis-book/blob/8be5f049f69b5238ffe098cc1cc2262ade6ab8b4/en/redis.md">Permalink</a>
+
+    <!-- blob contrib key: blob_contributors:v22:9d4e1444b0fa6845886063014e6c633527991de6ff4e292843988e4af5910608 -->
+      <signup-prompt class="signup-prompt-bg rounded-1" data-prompt="signup" hidden>
+    <div class="signup-prompt p-4 text-center mb-4 rounded-1">
+      <div class="position-relative">
+        <button
+          type="button"
+          class="position-absolute top-0 right-0 btn-link link-gray"
+          data-action="click:signup-prompt#dismiss"
+          data-ga-click="(Logged out) Sign up prompt, clicked Dismiss, text:dismiss"
+        >
+          Dismiss
+        </button>
+        <h3 class="pt-2">Join GitHub today</h3>
+        <p class="col-6 mx-auto">GitHub is home to over 50 million developers working together to host and review code, manage projects, and build software together.</p>
+        <a class="btn btn-primary" data-ga-click="(Logged out) Sign up prompt, clicked Sign up, text:sign-up" data-hydro-click="{&quot;event_type&quot;:&quot;authentication.click&quot;,&quot;payload&quot;:{&quot;location_in_page&quot;:&quot;files signup prompt&quot;,&quot;repository_id&quot;:null,&quot;auth_type&quot;:&quot;SIGN_UP&quot;,&quot;originating_url&quot;:&quot;https://github.com/karlseguin/the-little-redis-book/blob/master/en/redis.md&quot;,&quot;user_id&quot;:null}}" data-hydro-click-hmac="ab2a2f3c4b865eee1c96b44cb49c97b0def7b8f5e0240f3e5f0c238d96a25053" href="/join?source=prompt-blob-show&amp;source_repo=karlseguin%2Fthe-little-redis-book">Sign up</a>
+      </div>
+    </div>
+  </signup-prompt>
+
+
+    <div class="d-flex flex-items-start flex-shrink-0 pb-3 flex-wrap flex-md-nowrap flex-justify-between flex-md-justify-start">
+      
+<div class="position-relative">
+  <details class="details-reset details-overlay mr-0 mb-0 " id="branch-select-menu">
+    <summary class="btn css-truncate"
+            data-hotkey="w"
+            title="Switch branches or tags">
+      <svg text="gray" height="16" class="octicon octicon-git-branch text-gray" viewBox="0 0 16 16" version="1.1" width="16" aria-hidden="true"><path fill-rule="evenodd" d="M11.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122V6A2.5 2.5 0 0110 8.5H6a1 1 0 00-1 1v1.128a2.251 2.251 0 11-1.5 0V5.372a2.25 2.25 0 111.5 0v1.836A2.492 2.492 0 016 7h4a1 1 0 001-1v-.628A2.25 2.25 0 019.5 3.25zM4.25 12a.75.75 0 100 1.5.75.75 0 000-1.5zM3.5 3.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0z"></path></svg>
+      <span class="css-truncate-target" data-menu-button>master</span>
+      <span class="dropdown-caret"></span>
+    </summary>
+
+    <details-menu class="SelectMenu SelectMenu--hasFilter" src="/karlseguin/the-little-redis-book/refs/master/en/redis.md?source_action=show&amp;source_controller=blob" preload>
+      <div class="SelectMenu-modal">
+        <include-fragment class="SelectMenu-loading" aria-label="Menu is loading">
+          <svg class="octicon octicon-octoface anim-pulse" height="32" viewBox="0 0 24 24" version="1.1" width="32" aria-hidden="true"><path d="M7.75 11c-.69 0-1.25.56-1.25 1.25v1.5a1.25 1.25 0 102.5 0v-1.5C9 11.56 8.44 11 7.75 11zm1.27 4.5a.469.469 0 01.48-.5h5a.47.47 0 01.48.5c-.116 1.316-.759 2.5-2.98 2.5s-2.864-1.184-2.98-2.5zm7.23-4.5c-.69 0-1.25.56-1.25 1.25v1.5a1.25 1.25 0 102.5 0v-1.5c0-.69-.56-1.25-1.25-1.25z"></path><path fill-rule="evenodd" d="M21.255 3.82a1.725 1.725 0 00-2.141-1.195c-.557.16-1.406.44-2.264.866-.78.386-1.647.93-2.293 1.677A18.442 18.442 0 0012 5c-.93 0-1.784.059-2.569.17-.645-.74-1.505-1.28-2.28-1.664a13.876 13.876 0 00-2.265-.866 1.725 1.725 0 00-2.141 1.196 23.645 23.645 0 00-.69 3.292c-.125.97-.191 2.07-.066 3.112C1.254 11.882 1 13.734 1 15.527 1 19.915 3.13 23 12 23c8.87 0 11-3.053 11-7.473 0-1.794-.255-3.647-.99-5.29.127-1.046.06-2.15-.066-3.125a23.652 23.652 0 00-.689-3.292zM20.5 14c.5 3.5-1.5 6.5-8.5 6.5s-9-3-8.5-6.5c.583-4 3-6 8.5-6s7.928 2 8.5 6z"></path></svg>
+        </include-fragment>
+      </div>
+    </details-menu>
+  </details>
+
+</div>
+
+      <h2 id="blob-path" class="breadcrumb flex-auto min-width-0 text-normal mx-0 mx-md-3 width-full width-md-auto flex-order-1 flex-md-order-none mt-3 mt-md-0">
+        <span class="js-repo-root text-bold"><span class="js-path-segment d-inline-block wb-break-all"><a data-pjax="true" href="/karlseguin/the-little-redis-book"><span>the-little-redis-book</span></a></span></span><span class="separator">/</span><span class="js-path-segment d-inline-block wb-break-all"><a data-pjax="true" href="/karlseguin/the-little-redis-book/tree/master/en"><span>en</span></a></span><span class="separator">/</span><strong class="final-path">redis.md</strong>
+      </h2>
+      <a href="/karlseguin/the-little-redis-book/find/master"
+            class="js-pjax-capture-input btn mr-2 d-none d-md-block"
+            data-pjax
+            data-hotkey="t">
+        Go to file
+      </a>
+
+      <details id="blob-more-options-details" class="details-overlay details-reset position-relative">
+  <summary role="button">
+    <svg aria-label="More options" height="16" class="octicon octicon-kebab-horizontal" viewBox="0 0 16 16" version="1.1" width="16" role="img"><path d="M8 9a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM1.5 9a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm13 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"></path></svg>
+</summary>  <div>
+    <ul class="dropdown-menu dropdown-menu-sw">
+            <li class="d-block d-md-none">
+              <a class="dropdown-item d-flex flex-items-baseline" data-hydro-click="{&quot;event_type&quot;:&quot;repository.click&quot;,&quot;payload&quot;:{&quot;target&quot;:&quot;FIND_FILE_BUTTON&quot;,&quot;repository_id&quot;:3248308,&quot;originating_url&quot;:&quot;https://github.com/karlseguin/the-little-redis-book/blob/master/en/redis.md&quot;,&quot;user_id&quot;:null}}" data-hydro-click-hmac="8f43c0b7dc537eaac73a94370f6e537e845edd91aa98994c3c841b7b850cb30e" data-ga-click="Repository, find file, location:repo overview" data-hotkey="t" data-pjax="true" href="/karlseguin/the-little-redis-book/find/master">
+                <span class="flex-auto">Go to file</span>
+                <span class="text-small text-gray" aria-hidden="true">T</span>
+</a>            </li>
+            <li data-toggle-for="blob-more-options-details">
+              <button type="button" data-toggle-for="jumpto-line-details-dialog" class="btn-link dropdown-item">
+                <span class="d-flex flex-items-baseline">
+                  <span class="flex-auto">Go to line</span>
+                  <span class="text-small text-gray" aria-hidden="true">L</span>
+                </span>
+              </button>
+            </li>
+            <li class="dropdown-divider" role="none"></li>
+            <li>
+              <clipboard-copy value="en/redis.md" class="dropdown-item cursor-pointer" data-toggle-for="blob-more-options-details">
+                Copy path
+              </clipboard-copy>
+            </li>
+          </ul>
+</div></details>    </div>
+
+
+
+    <div class="Box d-flex flex-column flex-shrink-0 mb-3">
+      
+  <div class="Box-header Box-header--blue Details js-details-container">
+      <div class="d-flex flex-items-center">
+        <span class="flex-shrink-0 ml-n1 mr-n1 mt-n1 mb-n1">
+          <a rel="author" data-skip-pjax="true" data-hovercard-type="user" data-hovercard-url="/users/karlseguin/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="/karlseguin"><img class="avatar avatar-user" src="https://avatars0.githubusercontent.com/u/206480?s=48&amp;v=4" width="24" height="24" alt="@karlseguin" /></a>
+        </span>
+        <div class="flex-1 d-flex flex-items-center ml-3 min-width-0">
+          <div class="css-truncate css-truncate-overflow">
+            <a class="text-bold link-gray-dark" rel="author" data-hovercard-type="user" data-hovercard-url="/users/karlseguin/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="/karlseguin">karlseguin</a>
+
+              <span>
+                <a data-pjax="true" title="fix for #38 (referenced version)" class="link-gray" href="/karlseguin/the-little-redis-book/commit/d9d3ecdbbcd261d2ee04ab6213c4722d34e46166">fix for</a> <a class="issue-link js-issue-link" data-error-text="Failed to load title" data-id="100725656" data-permission-text="Title is private" data-url="https://github.com/karlseguin/the-little-redis-book/issues/38" data-hovercard-type="issue" data-hovercard-url="/karlseguin/the-little-redis-book/issues/38/hovercard" href="https://github.com/karlseguin/the-little-redis-book/issues/38">#38</a> <a data-pjax="true" title="fix for #38 (referenced version)" class="link-gray" href="/karlseguin/the-little-redis-book/commit/d9d3ecdbbcd261d2ee04ab6213c4722d34e46166">(referenced version)</a>
+              </span>
+          </div>
+
+
+          <span class="ml-2">
+            <include-fragment accept="text/fragment+html" src="/karlseguin/the-little-redis-book/commit/d9d3ecdbbcd261d2ee04ab6213c4722d34e46166/rollup?direction=e" class="d-inline"></include-fragment>
+          </span>
+        </div>
+        <div class="ml-3 d-flex flex-shrink-0 flex-items-center flex-justify-end text-gray no-wrap">
+          <span class="d-none d-md-inline">
+            <span>Latest commit</span>
+            <a class="text-small text-mono link-gray" href="/karlseguin/the-little-redis-book/commit/d9d3ecdbbcd261d2ee04ab6213c4722d34e46166" data-pjax>d9d3ecd</a>
+            <span itemprop="dateModified"><relative-time datetime="2015-08-13T11:09:47Z" class="no-wrap">Aug 13, 2015</relative-time></span>
+          </span>
+
+          <a data-pjax href="/karlseguin/the-little-redis-book/commits/master/en/redis.md" class="ml-3 no-wrap link-gray-dark no-underline">
+            <svg text="gray" height="16" class="octicon octicon-history text-gray" viewBox="0 0 16 16" version="1.1" width="16" aria-hidden="true"><path fill-rule="evenodd" d="M1.643 3.143L.427 1.927A.25.25 0 000 2.104V5.75c0 .138.112.25.25.25h3.646a.25.25 0 00.177-.427L2.715 4.215a6.5 6.5 0 11-1.18 4.458.75.75 0 10-1.493.154 8.001 8.001 0 101.6-5.684zM7.75 4a.75.75 0 01.75.75v2.992l2.028.812a.75.75 0 01-.557 1.392l-2.5-1A.75.75 0 017 8.25v-3.5A.75.75 0 017.75 4z"></path></svg>
+            <span class="d-none d-sm-inline">
+              <strong>History</strong>
+            </span>
+          </a>
+        </div>
+      </div>
+
+  </div>
+
+  <div class="Box-body d-flex flex-items-center flex-auto border-bottom-0 flex-wrap" >
+    <details class="details-reset details-overlay details-overlay-dark lh-default text-gray-dark float-left mr-3" id="blob_contributors_box">
+      <summary class="link-gray-dark">
+        <svg text="gray" height="16" class="octicon octicon-people text-gray" viewBox="0 0 16 16" version="1.1" width="16" aria-hidden="true"><path fill-rule="evenodd" d="M5.5 3.5a2 2 0 100 4 2 2 0 000-4zM2 5.5a3.5 3.5 0 115.898 2.549 5.507 5.507 0 013.034 4.084.75.75 0 11-1.482.235 4.001 4.001 0 00-7.9 0 .75.75 0 01-1.482-.236A5.507 5.507 0 013.102 8.05 3.49 3.49 0 012 5.5zM11 4a.75.75 0 100 1.5 1.5 1.5 0 01.666 2.844.75.75 0 00-.416.672v.352a.75.75 0 00.574.73c1.2.289 2.162 1.2 2.522 2.372a.75.75 0 101.434-.44 5.01 5.01 0 00-2.56-3.012A3 3 0 0011 4z"></path></svg>
+        <strong>13</strong>
+        
+        contributors
+      </summary>
+      <details-dialog
+        class="Box Box--overlay d-flex flex-column anim-fade-in fast"
+        aria-label="Users who have contributed to this file"
+        src="/karlseguin/the-little-redis-book/contributors-list/master/en/redis.md" preload>
+        <div class="Box-header">
+          <button class="Box-btn-octicon btn-octicon float-right" type="button" aria-label="Close dialog" data-close-dialog>
+            <svg class="octicon octicon-x" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"></path></svg>
+          </button>
+          <h3 class="Box-title">
+            Users who have contributed to this file
+          </h3>
+        </div>
+        <include-fragment class="octocat-spinner my-3" aria-label="Loading..."></include-fragment>
+      </details-dialog>
+    </details>
+      <span class="">
+    <a class="avatar-link" data-hovercard-type="user" data-hovercard-url="/users/msolomon/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="/karlseguin/the-little-redis-book/commits/master/en/redis.md?author=msolomon">
+      <img class="avatar mr-2 avatar-user" src="https://avatars1.githubusercontent.com/u/267142?s=48&amp;v=4" width="24" height="24" alt="@msolomon" /> 
+</a>    <a class="avatar-link" data-hovercard-type="user" data-hovercard-url="/users/sillygwailo/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="/karlseguin/the-little-redis-book/commits/master/en/redis.md?author=sillygwailo">
+      <img class="avatar mr-2 avatar-user" src="https://avatars1.githubusercontent.com/u/54067?s=48&amp;v=4" width="24" height="24" alt="@sillygwailo" /> 
+</a>    <a class="avatar-link" data-hovercard-type="user" data-hovercard-url="/users/JasonLai256/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="/karlseguin/the-little-redis-book/commits/master/en/redis.md?author=JasonLai256">
+      <img class="avatar mr-2 avatar-user" src="https://avatars2.githubusercontent.com/u/1397996?s=48&amp;v=4" width="24" height="24" alt="@JasonLai256" /> 
+</a>    <a class="avatar-link" data-hovercard-type="user" data-hovercard-url="/users/karlseguin/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="/karlseguin/the-little-redis-book/commits/master/en/redis.md?author=karlseguin">
+      <img class="avatar mr-2 avatar-user" src="https://avatars0.githubusercontent.com/u/206480?s=48&amp;v=4" width="24" height="24" alt="@karlseguin" /> 
+</a>    <a class="avatar-link" data-hovercard-type="user" data-hovercard-url="/users/hdznrrd/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="/karlseguin/the-little-redis-book/commits/master/en/redis.md?author=hdznrrd">
+      <img class="avatar mr-2 avatar-user" src="https://avatars2.githubusercontent.com/u/453510?s=48&amp;v=4" width="24" height="24" alt="@hdznrrd" /> 
+</a>    <a class="avatar-link" data-hovercard-type="user" data-hovercard-url="/users/ognevsky/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="/karlseguin/the-little-redis-book/commits/master/en/redis.md?author=ognevsky">
+      <img class="avatar mr-2 avatar-user" src="https://avatars1.githubusercontent.com/u/175508?s=48&amp;v=4" width="24" height="24" alt="@ognevsky" /> 
+</a>    <a class="avatar-link" data-hovercard-type="user" data-hovercard-url="/users/fgm/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="/karlseguin/the-little-redis-book/commits/master/en/redis.md?author=fgm">
+      <img class="avatar mr-2 avatar-user" src="https://avatars1.githubusercontent.com/u/143311?s=48&amp;v=4" width="24" height="24" alt="@fgm" /> 
+</a>    <a class="avatar-link" data-hovercard-type="user" data-hovercard-url="/users/arturdryomov/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="/karlseguin/the-little-redis-book/commits/master/en/redis.md?author=arturdryomov">
+      <img class="avatar mr-2 avatar-user" src="https://avatars2.githubusercontent.com/u/200401?s=48&amp;v=4" width="24" height="24" alt="@arturdryomov" /> 
+</a>    <a class="avatar-link" data-hovercard-type="user" data-hovercard-url="/users/skyline75489/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="/karlseguin/the-little-redis-book/commits/master/en/redis.md?author=skyline75489">
+      <img class="avatar mr-2 avatar-user" src="https://avatars1.githubusercontent.com/u/4710575?s=48&amp;v=4" width="24" height="24" alt="@skyline75489" /> 
+</a>    <a class="avatar-link" data-hovercard-type="user" data-hovercard-url="/users/sandroconforto/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="/karlseguin/the-little-redis-book/commits/master/en/redis.md?author=sandroconforto">
+      <img class="avatar mr-2 avatar-user" src="https://avatars3.githubusercontent.com/u/1404326?s=48&amp;v=4" width="24" height="24" alt="@sandroconforto" /> 
+</a>    <a class="avatar-link" data-hovercard-type="user" data-hovercard-url="/users/kisielk/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="/karlseguin/the-little-redis-book/commits/master/en/redis.md?author=kisielk">
+      <img class="avatar mr-2 avatar-user" src="https://avatars0.githubusercontent.com/u/58618?s=48&amp;v=4" width="24" height="24" alt="@kisielk" /> 
+</a>    <a class="avatar-link" data-hovercard-type="user" data-hovercard-url="/users/encukou/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="/karlseguin/the-little-redis-book/commits/master/en/redis.md?author=encukou">
+      <img class="avatar mr-2 avatar-user" src="https://avatars1.githubusercontent.com/u/302922?s=48&amp;v=4" width="24" height="24" alt="@encukou" /> 
+</a>
+    <button type="button" class="btn-link lh-default" data-toggle-for="blob_contributors_box">
+      +1
+    </button>
+</span>
+
+  </div>
+    </div>
+
+
+
+
+
+
+    <div class="Box mt-3 position-relative
+      ">
+      
+<div class="Box-header py-2 d-flex flex-column flex-shrink-0 flex-md-row flex-md-items-center">
+  <div class="text-mono f6 flex-auto pr-3 flex-order-2 flex-md-order-1 mt-2 mt-md-0">
+
+      782 lines (434 sloc)
+      <span class="file-info-divider"></span>
+    60.8 KB
+  </div>
+
+  <div class="d-flex py-1 py-md-0 flex-auto flex-order-1 flex-md-order-2 flex-sm-grow-0 flex-justify-between">
+
+    <div class="BtnGroup">
+      <a href="/karlseguin/the-little-redis-book/raw/master/en/redis.md" id="raw-url" role="button" class="btn btn-sm BtnGroup-item ">Raw</a>
+        <a href="/karlseguin/the-little-redis-book/blame/master/en/redis.md" data-hotkey="b" role="button" class="btn js-update-url-with-hash btn-sm BtnGroup-item ">Blame</a>
+    </div>
+
+    <div>
+          <a class="btn-octicon tooltipped tooltipped-nw js-remove-unless-platform"
+             data-platforms="windows,mac"
+             href="https://desktop.github.com"
+             aria-label="Open this file in GitHub Desktop"
+             data-ga-click="Repository, open with desktop">
+              <svg class="octicon octicon-device-desktop" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M1.75 2.5h12.5a.25.25 0 01.25.25v7.5a.25.25 0 01-.25.25H1.75a.25.25 0 01-.25-.25v-7.5a.25.25 0 01.25-.25zM14.25 1H1.75A1.75 1.75 0 000 2.75v7.5C0 11.216.784 12 1.75 12h3.727c-.1 1.041-.52 1.872-1.292 2.757A.75.75 0 004.75 16h6.5a.75.75 0 00.565-1.243c-.772-.885-1.193-1.716-1.292-2.757h3.727A1.75 1.75 0 0016 10.25v-7.5A1.75 1.75 0 0014.25 1zM9.018 12H6.982a5.72 5.72 0 01-.765 2.5h3.566a5.72 5.72 0 01-.765-2.5z"></path></svg>
+          </a>
+
+          <a href="/login?return_to=%2Fkarlseguin%2Fthe-little-redis-book%2Fblob%2Fmaster%2Fen%2Fredis.md" class="btn-octicon disabled tooltipped tooltipped-nw"
+            aria-label="You must be signed in to make or propose changes">
+            <svg class="octicon octicon-pencil" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M11.013 1.427a1.75 1.75 0 012.474 0l1.086 1.086a1.75 1.75 0 010 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 01-.927-.928l.929-3.25a1.75 1.75 0 01.445-.758l8.61-8.61zm1.414 1.06a.25.25 0 00-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 000-.354l-1.086-1.086zM11.189 6.25L9.75 4.81l-6.286 6.287a.25.25 0 00-.064.108l-.558 1.953 1.953-.558a.249.249 0 00.108-.064l6.286-6.286z"></path></svg>
+          </a>
+          <a href="/login?return_to=%2Fkarlseguin%2Fthe-little-redis-book%2Fblob%2Fmaster%2Fen%2Fredis.md" class="btn-octicon btn-octicon-danger disabled tooltipped tooltipped-nw"
+            aria-label="You must be signed in to make or propose changes">
+            <svg class="octicon octicon-trashcan" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M6.5 1.75a.25.25 0 01.25-.25h2.5a.25.25 0 01.25.25V3h-3V1.75zm4.5 0V3h2.25a.75.75 0 010 1.5H2.75a.75.75 0 010-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75zM4.496 6.675a.75.75 0 10-1.492.15l.66 6.6A1.75 1.75 0 005.405 15h5.19c.9 0 1.652-.681 1.741-1.576l.66-6.6a.75.75 0 00-1.492-.149l-.66 6.6a.25.25 0 01-.249.225h-5.19a.25.25 0 01-.249-.225l-.66-6.6z"></path></svg>
+          </a>
+    </div>
+  </div>
+</div>
+
+      
+  <div id="readme" class="Box-body readme blob js-code-block-container p-5 p-xl-6 gist-border-0">
+    <article class="markdown-body entry-content container-lg" itemprop="text"><h1><a id="user-content-about-this-book" class="anchor" aria-hidden="true" href="#about-this-book"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>About This Book</h1>
+<h2><a id="user-content-license" class="anchor" aria-hidden="true" href="#license"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>License</h2>
+<p>The Little Redis Book is licensed under the Attribution-NonCommercial 3.0 Unported license. You should not have paid for this book.</p>
+<p>You are free to copy, distribute, modify or display the book. However, I ask that you always attribute the book to me, Karl Seguin, and do not use it for commercial purposes.</p>
+<p>You can see the <em>full text</em> of <strong>the license at</strong>:</p>
+<p><a href="http://creativecommons.org/licenses/by-nc/3.0/legalcode" rel="nofollow">http://creativecommons.org/licenses/by-nc/3.0/legalcode</a></p>
+<h2><a id="user-content-about-the-author" class="anchor" aria-hidden="true" href="#about-the-author"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>About The Author</h2>
+<p>Karl Seguin is a developer with experience across various fields and technologies. He's an active contributor to Open-Source Software projects, a technical writer and an occasional speaker. He's written various articles, as well as a few tools, about Redis. Redis powers the ranking and statistics of his free service for casual game developers: <a href="http://mogade.com/" rel="nofollow">mogade.com</a>.</p>
+<p>Karl wrote <a href="http://openmymind.net/2011/3/28/The-Little-MongoDB-Book/" rel="nofollow">The Little MongoDB Book</a>, the free and popular book about MongoDB.</p>
+<p>His blog can be found at <a href="http://openmymind.net" rel="nofollow">http://openmymind.net</a> and he tweets via <a href="http://twitter.com/karlseguin" rel="nofollow">@karlseguin</a></p>
+<h2><a id="user-content-with-thanks-to" class="anchor" aria-hidden="true" href="#with-thanks-to"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>With Thanks To</h2>
+<p>A special thanks to <a href="https://twitter.com/perryneal" rel="nofollow">Perry Neal</a> for lending me his eyes, mind and passion. You provided me with invaluable help. Thank you.</p>
+<h2><a id="user-content-latest-version" class="anchor" aria-hidden="true" href="#latest-version"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Latest Version</h2>
+<p>The latest source of this book is available at:
+<a href="http://github.com/karlseguin/the-little-redis-book">http://github.com/karlseguin/the-little-redis-book</a></p>
+<h1><a id="user-content-introduction" class="anchor" aria-hidden="true" href="#introduction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Introduction</h1>
+<p>Over the last couple years, the techniques and tools used for persisting and querying data have grown at an incredible pace. While it's safe to say that relational databases aren't going anywhere, we can also say that the ecosystem around data is never going to be the same.</p>
+<p>Of all the new tools and solutions, for me, Redis has been the most exciting. Why? First because it's unbelievably easy to learn. Hours is the right unit to use when talking about length of time it takes to get comfortable with Redis. Secondly, it solves a specific set of problems while at the same time being quite generic. What exactly does that mean? Redis doesn't try to be all things to all data. As you get to know Redis, it'll become increasingly evident what does and what does not belong in it. And when it does, as a developer, it's a great experience.</p>
+<p>While you can build a complete system using Redis only, I think most people will find that it supplements their more generic data solution - whether that be a traditional relational database, a document-oriented system, or something else. It's the kind of solution you use to implement specific features. In that way, it's similar to an indexing engine. You wouldn't build your entire application on Lucene. But when you need good search, it's a much better experience - for both you and your users. Of course, the similarities between Redis and indexing engines end there.</p>
+<p>The goal of this book is to build the foundation you'll need to master Redis. We'll focus on learning Redis' five data structures and look at various data modeling approaches. We'll also touch on some key administrative details and debugging techniques.</p>
+<h1><a id="user-content-getting-started" class="anchor" aria-hidden="true" href="#getting-started"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Getting Started</h1>
+<p>We all learn differently: some like to get their hands dirty, some like to watch videos, and some like to read. Nothing will help you understand Redis more than actually experiencing it. Redis is easy to install and comes with a simple shell that'll give us everything we need. Let's take a couple minutes and get it up and running on our machine.</p>
+<h2><a id="user-content-on-windows" class="anchor" aria-hidden="true" href="#on-windows"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>On Windows</h2>
+<p>Redis itself doesn't officially support Windows, but there are options available. You wouldn't run these in production, but I've never experienced any limitations while doing development.</p>
+<p>A port by Microsoft Open Technologies, Inc. can be found at <a href="https://github.com/MSOpenTech/redis">https://github.com/MSOpenTech/redis</a>. As of this writing the solution is not ready for use in production systems.</p>
+<p>Another solution, which has been available for some time, can be found at <a href="https://github.com/dmajkic/redis/downloads">https://github.com/dmajkic/redis/downloads</a>. You can download the most up to date version (which should be at the top of the list). Extract the zip file and, based on your architecture, open either the <code>64bit</code> or <code>32bit</code> folder.</p>
+<h2><a id="user-content-on-nix-and-macosx" class="anchor" aria-hidden="true" href="#on-nix-and-macosx"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>On *nix and MacOSX</h2>
+<p>For *nix and Mac users, building it from source is your best option. The instructions, along with the latest version number, are available at <a href="http://redis.io/download" rel="nofollow">http://redis.io/download</a>. At the time of this writing the latest version is 3.0.3; to install this version we would execute:</p>
+<pre><code>wget http://download.redis.io/releases/redis-3.0.3.tar.gz
+tar xzf redis-3.0.3.tar.gz
+cd redis-3.0.3
+make
+</code></pre>
+<p>(Alternatively, Redis is available via various package managers. For example, MacOSX users with Homebrew installed can simply type <code>brew install redis</code>.)</p>
+<p>If you built it from source, the binary outputs have been placed in the <code>src</code> directory. Navigate to the <code>src</code> directory by executing <code>cd src</code>.</p>
+<h2><a id="user-content-running-and-connecting-to-redis" class="anchor" aria-hidden="true" href="#running-and-connecting-to-redis"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Running and Connecting to Redis</h2>
+<p>If everything worked, the Redis binaries should be available at your fingertips. Redis has a handful of executables. We'll focus on the Redis server and the Redis command line interface (a DOS-like client). Let's start the server. In Windows, double click <code>redis-server</code>. On *nix/MacOSX run <code>./redis-server</code>.</p>
+<p>If you read the start up message you'll see a warning that the <code>redis.conf</code> file couldn't be found. Redis will instead use built-in defaults, which is fine for what we'll be doing.</p>
+<p>Next start the Redis console by either double clicking <code>redis-cli</code> (Windows) or running <code>./redis-cli</code> (*nix/MacOSX). This will connect to the locally-running server on the default port (6379).</p>
+<p>You can test that everything is working by entering <code>info</code> into the command line interface. You'll hopefully see a bunch of key-value pairs which provide a great deal of insight into the server's status.</p>
+<p>If you are having problems with the above setup I suggest you seek help in the <a href="https://groups.google.com/forum/#!forum/redis-db" rel="nofollow">official Redis support group</a>.</p>
+<h1><a id="user-content-redis-drivers" class="anchor" aria-hidden="true" href="#redis-drivers"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Redis Drivers</h1>
+<p>As you'll soon learn, Redis' API is best described as an explicit set of functions. It has a very simple and procedural feel to it. This means that whether you are using the command line tool, or a driver for your favorite language, things are very similar. Therefore, you shouldn't have any problems following along if you prefer to work from a programming language. If you want, head over to the <a href="http://redis.io/clients" rel="nofollow">client page</a> and download the appropriate driver.</p>
+<h1><a id="user-content-chapter-1---the-basics" class="anchor" aria-hidden="true" href="#chapter-1---the-basics"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Chapter 1 - The Basics</h1>
+<p>What makes Redis special? What types of problems does it solve? What should developers watch out for when using it? Before we can answer any of these questions, we need to understand what Redis is.</p>
+<p>Redis is often described as an in-memory persistent key-value store. I don't think that's an accurate description. Redis does hold all the data in memory (more on this in a bit), and it does write that out to disk for persistence, but it's much more than a simple key-value store. It's important to step beyond this misconception otherwise your perspective of Redis and the problems it solves will be too narrow.</p>
+<p>The reality is that Redis exposes five different data structures, only one of which is a typical key-value structure. Understanding these five data structures, how they work, what methods they expose and what you can model with them is the key to understanding Redis. First though, let's wrap our heads around what it means to expose data structures.</p>
+<p>If we were to apply this data structure concept to the relational world, we could say that databases expose a single data structure - tables. Tables are both complex and flexible. There isn't much you can't model, store or manipulate with tables. However, their generic nature isn't without drawbacks. Specifically, not everything is as simple, or as fast, as it ought to be. What if, rather than having a one-size-fits-all structure, we used more specialized structures? There might be some things we can't do (or at least, can't do very well), but surely we'd gain in simplicity and speed?</p>
+<p>Using specific data structures for specific problems? Isn't that how we code? You don't use a hashtable for every piece of data, nor do you use a scalar variable. To me, that defines Redis' approach. If you are dealing with scalars, lists, hashes, or sets, why not store them as scalars, lists, hashes and sets? Why should checking for the existence of a value be any more complex than calling <code>exists(key)</code> or slower than O(1) (constant time lookup which won't slow down regardless of how many items there are)?</p>
+<h1><a id="user-content-the-building-blocks" class="anchor" aria-hidden="true" href="#the-building-blocks"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>The Building Blocks</h1>
+<h2><a id="user-content-databases" class="anchor" aria-hidden="true" href="#databases"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Databases</h2>
+<p>Redis has the same basic concept of a database that you are already familiar with. A database contains a set of data. The typical use-case for a database is to group all of an application's data together and to keep it separate from another application's.</p>
+<p>In Redis, databases are simply identified by a number with the default database being number <code>0</code>. If you want to change to a different database you can do so via the <code>select</code> command. In the command line interface, type <code>select 1</code>. Redis should reply with an <code>OK</code> message and your prompt should change to something like <code>redis 127.0.0.1:6379[1]&gt;</code>. If you want to switch back to the default database, just enter <code>select 0</code> in the command line interface.</p>
+<h2><a id="user-content-commands-keys-and-values" class="anchor" aria-hidden="true" href="#commands-keys-and-values"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Commands, Keys and Values</h2>
+<p>While Redis is more than just a key-value store, at its core, every one of Redis' five data structures has at least a key and a value. It's imperative that we understand keys and values before moving on to other available pieces of information.</p>
+<p>Keys are how you identify pieces of data. We'll be dealing with keys a lot, but for now, it's good enough to know that a key might look like <code>users:leto</code>. One could reasonably expect such a key to contain information about a user named <code>leto</code>. The colon doesn't have any special meaning, as far as Redis is concerned, but using a separator is a common approach people use to organize their keys.</p>
+<p>Values represent the actual data associated with the key. They can be anything. Sometimes you'll store strings, sometimes integers, sometimes you'll store serialized objects (in JSON, XML or some other format). For the most part, Redis treats values as a byte array and doesn't care what they are. Note that different drivers handle serialization differently (some leave it up to you) so in this book we'll only talk about string, integer and JSON.</p>
+<p>Let's get our hands a little dirty. Enter the following command:</p>
+<pre><code>set users:leto '{"name": "leto", "planet": "dune", "likes": ["spice"]}'
+</code></pre>
+<p>This is the basic anatomy of a Redis command. First we have the actual command, in this case <code>set</code>. Next we have its parameters. The <code>set</code> command takes two parameters: the key we are setting and the value we are setting it to. Many, but not all, commands take a key (and when they do, it's often the first parameter). Can you guess how to retrieve this value? Hopefully you said (but don't worry if you weren't sure!):</p>
+<pre><code>get users:leto
+</code></pre>
+<p>Go ahead and play with some other combinations. Keys and values are fundamental concepts, and the <code>get</code> and <code>set</code> commands are the simplest way to play with them. Create more users, try different types of keys, try different values.</p>
+<h2><a id="user-content-querying" class="anchor" aria-hidden="true" href="#querying"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Querying</h2>
+<p>As we move forward, two things will become clear. As far as Redis is concerned, keys are everything and values are nothing. Or, put another way, Redis doesn't allow you to query an object's values. Given the above, we can't find the user(s) which live on planet <code>dune</code>.</p>
+<p>For many, this will cause some concern. We've lived in a world where data querying is so flexible and powerful that Redis' approach seems primitive and unpragmatic. Don't let it unsettle you too much. Remember, Redis isn't a one-size-fits-all solution. There'll be things that just don't belong in there (because of the querying limitations). Also, consider that in some cases you'll find new ways to model your data.</p>
+<p>We'll look at more concrete examples as we move on, but it's important that we understand this basic reality of Redis. It helps us understand why values can be anything - Redis never needs to read or understand them. Also, it helps us get our minds thinking about modeling in this new world.</p>
+<h2><a id="user-content-memory-and-persistence" class="anchor" aria-hidden="true" href="#memory-and-persistence"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Memory and Persistence</h2>
+<p>We mentioned before that Redis is an in-memory persistent store. With respect to persistence, by default, Redis snapshots the database to disk based on how many keys have changed. You configure it so that if X number of keys change, then save the database every Y seconds. By default, Redis will save the database every 60 seconds if 1000 or more keys have changed all the way to 15 minutes if 9 or less keys has changed.</p>
+<p>Alternatively (or in addition to snapshotting), Redis can run in append mode. Any time a key changes, an append-only file is updated on disk. In some cases it's acceptable to lose 60 seconds worth of data, in exchange for performance, should there be some hardware or software failure. In some cases such a loss is not acceptable. Redis gives you the option. In chapter 6 we'll see a third option, which is offloading persistence to a slave.</p>
+<p>With respect to memory, Redis keeps all your data in memory. The obvious implication of this is the cost of running Redis: RAM is still the most expensive part of server hardware.</p>
+<p>I do feel that some developers have lost touch with how little space data can take. The Complete Works of William Shakespeare takes roughly 5.5MB of storage. As for scaling, other solutions tend to be IO- or CPU-bound. Which limitation (RAM or IO) will require you to scale out to more machines really depends on the type of data and how you are storing and querying it. Unless you're storing large multimedia files in Redis, the in-memory aspect is probably a non-issue. For apps where it is an issue you'll likely be trading being IO-bound for being memory bound.</p>
+<p>Redis did add support for virtual memory. However, this feature has been seen as a failure (by Redis' own developers) and its use has been deprecated.</p>
+<p>(On a side note, that 5.5MB file of Shakespeare's complete works can be compressed down to roughly 2MB. Redis doesn't do auto-compression but, since it treats values as bytes, there's no reason you can't trade processing time for RAM by compressing/decompressing the data yourself.)</p>
+<h2><a id="user-content-putting-it-together" class="anchor" aria-hidden="true" href="#putting-it-together"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Putting It Together</h2>
+<p>We've touched on a number of high level topics. The last thing I want to do before diving into Redis is to bring some of those topics together. Specifically, query limitations, data structures and Redis' way to store data in memory.</p>
+<p>When you add those three things together you end up with something wonderful: speed. Some people think "Of course Redis is fast, everything's in memory." But that's only part of it. The real reason Redis shines versus other solutions is its specialized data structures.</p>
+<p>How fast? It depends on a lot of things - which commands you are using, the type of data, and so on. But Redis' performance tends to be measured in tens of thousands, or hundreds of thousands of operations <strong>per second</strong>. You can run <code>redis-benchmark</code> (which is in the same folder as the <code>redis-server</code> and <code>redis-cli</code>) to test it out yourself.</p>
+<p>I once changed code which used a traditional model to using Redis. A load test I wrote took over 5 minutes to finish using the relational model. It took about 150ms to complete in Redis. You won't always get that sort of massive gain, but it hopefully gives you an idea of what we are talking about.</p>
+<p>It's important to understand this aspect of Redis because it impacts how you interact with it. Developers with an SQL background often work at minimizing the number of round trips they make to the database. That's good advice for any system, including Redis. However, given that we are dealing with simpler data structures, we'll sometimes need to hit the Redis server multiple times to achieve our goal. Such data access patterns can feel unnatural at first, but in reality it tends to be an insignificant cost compared to the raw performance we gain.</p>
+<h2><a id="user-content-in-this-chapter" class="anchor" aria-hidden="true" href="#in-this-chapter"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>In This Chapter</h2>
+<p>Although we barely got to play with Redis, we did cover a wide range of topics. Don't worry if something isn't crystal clear - like querying. In the next chapter we'll go hands-on and any questions you have will hopefully answer themselves.</p>
+<p>The important takeaways from this chapter are:</p>
+<ul>
+<li>
+<p>Keys are strings which identify pieces of data (values)</p>
+</li>
+<li>
+<p>Values are arbitrary byte arrays that Redis doesn't care about</p>
+</li>
+<li>
+<p>Redis exposes (and is implemented as) five specialized data structures</p>
+</li>
+<li>
+<p>Combined, the above make Redis fast and easy to use, but not suitable for every scenario</p>
+</li>
+</ul>
+<h1><a id="user-content-chapter-2---the-data-structures" class="anchor" aria-hidden="true" href="#chapter-2---the-data-structures"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Chapter 2 - The Data Structures</h1>
+<p>It's time to look at Redis' five data structures. We'll explain what each data structure is, what methods are available and what type of feature/data you'd use it for.</p>
+<p>The only Redis constructs we've seen so far are commands, keys and values. So far, nothing about data structures has been concrete. When we used the <code>set</code> command, how did Redis know what data structure to use? It turns out that every command is specific to a data structure. For example when you use <code>set</code> you are storing the value in a string data structure. When you use <code>hset</code> you are storing it in a hash. Given the small size of Redis' vocabulary, it's quite manageable.</p>
+<p><strong><a href="http://redis.io/commands" rel="nofollow">Redis' website</a> has great reference documentation. There's no point in repeating the work they've already done. We'll only cover the most important commands needed to understand the purpose of a data structure.</strong></p>
+<p>There's nothing more important than having fun and trying things out. You can always erase all the values in your database by entering <code>flushdb</code>, so don't be shy and try doing crazy things!</p>
+<h2><a id="user-content-strings" class="anchor" aria-hidden="true" href="#strings"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Strings</h2>
+<p>Strings are the most basic data structures available in Redis. When you think of a key-value pair, you are thinking of strings. Don't get mixed up by the name, as always, your value can be anything. I prefer to call them "scalars", but maybe that's just me.</p>
+<p>We already saw a common use-case for strings, storing instances of objects by key. This is something that you'll make heavy use of:</p>
+<pre><code>set users:leto '{"name": leto, "planet": dune, "likes": ["spice"]}'
+</code></pre>
+<p>Additionally, Redis lets you do some common operations. For example <code>strlen &lt;key&gt;</code> can be used to get the length of a key's value; <code>getrange &lt;key&gt; &lt;start&gt; &lt;end&gt;</code> returns the specified range of a value; <code>append &lt;key&gt; &lt;value&gt;</code> appends the value to the existing value (or creates it if it doesn't exist already). Go ahead and try those out. This is what I get:</p>
+<pre><code>&gt; strlen users:leto
+(integer) 50
+
+&gt; getrange users:leto 31 48
+"\"likes\": [\"spice\"]"
+
+&gt; append users:leto " OVER 9000!!"
+(integer) 62
+</code></pre>
+<p>Now, you might be thinking, that's great, but it doesn't make sense. You can't meaningfully pull a range out of JSON or append a value. You are right, the lesson here is that some of the commands, especially with the string data structure, only make sense given specific type of data.</p>
+<p>Earlier we learnt that Redis doesn't care about your values. Most of the time that's true. However, a few string commands are specific to some types or structure of values. As a vague example, I could see the above <code>append</code> and <code>getrange</code> commands being useful in some custom space-efficient serialization. As a more concrete example I give you the <code>incr</code>, <code>incrby</code>, <code>decr</code> and <code>decrby</code> commands. These increment or decrement the value of a string:</p>
+<pre><code>&gt; incr stats:page:about
+(integer) 1
+&gt; incr stats:page:about
+(integer) 2
+
+&gt; incrby ratings:video:12333 5
+(integer) 5
+&gt; incrby ratings:video:12333 3
+(integer) 8
+</code></pre>
+<p>As you can imagine, Redis strings are great for analytics. Try incrementing <code>users:leto</code> (a non-integer value) and see what happens (you should get an error).</p>
+<p>A more advanced example is the <code>setbit</code> and <code>getbit</code> commands. There's a <a href="http://blog.getspool.com/2011/11/29/fast-easy-realtime-metrics-using-redis-bitmaps/" rel="nofollow">wonderful post</a> on how Spool uses these two commands to efficiently answer the question "how many unique visitors did we have today". For 128 million users a laptop generates the answer in less than 50ms and takes only 16MB of memory.</p>
+<p>It isn't important that you understand how bitmaps work, or how Spool uses them, but rather to understand that Redis strings are more powerful than they initially seem. Still, the most common cases are the ones we gave above: storing objects (complex or not) and counters. Also, since getting a value by key is so fast, strings are often used to cache data.</p>
+<h2><a id="user-content-hashes" class="anchor" aria-hidden="true" href="#hashes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Hashes</h2>
+<p>Hashes are a good example of why calling Redis a key-value store isn't quite accurate. You see, in a lot of ways, hashes are like strings. The important difference is that they provide an extra level of indirection: a field. Therefore, the hash equivalents of <code>set</code> and <code>get</code> are:</p>
+<pre><code>hset users:goku powerlevel 9000
+hget users:goku powerlevel
+</code></pre>
+<p>We can also set multiple fields at once, get multiple fields at once, get all fields and values, list all the fields or delete a specific field:</p>
+<pre><code>hmset users:goku race saiyan age 737
+hmget users:goku race powerlevel
+hgetall users:goku
+hkeys users:goku
+hdel users:goku age
+</code></pre>
+<p>As you can see, hashes give us a bit more control over plain strings. Rather than storing a user as a single serialized value, we could use a hash to get a more accurate representation. The benefit would be the ability to pull and update/delete specific pieces of data, without having to get or write the entire value.</p>
+<p>Looking at hashes from the perspective of a well-defined object, such as a user, is key to understanding how they work. And it's true that, for performance reasons, more granular control might be useful. However, in the next chapter we'll look at how hashes can be used to organize your data and make querying more practical. In my opinion, this is where hashes really shine.</p>
+<h2><a id="user-content-lists" class="anchor" aria-hidden="true" href="#lists"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Lists</h2>
+<p>Lists let you store and manipulate an array of values for a given key. You can add values to the list, get the first or last value and manipulate values at a given index. Lists maintain their order and have efficient index-based operations. We could have a <code>newusers</code> list which tracks the newest registered users to our site:</p>
+<pre><code>lpush newusers goku
+ltrim newusers 0 49
+</code></pre>
+<p>First we push a new user at the front of the list, then we trim it so that it only contains the last 50 users. This is a common pattern. <code>ltrim</code> is an O(N) operation, where N is the number of values we are removing. In this case, where we always trim after a single insert, it'll actually have a constant performance of O(1) (because N will always be equal to 1).</p>
+<p>This is also the first time that we are seeing a value in one key referencing a value in another. If we wanted to get the details of the last 10 users, we'd do the following combination:</p>
+<pre><code>ids = redis.lrange('newusers', 0, 9)
+redis.mget(*ids.map {|u| "users:#{u}"})
+</code></pre>
+<p>The above is a bit of Ruby which shows the type of multiple roundtrips we talked about before.</p>
+<p>Of course, lists aren't only good for storing references to other keys. The values can be anything. You could use lists to store logs or track the path a user is taking through a site. If you were building a game, you might use one to track queued user actions.</p>
+<h2><a id="user-content-sets" class="anchor" aria-hidden="true" href="#sets"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Sets</h2>
+<p>Sets are used to store unique values and provide a number of set-based operations, like unions. Sets aren't ordered but they provide efficient value-based operations. A friend's list is the classic example of using a set:</p>
+<pre><code>sadd friends:leto ghanima paul chani jessica
+sadd friends:duncan paul jessica alia
+</code></pre>
+<p>Regardless of how many friends a user has, we can efficiently tell (O(1)) whether userX is a friend of userY or not:</p>
+<pre><code>sismember friends:leto jessica
+sismember friends:leto vladimir
+</code></pre>
+<p>Furthermore we can see whether two or more people share the same friends:</p>
+<pre><code>sinter friends:leto friends:duncan
+</code></pre>
+<p>and even store the result at a new key:</p>
+<pre><code>sinterstore friends:leto_duncan friends:leto friends:duncan
+</code></pre>
+<p>Sets are great for tagging or tracking any other properties of a value for which duplicates don't make any sense (or where we want to apply set operations such as intersections and unions).</p>
+<h2><a id="user-content-sorted-sets" class="anchor" aria-hidden="true" href="#sorted-sets"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Sorted Sets</h2>
+<p>The last and most powerful data structure are sorted sets. If hashes are like strings but with fields, then sorted sets are like sets but with a score. The score provides sorting and ranking capabilities. If we wanted a ranked list of friends, we might do:</p>
+<pre><code>zadd friends:duncan 70 ghanima 95 paul 95 chani 75 jessica 1 vladimir
+</code></pre>
+<p>Want to find out how many friends <code>duncan</code> has with a score of 90 or over?</p>
+<pre><code>zcount friends:duncan 90 100
+</code></pre>
+<p>How about figuring out <code>chani</code>'s rank?</p>
+<pre><code>zrevrank friends:duncan chani
+</code></pre>
+<p>We use <code>zrevrank</code> instead of <code>zrank</code> since Redis' default sort is from low to high (but in this case we are ranking from high to low). The most obvious use-case for sorted sets is a leaderboard system. In reality though, anything you want sorted by some integer, and be able to efficiently manipulate based on that score, might be a good fit for a sorted set.</p>
+<h2><a id="user-content-in-this-chapter-1" class="anchor" aria-hidden="true" href="#in-this-chapter-1"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>In This Chapter</h2>
+<p>That's a high level overview of Redis' five data structures. One of the neat things about Redis is that you can often do more than you first realize. There are probably ways to use string and sorted sets that no one has thought of yet. As long as you understand the normal use-case though, you'll find Redis ideal for all types of problems. Also, just because Redis exposes five data structures and various methods, don't think you need to use all of them. It isn't uncommon to build a feature while only using a handful of commands.</p>
+<h1><a id="user-content-chapter-3---leveraging-data-structures" class="anchor" aria-hidden="true" href="#chapter-3---leveraging-data-structures"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Chapter 3 - Leveraging Data Structures</h1>
+<p>In the previous chapter we talked about the five data structures and gave some examples of what problems they might solve. Now it's time to look at a few more advanced, yet common, topics and design patterns.</p>
+<h2><a id="user-content-big-o-notation" class="anchor" aria-hidden="true" href="#big-o-notation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Big O Notation</h2>
+<p>Throughout this book we've made references to the Big O notation in the form of O(n) or O(1). Big O notation is used to explain how something behaves given a certain number of elements. In Redis, it's used to tell us how fast a command is based on the number of items we are dealing with.</p>
+<p>Redis documentation tells us the Big O notation for each of its commands. It also tells us what the factors are that influence the performance. Let's look at some examples.</p>
+<p>The fastest anything can be is O(1) which is a constant. Whether we are dealing with 5 items or 5 million, you'll get the same performance. The <code>sismember</code> command, which tells us if a value belongs to a set, is O(1). <code>sismember</code> is a powerful command, and its performance characteristics are a big reason for that. A number of Redis commands are O(1).</p>
+<p>Logarithmic, or O(log(N)), is the next fastest possibility because it needs to scan through smaller and smaller partitions. Using this type of divide and conquer approach, a very large number of items quickly gets broken down in a few iterations. <code>zadd</code> is a O(log(N)) command, where N is the number of elements already in the sorted set.</p>
+<p>Next we have linear commands, or O(N). Looking for a non-indexed column in a table is an O(N) operation. So is using the <code>ltrim</code> command. However, in the case of <code>ltrim</code>, N isn't the number of elements in the list, but rather the elements being removed. Using <code>ltrim</code> to remove 1 item from a list of millions will be faster than using <code>ltrim</code> to remove 10 items from a list of thousands. (Though they'll probably both be so fast that you wouldn't be able to time it.)</p>
+<p><code>zremrangebyscore</code> which removes elements from a sorted set with a score between a minimum and a maximum value has a complexity of O(log(N)+M). This makes it a mix. By reading the documentation we see that N is the number of total elements in the set and M is the number of elements to be removed. In other words, the number of elements that'll get removed is probably going to be more significant, in terms of performance, than the total number of elements in the set.</p>
+<p>The <code>sort</code> command, which we'll discuss in greater detail in the next chapter has a complexity of O(N+M*log(M)). From its performance characteristic, you can probably tell that this is one of Redis' most complex commands.</p>
+<p>There are a number of other complexities, the two remaining common ones are O(N^2) and O(C^N). The larger N is, the worse these perform relative to a smaller N. None of Redis' commands have this type of complexity.</p>
+<p>It's worth pointing out that the Big O notation deals with the worst case. When we say that something takes O(N), we might actually find it right away or it might be the last possible element.</p>
+<h2><a id="user-content-pseudo-multi-key-queries" class="anchor" aria-hidden="true" href="#pseudo-multi-key-queries"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Pseudo Multi Key Queries</h2>
+<p>A common situation you'll run into is wanting to query the same value by different keys. For example, you might want to get a user by email (for when they first log in) and also by id (after they've logged in). One horrible solution is to duplicate your user object into two string values:</p>
+<pre><code>set users:leto@dune.gov '{"id": 9001, "email": "leto@dune.gov", ...}'
+set users:9001 '{"id": 9001, "email": "leto@dune.gov", ...}'
+</code></pre>
+<p>This is bad because it's a nightmare to manage and it takes twice the amount of memory.</p>
+<p>It would be nice if Redis let you link one key to another, but it doesn't (and it probably never will). A major driver in Redis' development is to keep the code and API clean and simple. The internal implementation of linking keys (there's a lot we can do with keys that we haven't talked about yet) isn't worth it when you consider that Redis already provides a solution: hashes.</p>
+<p>Using a hash, we can remove the need for duplication:</p>
+<pre><code>set users:9001 '{"id": 9001, "email": "leto@dune.gov", ...}'
+hset users:lookup:email leto@dune.gov 9001
+</code></pre>
+<p>What we are doing is using the field as a pseudo secondary index and referencing the single user object. To get a user by id, we issue a normal <code>get</code>:</p>
+<pre><code>get users:9001
+</code></pre>
+<p>To get a user by email, we issue an <code>hget</code> followed by a <code>get</code> (in Ruby):</p>
+<pre><code>id = redis.hget('users:lookup:email', 'leto@dune.gov')
+user = redis.get("users:#{id}")
+</code></pre>
+<p>This is something that you'll likely end up doing often. To me, this is where hashes really shine, but it isn't an obvious use-case until you see it.</p>
+<h2><a id="user-content-references-and-indexes" class="anchor" aria-hidden="true" href="#references-and-indexes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>References and Indexes</h2>
+<p>We've seen a couple examples of having one value reference another. We saw it when we looked at our list example, and we saw it in the section above when using hashes to make querying a little easier. What this comes down to is essentially having to manually manage your indexes and references between values. Being honest, I think we can say that's a bit of a downer, especially when you consider having to manage/update/delete these references manually. There is no magic solution to solving this problem in Redis.</p>
+<p>We already saw how sets are often used to implement this type of manual index:</p>
+<pre><code>sadd friends:leto ghanima paul chani jessica
+</code></pre>
+<p>Each member of this set is a reference to a Redis string value containing details on the actual user. What if <code>chani</code> changes her name, or deletes her account? Maybe it would make sense to also track the inverse relationships:</p>
+<pre><code>sadd friends_of:chani leto paul
+</code></pre>
+<p>Maintenance cost aside, if you are anything like me, you might cringe at the processing and memory cost of having these extra indexed values. In the next section we'll talk about ways to reduce the performance cost of having to do extra round trips (we briefly talked about it in the first chapter).</p>
+<p>If you actually think about it though, relational databases have the same overhead. Indexes take memory, must be scanned or ideally seeked and then the corresponding records must be looked up. The overhead is neatly abstracted away (and they  do a lot of optimizations in terms of the processing to make it very efficient).</p>
+<p>Again, having to manually deal with references in Redis is unfortunate. But any initial concerns you have about the performance or memory implications of this should be tested. I think you'll find it a non-issue.</p>
+<h2><a id="user-content-round-trips-and-pipelining" class="anchor" aria-hidden="true" href="#round-trips-and-pipelining"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Round Trips and Pipelining</h2>
+<p>We already mentioned that making frequent trips to the server is a common pattern in Redis. Since it is something you'll do often, it's worth taking a closer look at what features we can leverage to get the most out of it.</p>
+<p>First, many commands either accept one or more set of parameters or have a sister-command which takes multiple parameters. We saw <code>mget</code> earlier, which takes multiple keys and returns the values:</p>
+<pre><code>ids = redis.lrange('newusers', 0, 9)
+redis.mget(*ids.map {|u| "users:#{u}"})
+</code></pre>
+<p>Or the <code>sadd</code> command which adds 1 or more members to a set:</p>
+<pre><code>sadd friends:vladimir piter
+sadd friends:paul jessica leto "leto II" chani
+</code></pre>
+<p>Redis also supports pipelining. Normally when a client sends a request to Redis it waits for the reply before sending the next request. With pipelining you can send a number of requests without waiting for their responses. This reduces the networking overhead and can result in significant performance gains.</p>
+<p>It's worth noting that Redis will use memory to queue up the commands, so it's a good idea to batch them. How large a batch you use will depend on what commands you are using, and more specifically, how large the parameters are. But, if you are issuing commands against ~50 character keys, you can probably batch them in thousands or tens of thousands.</p>
+<p>Exactly how you execute commands within a pipeline will vary from driver to driver. In Ruby you pass a block to the <code>pipelined</code> method:</p>
+<pre><code>redis.pipelined do
+  9001.times do
+	redis.incr('powerlevel')
+  end
+end
+</code></pre>
+<p>As you can probably guess, pipelining can really speed up a batch import!</p>
+<h2><a id="user-content-transactions" class="anchor" aria-hidden="true" href="#transactions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Transactions</h2>
+<p>Every Redis command is atomic, including the ones that do multiple things. Additionally, Redis has support for transactions when using multiple commands.</p>
+<p>You might not know it, but Redis is actually single-threaded, which is how every command is guaranteed to be atomic. While one command is executing, no other command will run. (We'll briefly talk about scaling in a later chapter.) This is particularly useful when you consider that some commands do multiple things. For example:</p>
+<p><code>incr</code> is essentially a <code>get</code> followed by a <code>set</code></p>
+<p><code>getset</code> sets a new value and returns the original</p>
+<p><code>setnx</code> first checks if the key exists, and only sets the value if it does not</p>
+<p>Although these commands are useful, you'll inevitably need to run multiple commands as an atomic group. You do so by first issuing the <code>multi</code> command, followed by all the commands you want to execute as part of the transaction, and finally executing <code>exec</code> to actually execute the commands or <code>discard</code> to throw away, and not execute the commands. What guarantee does Redis make about transactions?</p>
+<ul>
+<li>
+<p>The commands will be executed in order</p>
+</li>
+<li>
+<p>The commands will be executed as a single atomic operation (without another client's command being executed halfway through)</p>
+</li>
+<li>
+<p>That either all or none of the commands in the transaction will be executed</p>
+</li>
+</ul>
+<p>You can, and should, test this in the command line interface. Also note that there's no reason why you can't combine pipelining and transactions.</p>
+<pre><code>multi
+hincrby groups:1percent balance -9000000000
+hincrby groups:99percent balance 9000000000
+exec
+</code></pre>
+<p>Finally, Redis lets you specify a key (or keys) to watch and conditionally apply a transaction if the key(s) changed. This is used when you need to get values and execute code based on those values, all in a transaction. With the code above, we wouldn't be able to implement our own <code>incr</code> command since they are all executed together once <code>exec</code> is called. From code, we can't do:</p>
+<pre><code>redis.multi()
+current = redis.get('powerlevel')
+redis.set('powerlevel', current + 1)
+redis.exec()
+</code></pre>
+<p>That isn't how Redis transactions work. But, if we add a <code>watch</code> to <code>powerlevel</code>, we can do:</p>
+<pre><code>redis.watch('powerlevel')
+current = redis.get('powerlevel')
+redis.multi()
+redis.set('powerlevel', current + 1)
+redis.exec()
+</code></pre>
+<p>If another client changes the value of <code>powerlevel</code> after we've called <code>watch</code> on it, our transaction will fail. If no client changes the value, the set will work. We can execute this code in a loop until it works.</p>
+<h2><a id="user-content-keys-anti-pattern" class="anchor" aria-hidden="true" href="#keys-anti-pattern"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Keys Anti-Pattern</h2>
+<p>In the next chapter we'll talk about commands that aren't specifically related to data structures. Some of these are administrative or debugging tools. But there's one I'd like to talk about in particular: the <code>keys</code> command. This command takes a pattern and finds all the matching keys. This command seems like it's well suited for a number of tasks, but it should never be used in production code. Why? Because it does a linear scan through all the keys looking for matches. Or, put simply, it's slow.</p>
+<p>How do people try and use it? Say you are building a hosted bug tracking service. Each account will have an <code>id</code> and you might decide to store each bug into a string value with a key that looks like <code>bug:account_id:bug_id</code>. If you ever need to find all of an account's bugs (to display them, or maybe delete them if they delete their account), you might be tempted (as I was!) to use the <code>keys</code> command:</p>
+<pre><code>keys bug:1233:*
+</code></pre>
+<p>The better solution is to use a hash. Much like we can use hashes to provide a way to expose secondary indexes, so too can we use them to organize our data:</p>
+<pre><code>hset bugs:1233 1 '{"id":1, "account": 1233, "subject": "..."}'
+hset bugs:1233 2 '{"id":2, "account": 1233, "subject": "..."}'
+</code></pre>
+<p>To get all the bug ids for an account we simply call <code>hkeys bugs:1233</code>. To delete a specific bug we can do <code>hdel bugs:1233 2</code> and to delete an account we can delete the key via <code>del bugs:1233</code>.</p>
+<h2><a id="user-content-in-this-chapter-2" class="anchor" aria-hidden="true" href="#in-this-chapter-2"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>In This Chapter</h2>
+<p>This chapter, combined with the previous one, has hopefully given you some insight on how to use Redis to power real features. There are a number of other patterns you can use to build all types of things, but the real key is to understand the fundamental data structures and to get a sense for how they can be used to achieve things beyond your initial perspective.</p>
+<h1><a id="user-content-chapter-4---beyond-the-data-structures" class="anchor" aria-hidden="true" href="#chapter-4---beyond-the-data-structures"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Chapter 4 - Beyond The Data Structures</h1>
+<p>While the five data structures form the foundation of Redis, there are other commands which aren't data structure specific. We've already seen a handful of these: <code>info</code>, <code>select</code>, <code>flushdb</code>, <code>multi</code>, <code>exec</code>, <code>discard</code>, <code>watch</code> and <code>keys</code>. This chapter will look at some of the other important ones.</p>
+<h2><a id="user-content-expiration" class="anchor" aria-hidden="true" href="#expiration"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Expiration</h2>
+<p>Redis allows you to mark a key for expiration. You can give it an absolute time in the form of a Unix timestamp (seconds since January 1, 1970) or a time to live in seconds. This is a key-based command, so it doesn't matter what type of data structure the key represents.</p>
+<pre><code>expire pages:about 30
+expireat pages:about 1356933600
+</code></pre>
+<p>The first command will delete the key (and associated value) after 30 seconds. The second will do the same at 12:00 a.m. December 31st, 2012.</p>
+<p>This makes Redis an ideal caching engine. You can find out how long an item has to live until via the <code>ttl</code> command and you can remove the expiration on a key via the <code>persist</code> command:</p>
+<pre><code>ttl pages:about
+persist pages:about
+</code></pre>
+<p>Finally, there's a special string command, <code>setex</code> which lets you set a string and specify a time to live in a single atomic command (this is more for convenience than anything else):</p>
+<pre><code>setex pages:about 30 '&lt;h1&gt;about us&lt;/h1&gt;....'
+</code></pre>
+<h2><a id="user-content-publication-and-subscriptions" class="anchor" aria-hidden="true" href="#publication-and-subscriptions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Publication and Subscriptions</h2>
+<p>Redis lists have an <code>blpop</code> and <code>brpop</code> command which returns and removes the first (or last) element from the list or blocks until one is available. These can be used to power a simple queue.</p>
+<p>Beyond this, Redis has first-class support for publishing messages and subscribing to channels. You can try this out yourself by opening a second <code>redis-cli</code> window. In the first window subscribe to a channel (we'll call it <code>warnings</code>):</p>
+<pre><code>subscribe warnings
+</code></pre>
+<p>The reply is the information of your subscription. Now, in the other window, publish a message to the <code>warnings</code> channel:</p>
+<pre><code>publish warnings "it's over 9000!"
+</code></pre>
+<p>If you go back to your first window you should have received the message to the <code>warnings</code> channel.</p>
+<p>You can subscribe to multiple channels (<code>subscribe channel1 channel2 ...</code>), subscribe to a pattern of channels (<code>psubscribe warnings:*</code>) and use the <code>unsubscribe</code> and <code>punsubscribe</code> commands to stop listening to one or more channels, or a channel pattern.</p>
+<p>Finally, notice that the <code>publish</code> command returned the value 1. This indicates the number of clients that received the message.</p>
+<h2><a id="user-content-monitor-and-slow-log" class="anchor" aria-hidden="true" href="#monitor-and-slow-log"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Monitor and Slow Log</h2>
+<p>The <code>monitor</code> command lets you see what Redis is up to. It's a great debugging tool that gives you insight into how your application is interacting with Redis. In one of your two redis-cli windows (if one is still subscribed, you can either use the <code>unsubscribe</code> command or close the window down and re-open a new one) enter the <code>monitor</code> command. In the other, execute any other type of command (like <code>get</code> or <code>set</code>). You should see those commands, along with their parameters, in the first window.</p>
+<p>You should be wary of running monitor in production, it really is a debugging and development tool. Aside from that, there isn't much more to say about it. It's just a really useful tool.</p>
+<p>Along with <code>monitor</code>, Redis has a <code>slowlog</code> which acts as a great profiling tool. It logs any command which takes longer than a specified number of <strong>micro</strong>seconds. In the next section we'll briefly cover how to configure Redis, for now you can configure Redis to log all commands by entering:</p>
+<pre><code>config set slowlog-log-slower-than 0
+</code></pre>
+<p>Next, issue a few commands. Finally you can retrieve all of the logs, or the most recent logs via:</p>
+<pre><code>slowlog get
+slowlog get 10
+</code></pre>
+<p>You can also get the number of items in the slow log by entering <code>slowlog len</code></p>
+<p>For each command you entered you should see four parameters:</p>
+<ul>
+<li>
+<p>An auto-incrementing id</p>
+</li>
+<li>
+<p>A Unix timestamp for when the command happened</p>
+</li>
+<li>
+<p>The time, in microseconds, it took to run the command</p>
+</li>
+<li>
+<p>The command and its parameters</p>
+</li>
+</ul>
+<p>The slow log is maintained in memory, so running it in production, even with a low threshold, shouldn't be a problem. By default it will track the last 1024 logs.</p>
+<h2><a id="user-content-sort" class="anchor" aria-hidden="true" href="#sort"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Sort</h2>
+<p>One of Redis' most powerful commands is <code>sort</code>. It lets you sort the values within a list, set or sorted set (sorted sets are ordered by score, not the members within the set). In its simplest form, it allows us to do:</p>
+<pre><code>rpush users:leto:guesses 5 9 10 2 4 10 19 2
+sort users:leto:guesses
+</code></pre>
+<p>Which will return the values sorted from lowest to highest. Here's a more advanced example:</p>
+<pre><code>sadd friends:ghanima leto paul chani jessica alia duncan
+sort friends:ghanima limit 0 3 desc alpha
+</code></pre>
+<p>The above command shows us how to page the sorted records (via <code>limit</code>), how to return the results in descending order (via <code>desc</code>) and how to sort lexicographically instead of numerically (via <code>alpha</code>).</p>
+<p>The real power of <code>sort</code> is its ability to sort based on a referenced object. Earlier we showed how lists, sets and sorted sets are often used to reference other Redis objects. The <code>sort</code> command can dereference those relations and sort by the underlying value. For example, say we have a bug tracker which lets users watch issues. We might use a set to track the issues being watched:</p>
+<pre><code>sadd watch:leto 12339 1382 338 9338
+</code></pre>
+<p>It might make perfect sense to sort these by id (which the default sort will do), but we'd also like to have these sorted by severity. To do so, we tell Redis what pattern to sort by. First, let's add some more data so we can actually see a meaningful result:</p>
+<pre><code>set severity:12339 3
+set severity:1382 2
+set severity:338 5
+set severity:9338 4
+</code></pre>
+<p>To sort the bugs by severity, from highest to lowest, you'd do:</p>
+<pre><code>sort watch:leto by severity:* desc
+</code></pre>
+<p>Redis will substitute the <code>*</code> in our pattern (identified via <code>by</code>) with the values in our list/set/sorted set. This will create the key name that Redis will query for the actual values to sort by.</p>
+<p>Although you can have millions of keys within Redis, I think the above can get a little messy. Thankfully <code>sort</code> can also work on hashes and their fields. Instead of having a bunch of top-level keys you can leverage hashes:</p>
+<pre><code>hset bug:12339 severity 3
+hset bug:12339 priority 1
+hset bug:12339 details '{"id": 12339, ....}'
+
+hset bug:1382 severity 2
+hset bug:1382 priority 2
+hset bug:1382 details '{"id": 1382, ....}'
+
+hset bug:338 severity 5
+hset bug:338 priority 3
+hset bug:338 details '{"id": 338, ....}'
+
+hset bug:9338 severity 4
+hset bug:9338 priority 2
+hset bug:9338 details '{"id": 9338, ....}'
+</code></pre>
+<p>Not only is everything better organized, and we can sort by <code>severity</code> or <code>priority</code>, but we can also tell <code>sort</code> what field to retrieve:</p>
+<pre><code>sort watch:leto by bug:*-&gt;priority get bug:*-&gt;details
+</code></pre>
+<p>The same value substitution occurs, but Redis also recognizes the <code>-&gt;</code> sequence and uses it to look into the specified field of our hash. We've also included the <code>get</code> parameter, which also does the substitution and field lookup, to retrieve bug details.</p>
+<p>Over large sets, <code>sort</code> can be slow. The good news is that the output of a <code>sort</code> can be stored:</p>
+<pre><code>sort watch:leto by bug:*-&gt;priority get bug:*-&gt;details store watch_by_priority:leto
+</code></pre>
+<p>Combining the <code>store</code> capabilities of <code>sort</code> with the expiration commands we've already seen makes for a nice combo.</p>
+<h2><a id="user-content-scan" class="anchor" aria-hidden="true" href="#scan"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Scan</h2>
+<p>In the previous chapter, we saw how the <code>keys</code> command, while useful, shouldn't be used in production. Redis 2.8 introduces the <code>scan</code> command which is production-safe. Although <code>scan</code> fulfills a similar purpose to <code>keys</code> there are a number of important difference. To be honest, most of the <em>differences</em> will seem like <em>idiosyncrasies</em>, but this is the cost of having a usable command.</p>
+<p>First amongst these differences is that a single call to <code>scan</code> doesn't necessarily return all matching results. Nothing strange about paged results; however, <code>scan</code> returns a variable number of results which cannot be precisely controlled. You can provide a <code>count</code> hint, which defaults to 10, but it's entirely possible to get more or less than the specified <code>count</code>.</p>
+<p>Rather than implementing paging through a <code>limit</code> and <code>offset</code>, <code>scan</code> uses a <code>cursor</code>. The first time you call <code>scan</code> you supply <code>0</code> as the cursor. Below we see an initial call to <code>scan</code> with an pattern match (optional) and a count hint (optional):</p>
+<pre><code>scan 0 match bugs:* count 20
+</code></pre>
+<p>As part of its reply, <code>scan</code> returns the next cursor to use. Alternatively, scan returns <code>0</code> to signify the end of results. Note that the next cursor value doesn't correspond to the result number or anything else which clients might consider useful.</p>
+<p>A typical flow might look like this:</p>
+<pre><code>scan 0 match bugs:* count 2
+&gt; 1) "3"
+&gt; 2) 1) "bugs:125"
+scan 3 match bugs:* count 2
+&gt; 1) "0"
+&gt; 2) 1) "bugs:124"
+&gt;    2) "bugs:123"
+</code></pre>
+<p>Our first call returned a next cursor (3) and one result. Our subsequent call, using the next cursor, returned the end cursor (0) and the final two results. The above is a <em>typical</em> flow. Since the <code>count</code> is merely a hint, it's possible for <code>scan</code> to return a next <code>cursor</code> (not 0) with no actual results. In other words, an empty result set doesn't signify that no additional results exist. Only a 0 cursor means that there are no additional results.</p>
+<p>On the positive side, <code>scan</code> is completely stateless from Redis' point of view. So there's no need to close a cursor and there's no harm in not fully reading a result. If you want to, you can stop iterating through results, even if Redis returned a valid next cursor.</p>
+<p>There are two other things to keep in mind. First, <code>scan</code> can return the same key multiple times. It's up to you to deal with this (likely by keeping a set of already seen values). Secondly, <code>scan</code> only guarantees that values which were present during the entire duration of iteration will be returned. If values get added or removed while you're iterating, they may or may not be returned. Again, this comes from <code>scan</code>'s statelessness; it doesn't take a snapshot of the existing values (like you'd see with many databases which provide strong consistency guarantees), but rather iterates over the same memory space which may or may not get modified.</p>
+<p>In addition to <code>scan</code>, <code>hscan</code>, <code>sscan</code> and <code>zscan</code> commands were also added. These let you iterate through hashes, sets and sorted sets. Why are these needed? Well, just like <code>keys</code> blocks all other callers, so does the hash command <code>hgetall</code> and the set command <code>smembers</code>. If you want to iterate over a very large hash or set, you might consider making use of these commands. <code>zscan</code> might seem less useful since paging through a sorted set via <code>zrangebyscore</code> or <code>zrangebyrank</code> is already possible. However, if you want to fully iterate through a large sorted set, <code>zscan</code> isn't without value.</p>
+<h2><a id="user-content-in-this-chapter-3" class="anchor" aria-hidden="true" href="#in-this-chapter-3"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>In This Chapter</h2>
+<p>This chapter focused on non-data structure-specific commands. Like everything else, their use is situational. It isn't uncommon to build an app or feature that won't make use of expiration, publication/subscription and/or sorting. But it's good to know that they are there. Also, we only touched on some of the commands. There are more, and once you've digested the material in this book it's worth going through the <a href="http://redis.io/commands" rel="nofollow">full list</a>.</p>
+<h1><a id="user-content-chapter-5---lua-scripting" class="anchor" aria-hidden="true" href="#chapter-5---lua-scripting"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Chapter 5 - Lua Scripting</h1>
+<p>Redis 2.6 includes a built-in Lua interpreter which developers can leverage to write more advanced queries to be executed within Redis. It wouldn't be wrong of you to think of this capability much like you might view stored procedures available in most relational databases.</p>
+<p>The most difficult aspect of mastering this feature is learning Lua. Thankfully, Lua is similar to most general purpose languages, is well documented, has an active community and is useful to know beyond Redis scripting. This chapter won't cover Lua in any detail; but the few examples we look at should hopefully serve as a simple introduction.</p>
+<h2><a id="user-content-why" class="anchor" aria-hidden="true" href="#why"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Why?</h2>
+<p>Before looking at how to use Lua scripting, you might be wondering why you'd want to use it. Many developers dislike traditional stored procedures, is this any different? The short answer is no. Improperly used, Redis' Lua scripting can result in harder to test code, business logic tightly coupled with data access or even duplicated logic.</p>
+<p>Properly used however, it's a feature that can simplify code and improve performance. Both of these benefits are largely achieved by grouping multiple commands, along with some simple logic, into a custom-build cohesive function. Code is made simpler because each invocation of a Lua script is run without interruption and thus provides a clean way to create your own atomic commands (essentially eliminating the need to use the cumbersome <code>watch</code> command). It can improve performance by removing the need to return intermediary results - the final output can be calculated within the script.</p>
+<p>The examples in the following sections will better illustrate these points.</p>
+<h2><a id="user-content-eval" class="anchor" aria-hidden="true" href="#eval"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Eval</h2>
+<p>The <code>eval</code> command takes a Lua script (as a string), the keys we'll be operating against, and an optional set of arbitrary arguments. Let's look at a simple example (executed from Ruby, since running multi-line Redis commands from its command-line tool isn't fun):</p>
+<pre><code>script = &lt;&lt;-eos
+  local friend_names = redis.call('smembers', KEYS[1])
+  local friends = {}
+  for i = 1, #friend_names do
+    local friend_key = 'user:' .. friend_names[i]
+    local gender = redis.call('hget', friend_key, 'gender')
+    if gender == ARGV[1] then
+      table.insert(friends, redis.call('hget', friend_key, 'details'))
+    end
+  end
+  return friends
+eos
+Redis.new.eval(script, ['friends:leto'], ['m'])
+</code></pre>
+<p>The above code gets the details for all of Leto's male friends. Notice that to call Redis commands within our script we use the <code>redis.call("command", ARG1, ARG2, ...)</code> method.</p>
+<p>If you are new to Lua, you should go over each line carefully. It might be useful to know that <code>{}</code> creates an empty <code>table</code> (which can act as either an array or a dictionary), <code>#TABLE</code> gets the number of elements in the TABLE, and <code>..</code> is used to concatenate strings.</p>
+<p><code>eval</code> actually take 4 parameters. The second parameter should actually be the number of keys; however the Ruby driver automatically creates this for us. Why is this needed? Consider how the above looks like when executed from the CLI:</p>
+<pre><code>eval "....." "friends:leto" "m"
+vs
+eval "....." 1 "friends:leto" "m"
+</code></pre>
+<p>In the first (incorrect) case, how does Redis know which of the parameters are keys and which are simply arbitrary arguments? In the second case, there is no ambiguity.</p>
+<p>This brings up a second question: why must keys be explicitly listed? Every command in Redis knows, at execution time, which keys are going to needed. This will allow future tools, like Redis Cluster, to  distribute requests amongst multiple Redis servers. You might have spotted that our above example actually reads from keys dynamically (without having them passed to <code>eval</code>). An <code>hget</code> is issued on all of Leto's male friends. That's because the need to list keys ahead of time is more of a suggestion than a hard rule. The above code will run fine in a single-instance setup, or even with replication, but won't in the yet-released Redis Cluster.</p>
+<h2><a id="user-content-script-management" class="anchor" aria-hidden="true" href="#script-management"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Script Management</h2>
+<p>Even though scripts executed via <code>eval</code> are cached by Redis, sending the body every time you want to execute something isn't ideal. Instead, you can register the script with Redis and execute it's key. To do this you use the <code>script load</code> command, which returns the SHA1 digest of the script:</p>
+<pre><code>redis = Redis.new
+script_key = redis.script(:load, "THE_SCRIPT")
+</code></pre>
+<p>Once we've loaded the script, we can use <code>evalsha</code> to execute it:</p>
+<pre><code>redis.evalsha(script_key, ['friends:leto'], ['m'])
+</code></pre>
+<p><code>script kill</code>, <code>script flush</code> and <code>script exists</code> are the other commands that you can use to manage Lua scripts. They are used to kill a running script, removing all scripts from the internal cache and seeing if a script already exists within the cache.</p>
+<h2><a id="user-content-libraries" class="anchor" aria-hidden="true" href="#libraries"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Libraries</h2>
+<p>Redis' Lua implementation ships with a handful of useful libraries. While <code>table.lib</code>, <code>string.lib</code> and <code>math.lib</code> are quite useful, for me, <code>cjson.lib</code> is worth singling out. First, if you find yourself having to pass multiple arguments to a script, it might be cleaner to pass it as JSON:</p>
+<pre><code>redis.evalsha ".....", [KEY1], [JSON.fast_generate({gender: 'm', ghola: true})]
+</code></pre>
+<p>Which you could then deserialize within the Lua script as:</p>
+<pre><code>local arguments = cjson.decode(ARGV[1])
+</code></pre>
+<p>Of course, the JSON library can also be used to parse values stored in Redis itself. Our above example could potentially be rewritten as such:</p>
+<pre><code>  local friend_names = redis.call('smembers', KEYS[1])
+  local friends = {}
+  for i = 1, #friend_names do
+    local friend_raw = redis.call('get', 'user:' .. friend_names[i])
+    local friend_parsed = cjson.decode(friend_raw)
+    if friend_parsed.gender == ARGV[1] then
+      table.insert(friends, friend_raw)
+    end
+  end
+  return friends
+</code></pre>
+<p>Instead of getting the gender from specific hash field, we could get it from the stored friend data itself. (This is a much slower solution, and I personally prefer the original, but it does show what's possible).</p>
+<h2><a id="user-content-atomic" class="anchor" aria-hidden="true" href="#atomic"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Atomic</h2>
+<p>Since Redis is single-threaded, you don't have to worry about your Lua script being interrupted by another Redis command. One of the most obvious benefits of this is that keys with a TTL won't expire half-way through execution. If a key is present at the start of the script, it'll be present at any point thereafter - unless you delete it.</p>
+<h2><a id="user-content-administration" class="anchor" aria-hidden="true" href="#administration"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Administration</h2>
+<p>The next chapter will talk about Redis administration and configuration in more detail. For now, simply know that the <code>lua-time-limit</code> defines how long a Lua script is allowed to execute before being terminated. The default is generous 5 seconds. Consider lowering it.</p>
+<h2><a id="user-content-in-this-chapter-4" class="anchor" aria-hidden="true" href="#in-this-chapter-4"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>In This Chapter</h2>
+<p>This chapter introduced Redis' Lua scripting capabilities. Like anything, this feature can be abused. However, used prudently in order to implement your own custom and focused commands, it won't only simplify your code, but will likely improve performance. Lua scripting is like almost every other Redis feature/command: you make limited, if any, use of it at first only to find yourself using it more and more every day.</p>
+<h1><a id="user-content-chapter-6---administration" class="anchor" aria-hidden="true" href="#chapter-6---administration"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Chapter 6 - Administration</h1>
+<p>Our last chapter is dedicated to some of the administrative aspects of running Redis. In no way is this a comprehensive guide on Redis administration. At best we'll answer some of the more basic questions new users to Redis are most likely to have.</p>
+<h2><a id="user-content-configuration" class="anchor" aria-hidden="true" href="#configuration"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Configuration</h2>
+<p>When you first launched the Redis server, it warned you that the <code>redis.conf</code> file could not be found. This file can be used to configure various aspects of Redis. A well-documented <code>redis.conf</code> file is available for each release of Redis. The sample file contains the default configuration options, so it's useful to both understand what the settings do and what their defaults are. You can find it at <a href="http://download.redis.io/redis-stable/redis.conf" rel="nofollow">http://download.redis.io/redis-stable/redis.conf</a>.</p>
+<p>Since the file is well-documented, we won't be going over the settings.</p>
+<p>In addition to configuring Redis via the <code>redis.conf</code> file, the <code>config set</code> command can be used to set individual values. In fact, we already used it when setting the <code>slowlog-log-slower-than</code> setting to 0.</p>
+<p>There's also the <code>config get</code> command which displays the value of a setting. This command supports pattern matching. So if we want to display everything related to logging, we can do:</p>
+<pre><code>config get *log*
+</code></pre>
+<h2><a id="user-content-authentication" class="anchor" aria-hidden="true" href="#authentication"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Authentication</h2>
+<p>Redis can be configured to require a password. This is done via the <code>requirepass</code> setting (set through either the <code>redis.conf</code> file or the <code>config set</code> command). When <code>requirepass</code> is set to a value (which is the password to use), clients will need to issue an <code>auth password</code> command.</p>
+<p>Once a client is authenticated, they can issue any command against any database. This includes the <code>flushall</code> command which erases every key from every database. Through the configuration, you can rename commands to achieve some security through obfuscation:</p>
+<pre><code>rename-command CONFIG 5ec4db169f9d4dddacbfb0c26ea7e5ef
+rename-command FLUSHALL 1041285018a942a4922cbf76623b741e
+</code></pre>
+<p>Or you can disable a command by setting the new name to an empty string.</p>
+<h2><a id="user-content-size-limitations" class="anchor" aria-hidden="true" href="#size-limitations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Size Limitations</h2>
+<p>As you start using Redis, you might wonder "how many keys can I have?" You might also wonder how many fields can a hash have (especially when you use it to organize your data), or how many elements can lists and sets have? Per instance, the practical limits for all of these is in the hundreds of millions.</p>
+<h2><a id="user-content-replication" class="anchor" aria-hidden="true" href="#replication"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Replication</h2>
+<p>Redis supports replication, which means that as you write to one Redis instance (the master), one or more other instances (the slaves) are kept up-to-date by the master. To configure a slave you use either the <code>slaveof</code> configuration setting or the <code>slaveof</code> command (instances running without this configuration are or can be masters).</p>
+<p>Replication helps protect your data by copying to different servers. Replication can also be used to improve performance since reads can be sent to slaves. They might respond with slightly out of date data, but for most apps that's a worthwhile tradeoff.</p>
+<p>Unfortunately, Redis replication doesn't yet provide automated failover. If the master dies, a slave needs to be manually promoted. Traditional high-availability tools that use heartbeat monitoring and scripts to automate the switch are currently a necessary headache if you want to achieve some sort of high availability with Redis.</p>
+<h2><a id="user-content-backups" class="anchor" aria-hidden="true" href="#backups"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Backups</h2>
+<p>Backing up Redis is simply a matter of copying Redis' snapshot to whatever location you want (S3, FTP, ...). By default Redis saves its snapshot to a file named <code>dump.rdb</code>. At any point in time, you can simply <code>scp</code>, <code>ftp</code> or <code>cp</code> (or anything else) this file.</p>
+<p>It isn't uncommon to disable both snapshotting and the append-only file (aof) on the master and let a slave take care of this. This helps reduce the load on the master and lets you set more aggressive saving parameters on the slave without hurting overall system responsiveness.</p>
+<h2><a id="user-content-scaling-and-redis-cluster" class="anchor" aria-hidden="true" href="#scaling-and-redis-cluster"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Scaling and Redis Cluster</h2>
+<p>Replication is the first tool a growing site can leverage. Some commands are more expensive than others (<code>sort</code> for example) and offloading their execution to a slave can keep the overall system responsive to incoming queries.</p>
+<p>Beyond this, truly scaling Redis comes down to distributing your keys across multiple Redis instances (which could be running on the same box, remember, Redis is single-threaded). For the time being, this is something you'll need to take care of (although a number of Redis drivers do provide consistent-hashing algorithms). Thinking about your data in terms of horizontal distribution isn't something we can cover in this book. It's also something you probably won't have to worry about for a while, but it's something you'll need to be aware of regardless of what solution you use.</p>
+<p>The good news is that work is under way on Redis Cluster. Not only will this offer horizontal scaling, including rebalancing, but it'll also provide automated failover for high availability.</p>
+<p>High availability and scaling is something that can be achieved today, as long as you are willing to put the time and effort into it. Moving forward, Redis Cluster should make things much easier.</p>
+<h2><a id="user-content-in-this-chapter-5" class="anchor" aria-hidden="true" href="#in-this-chapter-5"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>In This Chapter</h2>
+<p>Given the number of projects and sites using Redis already, there can be no doubt that Redis is production-ready, and has been for a while. However, some of the tooling, especially around security and availability is still young. Redis Cluster, which we'll hopefully see soon, should help address some of the current management challenges.</p>
+<h1><a id="user-content-conclusion" class="anchor" aria-hidden="true" href="#conclusion"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Conclusion</h1>
+<p>In a lot of ways, Redis represents a simplification in the way we deal with data. It peels away much of the complexity and abstraction available in other systems. In many cases this makes Redis the wrong choice. In others it can feel like Redis was custom-built for your data.</p>
+<p>Ultimately it comes back to something I said at the very start: Redis is easy to learn. There are many new technologies and it can be hard to figure out what's worth investing time into learning. When you consider the real benefits Redis has to offer with its simplicity, I sincerely believe that it's one of the best investments, in terms of learning, that you and your team can make.</p>
+</article>
+  </div>
+
+    </div>
+
+  
+
+
+  <details class="details-reset details-overlay details-overlay-dark" id="jumpto-line-details-dialog">
+    <summary data-hotkey="l" aria-label="Jump to line"></summary>
+    <details-dialog class="Box Box--overlay d-flex flex-column anim-fade-in fast linejump" aria-label="Jump to line">
+      <!-- '"` --><!-- </textarea></xmp> --></option></form><form class="js-jump-to-line-form Box-body d-flex" action="" accept-charset="UTF-8" method="get">
+        <input class="form-control flex-auto mr-3 linejump-input js-jump-to-line-field" type="text" placeholder="Jump to line&hellip;" aria-label="Jump to line" autofocus>
+        <button type="submit" class="btn" data-close-dialog>Go</button>
+</form>    </details-dialog>
+  </details>
+
+
+
+
+  </div>
+</div>
+
+    </main>
+  </div>
+
+  </div>
+
+        
+<div class="footer container-xl width-full p-responsive" role="contentinfo">
+    <div class="position-relative d-flex flex-row-reverse flex-lg-row flex-wrap flex-lg-nowrap flex-justify-center flex-lg-justify-between flex-sm-items-center pt-6 pb-2 mt-6 f6 text-gray border-top border-gray-light ">
+      <a aria-label="Homepage" title="GitHub" class="footer-octicon d-none d-lg-block mr-lg-4" href="https://github.com">
+        <svg height="24" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="24" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
+</a>
+      <ul class="list-style-none d-flex flex-wrap col-12 flex-justify-center flex-lg-justify-between mb-2 mb-lg-0">
+        <li class="mr-3 mr-lg-0">&copy; 2020 GitHub, Inc.</li>
+          <li class="mr-3 mr-lg-0"><a data-ga-click="Footer, go to terms, text:terms" href="https://github.com/site/terms">Terms</a></li>
+          <li class="mr-3 mr-lg-0"><a data-ga-click="Footer, go to privacy, text:privacy" href="https://github.com/site/privacy">Privacy</a></li>
+            <li class="js-cookie-consent-preferences-link-container mr-3 mr-lg-0" hidden="hidden">
+  <button data-ga-click="Footer, go to cookie preferences, text:cookie preferences" class="btn-link js-cookie-consent-preferences-link" type="button">Cookie Preferences</button>
+</li>
+          <li class="mr-3 mr-lg-0"><a data-ga-click="Footer, go to security, text:security" href="https://github.com/security">Security</a></li>
+          <li class="mr-3 mr-lg-0"><a href="https://githubstatus.com/" data-ga-click="Footer, go to status, text:status">Status</a></li>
+          <li class="mr-3 mr-lg-0"><a data-ga-click="Footer, go to help, text:help" href="https://docs.github.com">Help</a></li>
+          <li class="mr-3 mr-lg-0"><a data-ga-click="Footer, go to contact, text:contact" href="https://github.com/contact">Contact GitHub</a></li>
+          <li class="mr-3 mr-lg-0"><a href="https://github.com/pricing" data-ga-click="Footer, go to Pricing, text:Pricing">Pricing</a></li>
+        <li class="mr-3 mr-lg-0"><a href="https://docs.github.com" data-ga-click="Footer, go to api, text:api">API</a></li>
+        <li class="mr-3 mr-lg-0"><a href="https://services.github.com" data-ga-click="Footer, go to training, text:training">Training</a></li>
+          <li class="mr-3 mr-lg-0"><a href="https://github.blog" data-ga-click="Footer, go to blog, text:blog">Blog</a></li>
+          <li class="mr-3 mr-lg-0"><a data-ga-click="Footer, go to about, text:about" href="https://github.com/about">About</a></li>
+      </ul>
+    </div>
+  <div class="d-flex flex-justify-center pb-6">
+    <span class="f6 text-gray-light"></span>
+  </div>
+</div>
+
+
+
+  <div id="ajax-error-message" class="ajax-error-message flash flash-error">
+    <svg class="octicon octicon-alert" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M8.22 1.754a.25.25 0 00-.44 0L1.698 13.132a.25.25 0 00.22.368h12.164a.25.25 0 00.22-.368L8.22 1.754zm-1.763-.707c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0114.082 15H1.918a1.75 1.75 0 01-1.543-2.575L6.457 1.047zM9 11a1 1 0 11-2 0 1 1 0 012 0zm-.25-5.25a.75.75 0 00-1.5 0v2.5a.75.75 0 001.5 0v-2.5z"></path></svg>
+    <button type="button" class="flash-close js-ajax-error-dismiss" aria-label="Dismiss error">
+      <svg class="octicon octicon-x" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"></path></svg>
+    </button>
+    You can’t perform that action at this time.
+  </div>
+
+
+    <script crossorigin="anonymous" async="async" integrity="sha512-O8GTqkyR57l/sxhU8bdDyhNYweSdc6TzDwJ7JvY4SJpZye2+L5ayXb5dDiHo45PLT+boMpfMts4kmDzwuv6ZBQ==" type="application/javascript" id="js-conditional-compat" data-src="https://github.githubassets.com/assets/compat-3bc193aa.js"></script>
+    <script crossorigin="anonymous" integrity="sha512-qBeyRIjDR3DFKTE2D3j4NncHH72scmqyompBxHHrg7D5+rWW8q2xTxXbF7Z2g8Jx7UNpXfM+3R/FVU0SLgFrgw==" type="application/javascript" src="https://github.githubassets.com/assets/environment-a817b244.js"></script>
+    <script crossorigin="anonymous" async="async" integrity="sha512-NeBcJsMjrf2ViLHpWvzbcBmBtCabjw7C/pqtgeLgql0gbAEC3NiQTOsFQddqAgpDARtC9sJq3fCisUIrITVkWw==" type="application/javascript" src="https://github.githubassets.com/assets/vendor-35e05c26.js"></script>
+    <script crossorigin="anonymous" async="async" integrity="sha512-6iEgyyUmNKGh1D1nY2DXX+4seD7qXsQv0J3j/n7vchi1Ikkya5zn/3WjaDqgeKITkrz2pxrOv9/Dfz3vnZzimQ==" type="application/javascript" src="https://github.githubassets.com/assets/frameworks-ea2120cb.js"></script>
+    
+    <script crossorigin="anonymous" async="async" integrity="sha512-/ymQPUSO8dnk4F82bqwD9hcTeitEPNkefRcEsoLr25GX4KDmnwOrLaDBiQw5yjyK1oyxWpbOOnQIoPN2nZuwIg==" type="application/javascript" src="https://github.githubassets.com/assets/behaviors-ff29903d.js"></script>
+    
+      <script crossorigin="anonymous" async="async" integrity="sha512-RszHIHnndPaGg3NOiAwqnXVqUjh0w5UcxXlbyz2lr3Wc39TWJs7X0JCzeFjpZlnojNSJHe8zLG0UTuk1AR+CBA==" type="application/javascript" data-module-id="./contributions-spider-graph.js" data-src="https://github.githubassets.com/assets/contributions-spider-graph-46ccc720.js"></script>
+      <script crossorigin="anonymous" async="async" integrity="sha512-gRWMBXifsI3QQuW9ZhfvZcOu0aA+/XmBnoE8dNHxszlOu5DTE9vQJToKI7Y4CF/51ZdqSSpx+4auFPl4ixhGKQ==" type="application/javascript" data-module-id="./drag-drop.js" data-src="https://github.githubassets.com/assets/drag-drop-81158c05.js"></script>
+      <script crossorigin="anonymous" async="async" integrity="sha512-tVNIFseSQ604AA/kAW9RyzCD6ZqHFc5r38Y4vdj6h5ZSJ7ULZdhBLzNrk06+KFqOe5YQHVdIS23zexv6IGQEFA==" type="application/javascript" data-module-id="./jump-to.js" data-src="https://github.githubassets.com/assets/jump-to-b5534816.js"></script>
+      <script crossorigin="anonymous" async="async" integrity="sha512-WOR+F21pMDHA970j37hzMyp1qluNZ0TQIdtNY7bHcwWPUU3IXxBqMSsAm3+h/A5KcfKeyHTXH/w6+i4sq/YofQ==" type="application/javascript" data-module-id="./profile-pins-element.js" data-src="https://github.githubassets.com/assets/profile-pins-element-58e47e17.js"></script>
+      <script crossorigin="anonymous" async="async" integrity="sha512-mGhHrE0HJ7vEibXJt/Agfu9Gd7z9PpvEiRthudiS5f0WZMyO6PvVmdN9pVZsQEybIa4wKuiSeHBh5LGE/AqKwg==" type="application/javascript" data-module-id="./randomColor.js" data-src="https://github.githubassets.com/assets/randomColor-986847ac.js"></script>
+      <script crossorigin="anonymous" async="async" integrity="sha512-PulklwTNjJArlDqvCysC0AKYETVeAa1gJlPSSwR/CinO1u09p8B8vtwVwiTdeutKpU7PP0cWWxuFDOZcdor/Ww==" type="application/javascript" data-module-id="./sortable-behavior.js" data-src="https://github.githubassets.com/assets/sortable-behavior-3ee96497.js"></script>
+      <script crossorigin="anonymous" async="async" integrity="sha512-9XByXYfg5kUDs3XdumofBbG6IXIYm1l1AdEAzR08iHsgvy6FE6mDvm7LmZLnJLDQXsuu/bkSegjuEAybukfL/w==" type="application/javascript" data-module-id="./tweetsodium.js" data-src="https://github.githubassets.com/assets/tweetsodium-f570725d.js"></script>
+      <script crossorigin="anonymous" async="async" integrity="sha512-WxzjxL8Ygim8demYcSckvmOJ8pmQO2xqNYWVYgpQL2hc4bFm5BsiZbh6rozANN2/mInrOqelXdtxm0cSb04GOg==" type="application/javascript" data-module-id="./user-status-submit.js" data-src="https://github.githubassets.com/assets/user-status-submit-5b1ce3c4.js"></script>
+    
+    <script crossorigin="anonymous" async="async" integrity="sha512-MTg+MTppIdkL8zOmXHheVHksizkZ56EhxXygXzulpmwimJZqhyyjnuW3tDqCJec0x3GZYYwNXPQlbOPLSdjayQ==" type="application/javascript" src="https://github.githubassets.com/assets/repositories-31383e31.js"></script>
+<script crossorigin="anonymous" async="async" integrity="sha512-DQsfsdVxz0qzasf5FWpuFwQY7M7JqQzB6ao+bdSSAysWj3x2enUgTgF2s2/r1u08jQXt2OrfRXHhIkv9N2lmGg==" type="application/javascript" src="https://github.githubassets.com/assets/diffs-0d0b1fb1.js"></script>
+<script crossorigin="anonymous" async="async" integrity="sha512-RTIffjzNucHVb+ckoVO7BKmwYjVXOtVWVtr2fXV2pLInHExMckP1fkJnOlLKZl/Jl58kO0g7jObU18lu0yLC9w==" type="application/javascript" src="https://github.githubassets.com/assets/github-45321f7e.js"></script>
+  <div class="js-stale-session-flash flash flash-warn flash-banner" hidden
+    >
+    <svg class="octicon octicon-alert" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M8.22 1.754a.25.25 0 00-.44 0L1.698 13.132a.25.25 0 00.22.368h12.164a.25.25 0 00.22-.368L8.22 1.754zm-1.763-.707c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0114.082 15H1.918a1.75 1.75 0 01-1.543-2.575L6.457 1.047zM9 11a1 1 0 11-2 0 1 1 0 012 0zm-.25-5.25a.75.75 0 00-1.5 0v2.5a.75.75 0 001.5 0v-2.5z"></path></svg>
+    <span class="js-stale-session-flash-signed-in" hidden>You signed in with another tab or window. <a href="">Reload</a> to refresh your session.</span>
+    <span class="js-stale-session-flash-signed-out" hidden>You signed out in another tab or window. <a href="">Reload</a> to refresh your session.</span>
+  </div>
+  <template id="site-details-dialog">
+  <details class="details-reset details-overlay details-overlay-dark lh-default text-gray-dark hx_rsm" open>
+    <summary role="button" aria-label="Close dialog"></summary>
+    <details-dialog class="Box Box--overlay d-flex flex-column anim-fade-in fast hx_rsm-dialog hx_rsm-modal">
+      <button class="Box-btn-octicon m-0 btn-octicon position-absolute right-0 top-0" type="button" aria-label="Close dialog" data-close-dialog>
+        <svg class="octicon octicon-x" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"></path></svg>
+      </button>
+      <div class="octocat-spinner my-6 js-details-dialog-spinner"></div>
+    </details-dialog>
+  </details>
+</template>
+
+  <div class="Popover js-hovercard-content position-absolute" style="display: none; outline: none;" tabindex="0">
+  <div class="Popover-message Popover-message--bottom-left Popover-message--large Box box-shadow-large" style="width:360px;">
+  </div>
+</div>
+
+    <div class="js-cookie-consent-banner" hidden>
+  <div class="hx_cookie-banner p-2 p-sm-3 p-md-4">
+    <div style="max-width: 1194px;" class="Box hx_cookie-banner-box box-shadow-medium mx-auto">
+    <div class="Box-body border-0 py-0 px-3 px-md-4">
+      <div class="js-main-cookie-banner hx_cookie-banner-main">
+          <div class="d-md-flex flex-items-center py-3">
+            <p class="f5 flex-1 mb-3 mb-md-0">
+              
+  We use <span class="text-bold">optional</span> third-party analytics cookies to understand how you use GitHub.com so we can build better products.
+
+              <span class="btn-link js-cookie-consent-learn-more">Learn more</span>.
+            </p>
+            <div class="d-flex d-md-block flex-wrap flex-sm-nowrap">
+              <button class="btn btn-outline flex-1 mr-1 mx-sm-1 m-md-0 ml-md-2 js-cookie-consent-accept">Accept</button>
+              <button class="btn btn-outline flex-1 ml-1 m-md-0 ml-md-2 js-cookie-consent-reject">Reject</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="js-cookie-details hx_cookie-banner-details" hidden>
+          <div class="d-md-flex flex-items-center py-3">
+            <p class="f5 flex-1 mb-2 mb-md-0">
+              
+  We use <span class="text-bold">optional</span> third-party analytics cookies to understand how you use GitHub.com so we can build better products.
+
+              <br>
+              You can always update your selection by clicking <span class="text-bold">Cookie Preferences</span> at the bottom of the page.
+              For more information, see our <a href="https://docs.github.com/en/free-pro-team@latest/github/site-policy/github-privacy-statement">Privacy Statement</a>.
+            </p>
+          </div>
+
+          <div class="d-md-flex flex-items-center py-3 border-top">
+            <div class="f5 flex-1 mb-2 mb-md-0">
+              <h5 class="mb-1">Essential cookies</h5>
+              <p class="f6 mb-md-0">We use essential cookies to perform essential website functions, e.g. they're used to log you in. 
+                <a href="https://docs.github.com/en/github/site-policy/github-subprocessors-and-cookies">Learn more</a>
+              </p>
+            </div>
+            <div class="text-right">
+              <h5 class="text-blue">Always active</h5>
+            </div>
+          </div>
+
+          <div class="d-md-flex flex-items-center py-3 border-top">
+            <div class="f5 flex-1 mb-2 mb-md-0">
+              <h5 class="mb-1">Analytics cookies</h5>
+              <p class="f6 mb-md-0">We use analytics cookies to understand how you use our websites so we can make them better, e.g. they're used to gather information about the pages you visit and how many clicks you need to accomplish a task. 
+                <a href="https://docs.github.com/en/github/site-policy/github-subprocessors-and-cookies">Learn more</a>
+              </p>
+            </div>
+            <div class="text-right">
+              <div class="BtnGroup mt-1 mt-md-0 ml-2">
+                <button class="btn btn-outline BtnGroup-item js-accept-analytics-cookies" type="button">Accept</button>
+                <button class="btn btn-outline BtnGroup-item js-reject-analytics-cookies" type="button">Reject</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-right py-3 border-top">
+            <button class="btn btn-primary js-save-cookie-preferences" type="button" disabled>Save preferences</button>
+          </div>
+        </div>
+</div></div>  </div>
+</div>
+
+
+  </body>
+</html>
+
