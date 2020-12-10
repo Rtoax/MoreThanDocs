@@ -212,7 +212,7 @@ static struct malloc_state main_arena =
 
 ![](_v_images/20201204093124034_4003.png =754x)
 
-## 2.4. 主分配去与非主分配区
+## 2.4. 主分配区与非主分配区
 
 内存分配器中，为了解决多线程竞争锁的问题，分为主分配去main_area和非主分配区no_main_area。
 
