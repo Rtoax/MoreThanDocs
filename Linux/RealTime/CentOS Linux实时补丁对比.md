@@ -2,41 +2,149 @@
 <br/>
 <br/>
 <center><font size='5'>荣涛</font></center>
-<center><font size='5'>2021年2月</font></center>
+<center><font size='5'>2021年2月-3月</font></center>
 <br/>
 
 # 1. 概要
 
-## 1.1. 实时性补丁
+## 1.1. 网址
 
+* [实时补丁二进制RPM](http://mirror.centos.org/centos/7/rt/x86_64/Packages/)
+* [实时补丁源代码RPM](http://mirror.centos.org/centos/7/rt/Source/SPackages/)
 
-* 3.10.0-693.2.2.rt56.623.el7.x86_64：[下载](https://linuxsoft.cern.ch/cern/centos/7/rt/x86_64/Packages/kernel-rt-doc-3.10.0-693.2.2.rt56.623.el7.noarch.rpm)
-* 3.10.0-1127.rt56.1093.el7.x86_64：[下载](https://linuxsoft.cern.ch/cern/centos/7/rt/x86_64/Packages/kernel-rt-doc-3.10.0-1127.rt56.1093.el7.noarch.rpm)
+## 1.2. 实时性补丁
 
-## 1.2. 实时性补丁文档
+* [3.10.0-693.2.2.rt56.623.el7.x86_64](https://linuxsoft.cern.ch/cern/centos/7/rt/x86_64/Packages/kernel-rt-doc-3.10.0-693.2.2.rt56.623.el7.noarch.rpm)
+* [3.10.0-1127.rt56.1093.el7.x86_64](https://linuxsoft.cern.ch/cern/centos/7/rt/x86_64/Packages/kernel-rt-doc-3.10.0-1127.rt56.1093.el7.noarch.rpm)
 
+## 1.3. 实时性补丁文档
 
 * [kernel-rt-doc-3.10.0-1127.rt56.1093.el7.noarch](https://linuxsoft.cern.ch/cern/centos/7/rt/x86_64/Packages/kernel-rt-doc-3.10.0-1127.rt56.1093.el7.noarch.rpm)
 * [kernel-rt-doc-3.10.0-693.2.2.rt56.623.el7.noarch](https://linuxsoft.cern.ch/cern/centos/7/rt/x86_64/Packages/kernel-rt-doc-3.10.0-693.2.2.rt56.623.el7.noarch.rpm)
 * [kernel-rt-doc-3.10.0-693.rt56.617.el7.noarch](https://linuxsoft.cern.ch/cern/centos/7/rt/x86_64/Packages/kernel-rt-doc-3.10.0-693.rt56.617.el7.noarch.rpm)
 
->后面全部简称`693.rt56`、`693.2.2.rt56`和`1127.rt56`
->下面进行详细的比较。
 
-## 1.3. 相关链接
+# 2. 源码比较
+
+本文档的三个源码版本分别如下：
+
+* Linux内核版本：linux-3.10.1（3.10.0没有知道到，只找到3.10.1，差异基本上不大，后续简称**非实时内核**）；
+* Linux实时内核版本：kernel-rt-3.10.0-693.11.1.rt56.632.el7.src（只找到693.11.1，没找到693.2.2，后面简称**693.11.1.rt56**）
+* Linux实时内核版本：kernel-rt-3.10.0-1127.rt56.1093.el7.src（后面简称**1127.rt56**）
+
+从FastQ的时延入手（实时内核中时延极高，非实时内核中时延低），从Linux内核源码角度分析，以及分析可行性。
+
+## 2.1. FastQ实现原理
 
 
-* [Product Documentation for Red Hat Enterprise Linux for Real Time 7](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux_for_real_time/7/)
+![多生产者单消费者模型](_v_images/20210301154900047_31194.png)
 
-* 补丁地址：[CentOS 7 - RealTime for x86_64: RealTime: kernel-rt-doc](https://linuxsoft.cern.ch/cern/centos/7/rt/x86_64/repoview/kernel-rt-doc.html)
+目前确认由于epoll的使用，导致系统重新调度中断暴增，如下所示：
 
-[参考指南Reference Guide](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux_for_real_time/7/html/reference_guide/)
+![](_v_images/20210301155356561_28537.png)
 
-本书可帮助用户和管理员学习各种术语和概念，这对于正确使用Red Hat Enterprise Linux for Real Time是必不可少的。有关安装说明，请参见《[红帽企业版Linux实时安装指南](https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux_for_Real_Time/7/html/Installation_Guide/index.html)》。有关调优的信息，请参见《[红帽企业版Linux实时调优指南](https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux_for_Real_Time/7/html/Tuning_Guide/index.html)》。
+而在非实时内核中，该值在epoll的调用过程中，机会保持不变。
+
+由于对比过sysctl -a的所有参数，以及使用cgroup调试亦未得到有效解决。下载上述源码进行源码分析。同时，使用perf工具进行内核函数追踪。
+编写epoll测试程序如下。
+
+* 入队线程任务：
+```c
+void *write_task(void*arg) {
+    struct task_arg *ARG = (struct task_arg *)arg;
+    struct epoll_context *ectx = ARG->ectx;
+
+    reset_self_sched(ARG->sched_policy, ARG->sched_priority);
+    reset_self_cpuset(ARG->cpu_list);
+    int evt_fd = eventfd_create();
+    epoll_add_fd(ectx, evt_fd);
+    int i =0;
+    int ret;
+    eventfd_t count = 1;
+    while(1) {
+        ret = eventfd_write(evt_fd, count);
+        if(ret < 0) {
+            continue;
+        }
+    }
+    pthread_exit(NULL);
+}
+```
+
+* 出队线程任务：
+
+```c
+
+void *read_task(void*arg){
+    struct task_arg *ARG = (struct task_arg *)arg;
+    struct epoll_context *ectx = ARG->ectx;
+
+    int i =0, nmsg = 0, imsg = 0, ret, nfds;
+    eventfd_t count = 1;
+    reset_self_sched(ARG->sched_policy, ARG->sched_priority);
+    reset_self_cpuset(ARG->cpu_list);
+    for (;;) {
+        nfds = epoll_wait(ectx->epollfd, ectx->events, MAX_EVENTS, -1);
+        if (nfds == -1) {
+            perror("epoll_pwait");
+            exit(EXIT_FAILURE);
+        }
+        for (i = 0; i < nfds; ++i) {
+            ret = eventfd_read(ectx->events[i].data.fd, &count);
+            if(ret < 0) {
+                break;
+            }
+            for(imsg = 0; imsg < count; ++imsg) {
+                //MORE
+            }
+        }
+    }
+    pthread_exit(NULL);
+}
+```
+使用perf工具追踪 epoll_wait系统调用在内核中的调用关系：
+
+在非实时内核中：
+
+![](_v_images/20210301160315483_2756.png)
 
 
-# 2. 比较
-## 2.1. `693.rt56`和`693.2.2.rt56`对比
+在实时内核中：
+
+![](_v_images/20210301160448579_27037.png)
+
+注意到这里的自旋锁已经被实时内核补丁替换为`rt_spin_lock`（`include/linux/spinlock_rt.h:39`）：
+
+```c
+#define spin_lock_local(lock)			rt_spin_lock(lock)
+```
+继续寻找`rt_spin_lock`（`kernel/rtmutex.c`）：
+
+```c
+void __lockfunc rt_spin_lock(spinlock_t *lock);
+```
+![](_v_images/20210301161257014_2902.png)
+
+在这个函数中会调用`schedule()`
+![](_v_images/20210301161821537_14864.png)
+
+
+![](_v_images/20210301162505853_17958.png)
+
+目前初步确认，如果使用epoll，重新调度的耗时是巨大的，这是造成多生产者多消费者性能低下的根本原因。
+
+
+
+
+
+
+
+
+
+
+
+# 3. 其他比较
+## 3.1. `693.rt56`和`693.2.2.rt56`对比
 ![](_v_images/20210225100745503_31.png)
 
 其中的DocBook里面差异较多
@@ -46,18 +154,18 @@
 
 
 
-## 2.2. `693.rt56`和`1127.rt56`对比
+## 3.2. `693.rt56`和`1127.rt56`对比
 
 ![](_v_images/20210225102753752_18077.png)
 
 其中对比内容可以为：`acpi`、`cpu_freq`和`scheduler`：
 ![](_v_images/20210225102921447_846.png)
 
-## 2.3. acpi
+## 3.3. acpi
 `1127.rt56`较 `693.rt56`缺少了下面文件：
 ![](_v_images/20210225103049438_12730.png)
 
-## 2.4. cpu_freq
+## 3.4. cpu_freq
 
 ![](_v_images/20210225103207671_6887.png)
 
@@ -85,7 +193,7 @@ There is one more sysfs attribute in /sys/devices/system/cpu/intel_pstate/ that 
 ```
 不存在文件`/sys/devices/system/cpu/intel_pstate/`，但是好像也没有关系。
 
-## 2.5. scheduler
+## 3.5. scheduler
 `\usr\share\doc\kernel-rt-doc-3.10.0\Documentation\scheduler\sched-bwc.txt`
 ![](_v_images/20210225105717982_28962.png)
 
