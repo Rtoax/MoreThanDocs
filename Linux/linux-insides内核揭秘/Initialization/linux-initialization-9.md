@@ -4,7 +4,7 @@ Kernel initialization. Part 9.
 RCU initialization
 ================================================================================
 
-This is ninth part of the [Linux Kernel initialization process](https://0xax.gitbook.io/linux-insides/summary/initialization) and in the previous part we stopped at the [scheduler initialization](https://0xax.gitbook.io/linux-insides/summary/initialization/linux-initialization-8). In this part we will continue to dive to the linux kernel initialization process and the main purpose of this part will be to learn about initialization of the [RCU](http://en.wikipedia.org/wiki/Read-copy-update). We can see that the next step in the [init/main.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/init/main.c) after the `sched_init` is the call of the `preempt_disable`. There are two macros:
+This is ninth part of the [Linux Kernel initialization process](https://0xax.gitbook.io/linux-insides/summary/initialization) and in the previous part we stopped at the [scheduler initialization](https://rtoax.blog.csdn.net/article/details/115081606). In this part we will continue to dive to the linux kernel initialization process and the main purpose of this part will be to learn about initialization of the [RCU](http://en.wikipedia.org/wiki/Read-copy-update). We can see that the next step in the [init/main.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/init/main.c) after the `sched_init` is the call of the `preempt_disable`. There are two macros:
 
 * `preempt_disable`
 * `preempt_enable`
@@ -63,10 +63,16 @@ if (WARN(!irqs_disabled(),
 	 "Interrupts were enabled *very* early, fixing it\n"))
 	local_irq_disable();
 ```
-
+```c
+static __always_inline void native_irq_disable(void)
+{
+	asm volatile("cli": : :"memory");/* cli-关中断 close irq*/
+}
+```
 which check [IRQs](http://en.wikipedia.org/wiki/Interrupt_request_%28PC_architecture%29) state, and disabling (with `cli` instruction for `x86_64`) if they are enabled.
 
 That's all. Preemption is disabled and we can go ahead.
+
 
 Initialization of the integer ID management
 --------------------------------------------------------------------------------
@@ -125,37 +131,147 @@ The next step is [RCU](http://en.wikipedia.org/wiki/Read-copy-update) initializa
 * `CONFIG_TINY_RCU`
 * `CONFIG_TREE_RCU`
 
-In the first case `rcu_init` will be in the [kernel/rcu/tiny.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/rcu/tiny.c) and in the second case it will be defined in the [kernel/rcu/tree.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/rcu/tree.c). We will see the implementation of the `tree rcu`, but first of all about the `RCU` in general.
+In the first case `rcu_init` will be in the [kernel/rcu/tiny.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/rcu/tiny.c) 
 
-`RCU` or read-copy update is a scalable high-performance synchronization mechanism implemented in the Linux kernel. On the early stage the linux kernel provided support and environment for the concurrently running applications, but all execution was serialized in the kernel using a single global lock. In our days linux kernel has no single global lock, but provides different mechanisms including [lock-free data structures](http://en.wikipedia.org/wiki/Concurrent_data_structure), [percpu](https://0xax.gitbook.io/linux-insides/summary/concepts/linux-cpu-1) data structures and other. One of these mechanisms is - the `read-copy update`. The `RCU` technique is designed for rarely-modified data structures. The idea of the `RCU` is simple. For example we have a rarely-modified data structure. If somebody wants to change this data structure, we make a copy of this data structure and make all changes in the copy. In the same time all other users of the data structure use old version of it. Next, we need to choose safe moment when original version of the data structure will have no users and update it with the modified copy.
+```c
+void __init rcu_init(void)
+{
+	open_softirq(RCU_SOFTIRQ, rcu_process_callbacks);
+	rcu_early_boot_tests();
+	srcu_init();
+}
+```
 
-Of course this description of the `RCU` is very simplified. To understand some details about `RCU`, first of all we need to learn some terminology. Data readers in the `RCU` executed in the [critical section](http://en.wikipedia.org/wiki/Critical_section). Every time when data reader get to the critical section, it calls the `rcu_read_lock`, and `rcu_read_unlock` on exit from the critical section. If the thread is not in the critical section, it will be in state which called - `quiescent state`. The moment when every thread is in the `quiescent state` called - `grace period`. If a thread wants to remove an element from the data structure, this occurs in two steps. First step is `removal` - atomically removes element from the data structure, but does not release the physical memory. After this thread-writer announces and waits until it is finished. From this moment, the removed element is available to the thread-readers. After the `grace period` finished, the second step of the element removal will be started, it just removes the element from the physical memory.
+and in the second case it will be defined in the [kernel/rcu/tree.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/rcu/tree.c). 
 
-There a couple of implementations of the `RCU`. Old `RCU` called classic, the new implementation called `tree` RCU. As you may already understand, the `CONFIG_TREE_RCU` kernel configuration option enables tree `RCU`. Another is the `tiny` RCU which depends on `CONFIG_TINY_RCU` and `CONFIG_SMP=n`. We will see more details about the `RCU` in general in the separate chapter about synchronization primitives, but now let's look on the `rcu_init` implementation from the [kernel/rcu/tree.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/rcu/tree.c):
+```c
+
+void __init rcu_init(void)
+{
+	int cpu;
+
+	rcu_early_boot_tests();
+
+	kfree_rcu_batch_init();
+	rcu_bootup_announce();
+	rcu_init_geometry();
+	rcu_init_one();
+	if (dump_tree)
+		rcu_dump_rcu_node_tree();
+	if (use_softirq)
+		open_softirq(RCU_SOFTIRQ, rcu_core_si);
+
+	/*
+	 * We don't need protection against CPU-hotplug here because
+	 * this is called early in boot, before either interrupts
+	 * or the scheduler are operational.
+	 */
+	pm_notifier(rcu_pm_notify, 0);
+	for_each_online_cpu(cpu) {
+		rcutree_prepare_cpu(cpu);
+		rcu_cpu_starting(cpu);
+		rcutree_online_cpu(cpu);
+	}
+
+	/* Create workqueue for expedited GPs and for Tree SRCU. */
+	rcu_gp_wq = alloc_workqueue("rcu_gp", WQ_MEM_RECLAIM, 0);
+	WARN_ON(!rcu_gp_wq);
+	rcu_par_gp_wq = alloc_workqueue("rcu_par_gp", WQ_MEM_RECLAIM, 0);
+	WARN_ON(!rcu_par_gp_wq);
+	srcu_init();
+
+	/* Fill in default value for rcutree.qovld boot parameter. */
+	/* -After- the rcu_node ->lock fields are initialized! */
+	if (qovld < 0)
+		qovld_calc = DEFAULT_RCU_QOVLD_MULT * qhimark;
+	else
+		qovld_calc = qovld;
+}
+```
+
+We will see the implementation of the `tree rcu`, but first of all about the `RCU` in general.
+
+`RCU` or read-copy update is a scalable high-performance synchronization mechanism implemented in the Linux kernel. On the early stage the linux kernel provided support and environment for the concurrently running applications, but all execution was serialized in the kernel using a single global lock. In our days linux kernel has no single global lock, but provides different mechanisms including [lock-free data structures](http://en.wikipedia.org/wiki/Concurrent_data_structure), [percpu](https://0xax.gitbook.io/linux-insides/summary/concepts/linux-cpu-1) data structures and other. One of these mechanisms is - the `read-copy update`. 
+
+The `RCU` technique is designed for `rarely-modified data structures`**（很少修改数据结构）**. The idea of the `RCU` is simple. For example we have a rarely-modified data structure. If somebody wants to change this data structure, we **make a copy** of this data structure and **make all changes in the copy**. In the same time all other users of the data structure use old version of it. Next, we need to **choose safe moment** when original version of the data structure will have no users and update it with the modified copy.
+
+Of course this description of the `RCU` is very simplified. To understand some details about `RCU`, first of all we need to learn some terminology. Data readers in the `RCU` executed in the [critical section（临界区）](http://en.wikipedia.org/wiki/Critical_section). Every time when data reader get to the critical section, it calls the `rcu_read_lock`, and `rcu_read_unlock` on exit from the critical section. If the thread is not in the critical section, it will be in state which called - `quiescent state`（静态）. The moment when every thread is in the `quiescent state` called - `grace period`. If a thread wants to remove an element from the data structure, this occurs in two steps. First step is `removal` - atomically removes element from the data structure, but does not release the physical memory. After this thread-writer announces and waits until it is finished. From this moment, the removed element is available to the thread-readers. After the `grace period` finished, the second step of the element removal will be started, it just removes the element from the physical memory.
+
+There a couple of implementations of the `RCU`. 
+
+1. Old `RCU` called classic, 
+2. the new implementation called `tree` RCU. 
+
+As you may already understand, the `CONFIG_TREE_RCU` kernel configuration option enables tree `RCU`. Another is the `tiny` RCU which depends on `CONFIG_TINY_RCU` and `CONFIG_SMP=n`. We will see more details about the `RCU` in general in the separate chapter about synchronization primitives, but now let's look on the `rcu_init` implementation from the [kernel/rcu/tree.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/rcu/tree.c):
 
 ```C
 void __init rcu_init(void)
 {
-         int cpu;
+     int cpu;
 
-         rcu_bootup_announce();
-         rcu_init_geometry();
-         rcu_init_one(&rcu_bh_state, &rcu_bh_data);
-         rcu_init_one(&rcu_sched_state, &rcu_sched_data);
-         __rcu_init_preempt();
-         open_softirq(RCU_SOFTIRQ, rcu_process_callbacks);
+     rcu_bootup_announce();
+     rcu_init_geometry();
+     rcu_init_one(&rcu_bh_state, &rcu_bh_data);
+     rcu_init_one(&rcu_sched_state, &rcu_sched_data);
+     __rcu_init_preempt();
+     open_softirq(RCU_SOFTIRQ, rcu_process_callbacks);
 
-         /*
-          * We don't need protection against CPU-hotplug here because
-          * this is called early in boot, before either interrupts
-          * or the scheduler are operational.
-          */
-         cpu_notifier(rcu_cpu_notify, 0);
-         pm_notifier(rcu_pm_notify, 0);
-         for_each_online_cpu(cpu)
-                 rcu_cpu_notify(NULL, CPU_UP_PREPARE, (void *)(long)cpu);
+     /*
+      * We don't need protection against CPU-hotplug here because
+      * this is called early in boot, before either interrupts
+      * or the scheduler are operational.
+      */
+     cpu_notifier(rcu_cpu_notify, 0);
+     pm_notifier(rcu_pm_notify, 0);
+     for_each_online_cpu(cpu)
+             rcu_cpu_notify(NULL, CPU_UP_PREPARE, (void *)(long)cpu);
 
-         rcu_early_boot_tests();
+     rcu_early_boot_tests();
+}
+```
+5.10.13中：
+```c
+
+void __init rcu_init(void)
+{
+	int cpu;
+
+	rcu_early_boot_tests();
+
+	kfree_rcu_batch_init();
+	rcu_bootup_announce();
+	rcu_init_geometry();
+	rcu_init_one();
+	if (dump_tree)
+		rcu_dump_rcu_node_tree();
+	if (use_softirq)
+		open_softirq(RCU_SOFTIRQ, rcu_core_si);
+
+	/*
+	 * We don't need protection against CPU-hotplug here because
+	 * this is called early in boot, before either interrupts
+	 * or the scheduler are operational.
+	 */
+	pm_notifier(rcu_pm_notify, 0);
+	for_each_online_cpu(cpu) {
+		rcutree_prepare_cpu(cpu);
+		rcu_cpu_starting(cpu);
+		rcutree_online_cpu(cpu);
+	}
+
+	/* Create workqueue for expedited GPs and for Tree SRCU. */
+	rcu_gp_wq = alloc_workqueue("rcu_gp", WQ_MEM_RECLAIM, 0);
+	WARN_ON(!rcu_gp_wq);
+	rcu_par_gp_wq = alloc_workqueue("rcu_par_gp", WQ_MEM_RECLAIM, 0);
+	WARN_ON(!rcu_par_gp_wq);
+	srcu_init();
+
+	/* Fill in default value for rcutree.qovld boot parameter. */
+	/* -After- the rcu_node ->lock fields are initialized! */
+	if (qovld < 0)
+		qovld_calc = DEFAULT_RCU_QOVLD_MULT * qhimark;
+	else
+		qovld_calc = qovld;
 }
 ```
 
@@ -164,15 +280,20 @@ In the beginning of the `rcu_init` function we define `cpu` variable and call `r
 ```C
 static void __init rcu_bootup_announce(void)
 {
-        pr_info("Hierarchical RCU implementation.\n");
-        rcu_bootup_announce_oddness();
+    pr_info("Hierarchical RCU implementation.\n");
+    rcu_bootup_announce_oddness();
 }
 ```
 
-It just prints information about the `RCU` with the `pr_info` function and `rcu_bootup_announce_oddness` which uses `pr_info` too, for printing different information about the current `RCU` configuration which depends on different kernel configuration options like `CONFIG_RCU_TRACE`, `CONFIG_PROVE_RCU`, `CONFIG_RCU_FANOUT_EXACT`, etc. In the next step, we can see the call of the `rcu_init_geometry` function. This function is defined in the same source code file and computes the node tree geometry depends on the amount of CPUs. Actually `RCU` provides scalability with extremely low internal RCU lock contention. What if a data structure will be read from the different CPUs? `RCU` API provides the `rcu_state` structure which presents RCU global state including node hierarchy. Hierarchy is presented by the:
+It just prints information about the `RCU` with the `pr_info` function and `rcu_bootup_announce_oddness` which uses `pr_info` too, for printing different information about the current `RCU` configuration which depends on different kernel configuration options like `CONFIG_RCU_TRACE`, `CONFIG_PROVE_RCU`, `CONFIG_RCU_FANOUT_EXACT`, etc. 
+
+In the next step, we can see the call of the `rcu_init_geometry` function. This function is defined in the same source code file and computes the node tree geometry depends on the amount of CPUs. Actually `RCU` provides scalability with extremely low internal RCU lock contention. What if a data structure will be read from the different CPUs? `RCU` API provides the `rcu_state` structure which presents RCU global state including node hierarchy. Hierarchy is presented by the:
 
 ```
-struct rcu_node node[NUM_RCU_NODES];
+struct rcu_state {
+    struct rcu_node node[NUM_RCU_NODES];
+    。。。
+};
 ```
 
 array of structures. As we can read in the comment of above definition:
@@ -230,7 +351,9 @@ where levels values depend on the `CONFIG_RCU_FANOUT_LEAF` configuration option.
 +------------------------------------------------------------------+
 ```
 
-So, in the `rcu_init_geometry` function we just need to calculate the total number of `rcu_node` structures. We start to do it with the calculation of the `jiffies` till to the first and next `fqs` which is `force-quiescent-state` (read above about it):
+So, in the `rcu_init_geometry` function we just need to calculate the total number of `rcu_node` structures. 
+
+We start to do it with the calculation of the `jiffies` till to the first and next `fqs` which is `force-quiescent-state` (read above about it):
 
 ```C
 d = RCU_JIFFIES_TILL_FORCE_QS + nr_cpu_ids / RCU_JIFFIES_FQS_DIV;
@@ -303,7 +426,7 @@ function. This function registers a handler of the `pending interrupt`. Pending 
 ```C
 struct softirq_action
 {
-        void    (*action)(struct softirq_action *);
+    void    (*action)(struct softirq_action *);
 };
 ```
 
@@ -334,11 +457,11 @@ and adds interrupt handler to the array of the pending interrupts:
 ```C
 void open_softirq(int nr, void (*action)(struct softirq_action *))
 {
-        softirq_vec[nr].action = action;
+     softirq_vec[nr].action = action;
 }
 ```
 
-In our case the interrupt handler is - `rcu_process_callbacks` which is defined in the [kernel/rcu/tree.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/rcu/tree.c) and does the `RCU` core processing for the current CPU. After we registered `softirq` interrupt for the `RCU`, we can see the following code:
+In our case the interrupt handler is - `rcu_process_callbacks` （Tiny，或者`rcu_core_si` TREE）which is defined in the [kernel/rcu/tree.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/rcu/tree.c) and does the `RCU` core processing for the current CPU. After we registered `softirq` interrupt for the `RCU`, we can see the following code:
 
 ```C
 cpu_notifier(rcu_cpu_notify, 0);
@@ -346,6 +469,8 @@ pm_notifier(rcu_pm_notify, 0);
 for_each_online_cpu(cpu)
     rcu_cpu_notify(NULL, CPU_UP_PREPARE, (void *)(long)cpu);
 ```
+
+> 5.10.13做了很大改动，在这里不做详细讨论，本文只关注原理。后续文章中将会详细介绍新版本代码的架构。
 
 Here we can see registration of the `cpu` notifier which needs in systems which supports [CPU hotplug](https://www.kernel.org/doc/Documentation/cpu-hotplug.txt) and we will not dive into details about this theme. The last function in the `rcu_init` is the `rcu_early_boot_tests`:
 
@@ -367,6 +492,7 @@ which runs self tests for the `RCU`.
 
 That's all. We saw initialization process of the `RCU` subsystem. As I wrote above, more about the `RCU` will be in the separate chapter about synchronization primitives.
 
+
 Rest of the initialization process
 --------------------------------------------------------------------------------
 
@@ -376,9 +502,40 @@ Ok, we already passed the main theme of this part which is `RCU` initialization,
 * They have the character of debugging and not important for now;
 * We will see many of this stuff in the separate parts/chapters.
 
-After we initialized `RCU`, the next step which you can see in the [init/main.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/init/main.c) is the - `trace_init` function. As you can understand from its name, this function initialize [tracing](http://en.wikipedia.org/wiki/Tracing_%28software%29) subsystem. You can read more about linux kernel trace system - [here](http://elinux.org/Kernel_Trace_Systems).
+After we initialized `RCU`, the next step which you can see in the [init/main.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/init/main.c) is the - `trace_init` function. As you can understand from its name, this function initialize [tracing](http://en.wikipedia.org/wiki/Tracing_%28software%29) subsystem. 
 
-After the `trace_init`, we can see the call of the `radix_tree_init`. If you are familiar with the different data structures, you can understand from the name of this function that it initializes kernel implementation of the [Radix tree](http://en.wikipedia.org/wiki/Radix_tree). This function is defined in the [lib/radix-tree.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/lib/radix-tree.c) and you can read more about it in the part about [Radix tree](https://0xax.gitbook.io/linux-insides/summary/datastructures/linux-datastructures-2).
+```c
+void __init trace_init(void)
+{
+	trace_event_init();
+}
+```
+
+You can read more about linux kernel trace system - [here](http://elinux.org/Kernel_Trace_Systems).
+
+After the `trace_init`, we can see the call of the `radix_tree_init`. 
+
+> 5.10.13中radix_tree_init在上面。
+
+```c
+void __init radix_tree_init(void)   /*  radix tree*/
+{
+	int ret;
+
+	BUILD_BUG_ON(RADIX_TREE_MAX_TAGS + __GFP_BITS_SHIFT > 32);
+	BUILD_BUG_ON(ROOT_IS_IDR & ~GFP_ZONEMASK);
+	BUILD_BUG_ON(XA_CHUNK_SIZE > 255);
+	radix_tree_node_cachep = kmem_cache_create("radix_tree_node",
+			sizeof(struct radix_tree_node), 0,
+			SLAB_PANIC | SLAB_RECLAIM_ACCOUNT,
+			radix_tree_node_ctor);
+	ret = cpuhp_setup_state_nocalls(CPUHP_RADIX_DEAD, "lib/radix:dead",
+					NULL, radix_tree_cpu_dead);
+	WARN_ON(ret < 0);
+}
+```
+
+If you are familiar with the different data structures, you can understand from the name of this function that it initializes kernel implementation of the [Radix tree](http://en.wikipedia.org/wiki/Radix_tree). This function is defined in the [lib/radix-tree.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/lib/radix-tree.c) and you can read more about it in the part about [Radix tree](https://0xax.gitbook.io/linux-insides/summary/datastructures/linux-datastructures-2).
 
 In the next step we can see the functions which are related to the `interrupts handling` subsystem, they are:
 
@@ -386,19 +543,110 @@ In the next step we can see the functions which are related to the `interrupts h
 * `init_IRQ`
 * `softirq_init`
 
-We will see explanation about this functions and their implementation in the special part about interrupts and exceptions handling. After this many different functions (like `init_timers`, `hrtimers_init`, `time_init`, etc.) which are related to different timing and timers stuff. We will see more about these function in the chapter about timers.
+We will see explanation about this functions and their implementation in the special part about interrupts and exceptions handling. 
 
-The next couple of functions are related with the [perf](https://perf.wiki.kernel.org/index.php/Main_Page) events - `perf_event-init` (there will be separate chapter about perf), initialization of the `profiling` with the `profile_init`. After this we enable `irq` with the call of the:
+After this many different functions (like `init_timers`, `hrtimers_init`, `time_init`, etc.) which are related to different timing and timers stuff. We will see more about these function in the chapter about timers.
+
+The next couple of functions are related with the [perf](https://perf.wiki.kernel.org/index.php/Main_Page) events - `perf_event_init` (there will be separate chapter about perf), initialization of the `profiling` with the `profile_init`. After this we enable `irq` with the call of the:
 
 ```C
 local_irq_enable();
 ```
-
+```c
+static __always_inline void native_irq_enable(void)
+{
+	asm volatile("sti": : :"memory");/* sti-开中断 start irq*/
+}
+```
 which expands to the `sti` instruction and making post initialization of the [SLAB](http://en.wikipedia.org/wiki/Slab_allocation) with the call of the `kmem_cache_init_late` function (As I wrote above we will know about the `SLAB` in the [Linux memory management](https://0xax.gitbook.io/linux-insides/summary/mm) chapter).
+
+以slab为例：
+```c
+void __init kmem_cache_init_late(void)  /*  */
+{
+	struct kmem_cache *cachep;
+
+	/* 6) resize the head arrays to their final sizes */
+	mutex_lock(&slab_mutex);
+	list_for_each_entry(cachep, &slab_caches, list)
+		if (enable_cpucache(cachep, GFP_NOWAIT)) {
+			BUG();}
+	mutex_unlock(&slab_mutex);
+
+	/* Done! */
+	slab_state = FULL;
+
+#ifdef CONFIG_NUMA
+	/*
+	 * Register a memory hotplug callback that initializes and frees
+	 * node.
+	 */ /* 内存热插 */
+	hotplug_memory_notifier(slab_memory_callback, SLAB_CALLBACK_PRI);
+#endif
+	/*
+	 * The reap timers are started later, with a module init call: That part
+	 * of the kernel is not yet operational.
+	 */
+}
+```
 
 After the post initialization of the `SLAB`, next point is initialization of the console with the `console_init` function from the [drivers/tty/tty_io.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/drivers/tty/tty_io.c).
 
-After the console initialization, we can see the `lockdep_info` function which prints information about the [Lock dependency validator](https://www.kernel.org/doc/Documentation/locking/lockdep-design.txt). After this, we can see the initialization of the dynamic allocation of the `debug objects` with the `debug_objects_mem_init`, kernel memory leak [detector](https://www.kernel.org/doc/Documentation/kmemleak.txt) initialization with the `kmemleak_init`, `percpu` pageset setup with the `setup_per_cpu_pageset`, setup of the [NUMA](http://en.wikipedia.org/wiki/Non-uniform_memory_access) policy with the `numa_policy_init`, setting time for the scheduler with the `sched_clock_init`, `pidmap` initialization with the call of the `pidmap_init` function for the initial `PID` namespace, cache creation with the `anon_vma_init` for the private virtual memory areas and early initialization of the [ACPI](http://en.wikipedia.org/wiki/Advanced_Configuration_and_Power_Interface) with the `acpi_early_init`.
+```c
+//它尝试earlyprintk在命令行中找到该选项，如果搜索成功，它将解析串行端口的端口地址和波特率，并初始化串行端口。
+void console_init(void) /* 被 arch/x86/boot/main.c:main 调用 */
+{
+	parse_earlyprintk();
+
+	if (!early_serial_base)
+		parse_console_uart8250();
+}
+```
+
+After the console initialization, we can see the `lockdep_info` function which prints information about the [Lock dependency validator](https://www.kernel.org/doc/Documentation/locking/lockdep-design.txt). 
+
+```c
+void __init lockdep_init(void)  /*死锁检测  */
+{
+	printk("Lock dependency validator: Copyright (c) 2006 Red Hat, Inc., Ingo Molnar\n");
+
+	printk("... MAX_LOCKDEP_SUBCLASSES:  %lu\n", MAX_LOCKDEP_SUBCLASSES);
+	printk("... MAX_LOCK_DEPTH:          %lu\n", MAX_LOCK_DEPTH);
+	printk("... MAX_LOCKDEP_KEYS:        %lu\n", MAX_LOCKDEP_KEYS);
+	printk("... CLASSHASH_SIZE:          %lu\n", CLASSHASH_SIZE);
+	printk("... MAX_LOCKDEP_ENTRIES:     %lu\n", MAX_LOCKDEP_ENTRIES);
+	printk("... MAX_LOCKDEP_CHAINS:      %lu\n", MAX_LOCKDEP_CHAINS);
+	printk("... CHAINHASH_SIZE:          %lu\n", CHAINHASH_SIZE);
+
+	printk(" memory used by lock dependency info: %zu kB\n",
+	       (sizeof(lock_classes) +
+		sizeof(lock_classes_in_use) +
+		sizeof(classhash_table) +
+		sizeof(list_entries) +
+		sizeof(list_entries_in_use) +
+		sizeof(chainhash_table) +
+		sizeof(delayed_free)
+#ifdef CONFIG_PROVE_LOCKING
+		+ sizeof(lock_cq)
+		+ sizeof(lock_chains)
+		+ sizeof(lock_chains_in_use)
+		+ sizeof(chain_hlocks)
+#endif
+		) / 1024
+		);
+
+#if defined(CONFIG_TRACE_IRQFLAGS) && defined(CONFIG_PROVE_LOCKING)
+	printk(" memory used for stack traces: %zu kB\n",
+	       (sizeof(stack_trace) + sizeof(stack_trace_hash)) / 1024
+	       );
+#endif
+
+	printk(" per task-struct memory footprint: %zu bytes\n",
+	       sizeof(((struct task_struct *)NULL)->held_locks));
+}
+```
+
+After this, we can see the initialization of the dynamic allocation of the `debug objects` with the `debug_objects_mem_init`, kernel memory leak [detector](https://www.kernel.org/doc/Documentation/kmemleak.txt) initialization with the `kmemleak_init`, `percpu` pageset setup with the `setup_per_cpu_pageset`, setup of the [NUMA](http://en.wikipedia.org/wiki/Non-uniform_memory_access) policy with the `numa_policy_init`, setting time for the scheduler with the `sched_clock_init`, `pidmap` initialization with the call of the `pidmap_init` function for the initial `PID` namespace, cache creation with the `anon_vma_init` for the private virtual memory areas and early initialization of the [ACPI](http://en.wikipedia.org/wiki/Advanced_Configuration_and_Power_Interface) with the `acpi_early_init`.
 
 This is the end of the ninth part of the [linux kernel initialization process](https://0xax.gitbook.io/linux-insides/summary/initialization) and here we saw initialization of the [RCU](http://en.wikipedia.org/wiki/Read-copy-update). In the last paragraph of this part (`Rest of the initialization process`) we will go through many functions but did not dive into details about their implementations. Do not worry if you do not know anything about these stuff or you know and do not understand anything about this. As I already wrote many times, we will see details of implementations in other parts or other chapters.
 
