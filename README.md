@@ -1,14 +1,7 @@
 # Study Documents
 
-[Rong Tao](https://github.com/Rtoax)
-
-
-
-学习文档、文件
-==================
-
-1. [https://gitee.com/rtoax/notes](https://gitee.com/rtoax/notes)
-2. [https://github.com/Rtoax/MoreThanDocs](https://github.com/Rtoax/MoreThanDocs)
+- [Rong Tao](https://github.com/Rtoax)
+- [https://github.com/Rtoax/MoreThanDocs](https://github.com/Rtoax/MoreThanDocs)
 
 ```
         _____________
